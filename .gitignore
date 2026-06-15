@@ -1,0 +1,95 @@
+# === Repuro Suite — code-only repo ===
+# Whitelist approach: ignore everything at root, then include code dirs
+
+# Ignore everything at root level
+/*
+
+# Track code components (the deployable suite)
+!/lead-pipeline/
+!/dealroom/
+!/cockpit/
+!/suite/
+
+# Track repo config
+!/.gitignore
+
+# === Excludes within tracked dirs ===
+
+# Databases (runtime state, not code)
+*.db
+*.db-shm
+*.db-wal
+
+# Environment (machine-specific)
+.env
+
+# Python bytecode / venvs
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# Binaries (OneDrive handles these)
+*.xlsx
+*.xls
+*.pdf
+*.docx
+*.pptx
+*.CSV
+*.zip
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.emf
+
+# OS / editor
+.DS_Store
+desktop.ini
+Thumbs.db
+.obsidian/
+*conflicting copy*
+.~lock.*
+
+# Claude local settings
+.claude/
+
+# Archived inner git repos
+.git-archived/
+
+# Data dirs (runtime, not code)
+lead-pipeline/data/staging/
+lead-pipeline/data/*.log
+lead-pipeline/data/*.json
+dealroom/data/deals/
+dealroom/AD_Docs/
+dealroom/EXAMPLE_LIVE_DEAL_FOLDER/
+
+# One-off scripts (not core pipeline)
+lead-pipeline/scripts/ba9_*.py
+lead-pipeline/scripts/apply_*.py
+lead-pipeline/scripts/correct_*.py
+lead-pipeline/scripts/diag_*.py
+lead-pipeline/scripts/expand_*.py
+lead-pipeline/scripts/fence_*.py
+lead-pipeline/scripts/fix_*.py
+lead-pipeline/scripts/ownership_only.py
+lead-pipeline/scripts/rescrape_ba9_*.py
+lead-pipeline/scripts/stage_to_classified.py
+lead-pipeline/scripts/sync_ba9*.py
+lead-pipeline/scripts/write_ba9_*.py
+lead-pipeline/scripts/finish_ba9*.sh
+lead-pipeline/scripts/run_ba9*.sh
+lead-pipeline/scripts/address_pass.py
+
+# Ephemeral artifacts
+**/codex-prompts/
+**/codex-reviews/
+**/screenshots/
+lead-pipeline/2026-*.md
+lead-pipeline/260*.md
+lead-pipeline/design-system-review-*.md
+lead-pipeline/reviews/
+report.html
+*.tmp

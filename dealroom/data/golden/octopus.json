@@ -1,0 +1,91 @@
+{
+  "code_name": "Octopus",
+  "source_model": "260307_HWV_v15.xlsx",
+  "currency": "EUR_K",
+  "pnl": {
+    "2021": {
+      "revenue": 26274.2,
+      "cogs_adj": -17941.72,
+      "personnel_adj": -1695.27,
+      "other_opex_adj": -894.39,
+      "other_income_adj": 36.85,
+      "ebitda_adj": 5779.67,
+      "ebit_adj": 5718.38,
+      "interest_expense": -2.08,
+      "interest_income": 4.27,
+      "ebt_adj": 5720.57,
+      "tax": -1835.81,
+      "net_income_adj": 3884.76
+    },
+    "2022": {
+      "revenue": 12182.89,
+      "cogs_adj": -6837.82,
+      "personnel_adj": -1943.23,
+      "other_opex_adj": -1207.75,
+      "other_income_adj": 30.39,
+      "ebitda_adj": 2224.49,
+      "ebit_adj": 2152.8,
+      "interest_expense": -7.57,
+      "interest_income": 0.0,
+      "ebt_adj": 2145.23,
+      "tax": -671.58,
+      "net_income_adj": 1473.64
+    },
+    "2023": {
+      "revenue": 8510.26,
+      "cogs_adj": -5139.05,
+      "personnel_adj": -1785.58,
+      "other_opex_adj": -741.0,
+      "other_income_adj": 152.17,
+      "ebitda_adj": 996.8,
+      "ebit_adj": 928.92,
+      "interest_expense": -0.38,
+      "interest_income": 0.0,
+      "ebt_adj": 928.55,
+      "tax": -303.81,
+      "net_income_adj": 624.74
+    },
+    "2024": {
+      "revenue": 8505.79,
+      "cogs_adj": -4987.19,
+      "personnel_adj": -1793.03,
+      "other_opex_adj": -652.14,
+      "other_income_adj": 48.15,
+      "ebitda_adj": 1121.58,
+      "ebit_adj": 1052.81,
+      "interest_expense": -0.13,
+      "interest_income": 6.39,
+      "ebt_adj": 1059.06,
+      "tax": -310.28,
+      "net_income_adj": 748.78
+    },
+    "2025": {
+      "revenue": 11042.85,
+      "cogs_adj": -6514.01,
+      "personnel_adj": -1907.66,
+      "other_opex_adj": -656.42,
+      "other_income_adj": 57.14,
+      "ebitda_adj": 2021.89,
+      "ebit_adj": 1954.39,
+      "interest_expense": 0.0,
+      "interest_income": 6.22,
+      "ebt_adj": 1960.61,
+      "tax": -613.99,
+      "net_income_adj": 1346.62
+    },
+    "2026": {
+      "revenue": 11000.0,
+      "cogs_adj": -6839.71,
+      "personnel_adj": -2003.05,
+      "other_opex_adj": -689.25,
+      "other_income_adj": 61.14,
+      "ebitda_adj": 2124.13,
+      "ebit_adj": 2094.13,
+      "interest_expense": -0.88,
+      "interest_income": 3.0,
+      "ebt_adj": 2096.25,
+      "tax": -452.0,
+      "net_income_adj": 1644.25
+    }
+  }
+}

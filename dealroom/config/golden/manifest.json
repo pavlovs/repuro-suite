@@ -1,0 +1,293 @@
+{
+  "version": 3,
+  "description": "Golden corpus -- Roman-curated reference documents for DEALROOM template-fill processes. Claude reads these, never generates them.",
+  "files": [
+    {
+      "path": "rfi/CAT_Frageliste_v3.docx",
+      "doc_type": "rfi",
+      "source_deal": "Cat",
+      "source_file": "260318_CAT_Frageliste_v3.docx",
+      "version": "v3",
+      "format": "docx",
+      "usage": "Structure and tone reference for German RFI question lists",
+      "added": "2026-04-23"
+    },
+    {
+      "path": "rfi/CAT_Frageliste.md",
+      "doc_type": "rfi",
+      "source_deal": "Cat",
+      "source_file": "260317_CAT_Frageliste_Repuro.md",
+      "version": "v1",
+      "format": "md",
+      "usage": "Machine-parseable RFI question list for prompt injection",
+      "added": "2026-04-23"
+    },
+    {
+      "path": "rfi/HWV_RFI_vS.docx",
+      "doc_type": "rfi",
+      "source_deal": "Octopus",
+      "source_file": "250807_HWV_RFI_vS.docx",
+      "version": "vS",
+      "format": "docx",
+      "usage": "Comprehensive RFI with detailed financial and operational questions",
+      "added": "2026-04-23"
+    },
+    {
+      "path": "rfi/Datenanfrage_Template.xlsx",
+      "doc_type": "rfi",
+      "source_deal": "_template",
+      "source_file": "260108_Datenanfrage.xlsx",
+      "version": "v2",
+      "format": "xlsx",
+      "usage": "Structural RFI template. Questions categorized by purpose: Financial Model, Onepager, pre-IO, and DD phase. Fill process should select questions matching the current deal stage.",
+      "added": "2026-04-23",
+      "moved_from": "dd/"
+    },
+    {
+      "path": "rfi/260108_Datenanfrage.xlsx",
+      "doc_type": "rfi",
+      "source_deal": "Cat",
+      "source_file": "260108_Datenanfrage.xlsx",
+      "version": "v1",
+      "format": "xlsx",
+      "usage": "Filled Datenanfrage for Cat deal. Shows which questions were asked and how they were phrased in practice.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "rfi/AQUA - Summary and Next Steps.md",
+      "doc_type": "rfi",
+      "source_deal": "Aqua",
+      "source_file": "AQUA - Summary and Next Steps.md",
+      "version": "v2",
+      "format": "md",
+      "usage": "Deal assessment with embedded RFI questions (section 'RFI v2'). Filter: extract only the RFI table for corpus use. Questions show real deal-specific phrasing and prioritization (keep/drop decisions).",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "offer/HWV_IO_vAktualisiert.docx",
+      "doc_type": "offer",
+      "source_deal": "Octopus",
+      "source_file": "251002_Indikatives Angebot HWV_vAktualisiert.docx",
+      "version": "vAktualisiert",
+      "format": "docx",
+      "usage": "Most polished indicative offer letter -- structure, tone, legal language reference",
+      "added": "2026-04-23"
+    },
+    {
+      "path": "offer/KVG_IO_vAktualisiert.docx",
+      "doc_type": "offer",
+      "source_deal": "Wolf",
+      "source_file": "260225_Indikatives Angebot KVG_vAktualisiert.docx",
+      "version": "vAktualisiert",
+      "format": "docx",
+      "usage": "DATA QUALITY ISSUE: byte-for-byte identical to HWV_IO -- never updated with Wolf-specific content. Exclude from template-fill corpus. Keep for Roman to replace with real Wolf offer.",
+      "added": "2026-04-23",
+      "exclude_from_corpus": true
+    },
+    {
+      "path": "offer/251002_Indikatives Angebot C2M_vAktualisiert.pdf",
+      "doc_type": "offer",
+      "source_deal": "Fox",
+      "source_file": "251002_Indikatives Angebot C2M_vAktualisiert.pdf",
+      "version": "vAktualisiert",
+      "format": "pdf",
+      "usage": "Fox/Com2Med indicative offer. PDF format -- reference for layout and structure.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "offer/260507_Finales Angebot M&S_vS.docx",
+      "doc_type": "offer",
+      "source_deal": "Cat",
+      "source_file": "260507_Finales Angebot M&S_vS.docx",
+      "version": "vS",
+      "format": "docx",
+      "usage": "Cat/M&S final offer. Editable reference for offer letter structure and legal language.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "offer/260507_Aktualisiertes Angebot M&S_vS.pdf",
+      "doc_type": "offer",
+      "source_deal": "Cat",
+      "source_file": "260507_Aktualisiertes Angebot M&S_vS.pdf",
+      "version": "vS",
+      "format": "pdf",
+      "usage": "Cat/M&S updated offer PDF. Layout and formatting reference.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "offer/260518_Aktualisiertes Angebot Golmed_vSent.docx",
+      "doc_type": "offer",
+      "source_deal": "Lion",
+      "source_file": "260518_Aktualisiertes Angebot Golmed_vSent.docx",
+      "version": "vSent",
+      "format": "docx",
+      "usage": "Lion/Golmed updated offer. Editable reference -- most recent offer letter.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "offer/260519_Aktualisiertes Angebot Golmed_vSent.pdf",
+      "doc_type": "offer",
+      "source_deal": "Lion",
+      "source_file": "260519_Aktualisiertes Angebot Golmed_vSent.pdf",
+      "version": "vSent",
+      "format": "pdf",
+      "usage": "Lion/Golmed offer PDF. Layout reference for sent version.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "nda/NDA_Bilateral_Template.docx",
+      "doc_type": "nda",
+      "source_deal": "Panda",
+      "source_file": "260323_Vertraulichkeitsvereinbarung_IST medical.docx",
+      "version": "v1",
+      "format": "docx",
+      "usage": "PRIMARY TEMPLATE for bilateral target NDAs. Cleaned from signed IST Medical: signatures stripped, 7 placeholders (target_company_name, target_street, target_plz_city, target_representative, target_representative_role, signing_date, target_city). Single-run verified.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "nda/NDA_Template.docx",
+      "doc_type": "nda",
+      "source_deal": "_template",
+      "source_file": "250114_Vertraulichkeitsvereinbarung_Template_Target.docx",
+      "version": "v1",
+      "format": "docx",
+      "usage": "Base NDA template -- fill target name, address, parties",
+      "added": "2026-04-23"
+    },
+    {
+      "path": "nda/260323_Vertraulichkeitsvereinbarung_IST medical.docx",
+      "doc_type": "nda",
+      "source_deal": "Panda",
+      "source_file": "260323_Vertraulichkeitsvereinbarung_IST medical.docx",
+      "version": "v1",
+      "format": "docx",
+      "usage": "Signed NDA for Panda/IST Medical. Shows how template was filled for a real target.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "nda/260323_Vertraulichkeitsvereinbarung_IST Medical.pdf",
+      "doc_type": "nda",
+      "source_deal": "Panda",
+      "source_file": "260323_Vertraulichkeitsvereinbarung_IST Medical.pdf",
+      "version": "v1",
+      "format": "pdf",
+      "usage": "Signed NDA PDF for Panda/IST Medical. Layout reference.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "nda/260415_Vertraulichkeitsvereinbarung_Sonowied.docx",
+      "doc_type": "nda",
+      "source_deal": "Sonowied",
+      "source_file": "260415_Vertraulichkeitsvereinbarung_Sonowied.docx",
+      "version": "v1",
+      "format": "docx",
+      "usage": "Signed NDA for Sonowied. Second real-target example of template usage.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "nda/260415_Vertraulichkeitsvereinbarung_Sonowied.pdf",
+      "doc_type": "nda",
+      "source_deal": "Sonowied",
+      "source_file": "260415_Vertraulichkeitsvereinbarung_Sonowied.pdf",
+      "version": "v1",
+      "format": "pdf",
+      "usage": "Signed NDA PDF for Sonowied. Layout reference.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "loi/HWV_LOI_vFinal.docx",
+      "doc_type": "loi",
+      "source_deal": "Octopus",
+      "source_file": "260310_Kaufabsichtserklaerung HWV_vFinal.docx",
+      "version": "vFinal",
+      "format": "docx",
+      "usage": "Only signed LOI -- structure, legal language, earn-out clause reference",
+      "added": "2026-04-23"
+    },
+    {
+      "path": "loi/260518_Kaufabsichtserklärung C2M_vS.docx",
+      "doc_type": "loi",
+      "source_deal": "Fox",
+      "source_file": "260518_Kaufabsichtserklaerung C2M_vS.docx",
+      "version": "vS",
+      "format": "docx",
+      "usage": "Fox/Com2Med LOI. Roman's golden standard for LOI structure.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "model/260505_MundS_v7.xlsx",
+      "doc_type": "model",
+      "source_deal": "Cat",
+      "source_file": "260505_MundS_v7.xlsx",
+      "version": "v7",
+      "format": "xlsx",
+      "usage": "Cat/M&S financial model. 2-entity consolidation. BEWERTUNG sheet view must be preserved by template-fill processes.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "model/260518_Com2Med_v7.xlsx",
+      "doc_type": "model",
+      "source_deal": "Fox",
+      "source_file": "260518_Com2Med_v7.xlsx",
+      "version": "v7",
+      "format": "xlsx",
+      "usage": "Fox/Com2Med financial model. Single-entity. BEWERTUNG sheet view must be preserved by template-fill processes.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "model/260514_Golmed_v14.xlsx",
+      "doc_type": "model",
+      "source_deal": "Lion",
+      "source_file": "260514_Golmed_v14.xlsx",
+      "version": "v14",
+      "format": "xlsx",
+      "usage": "Lion/Golmed financial model. BEWERTUNG sheet view must be preserved by template-fill processes.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "model/260319_KVG_Model_v4.xlsx",
+      "doc_type": "model",
+      "source_deal": "Wolf",
+      "source_file": "260319_KVG_Model_v4.xlsx",
+      "version": "v4",
+      "format": "xlsx",
+      "usage": "Wolf/KVG financial model. BEWERTUNG sheet view must be preserved by template-fill processes.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "onepager/260504_Repuro_Deal_Onepagers_v4.pptx",
+      "doc_type": "onepager",
+      "source_deal": "_multi",
+      "source_file": "260504_Repuro_Deal_Onepagers_v4.pptx",
+      "version": "v4",
+      "format": "pptx",
+      "usage": "Multi-deal onepager deck. Extract individual onepager slides for structure/layout reference.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "onepager/260522_Repuro_Aurica meeting_v1.pptx",
+      "doc_type": "onepager",
+      "source_deal": "_multi",
+      "source_file": "260522_Repuro_Aurica meeting_v1.pptx",
+      "version": "v1",
+      "format": "pptx",
+      "usage": "Investor meeting deck with onepager slides. Extract onepager content for structure reference.",
+      "added": "2026-05-19"
+    },
+    {
+      "path": "databook/CAT_Databook_v6.xlsx",
+      "doc_type": "databook",
+      "source_deal": "Cat",
+      "source_file": "260421_CAT_Databook_v6.xlsx",
+      "version": "v6",
+      "format": "xlsx",
+      "usage": "Latest databook -- sheet structure and data layout reference for databook template-fill process",
+      "added": "2026-04-23"
+    }
+  ],
+  "gaps": [
+    {"doc_type": "email", "note": "No email golden examples -- need outbound RFI cover letters, follow-ups, IO cover letters"},
+    {"doc_type": "onepager", "note": "2 PPTX decks added. PPTX extraction implemented in golden.py. Need more individual deal onepagers (current decks are multi-deal)."},
+    {"doc_type": "dd", "note": "Datenanfrage moved to rfi/ (it is an RFI tool, not DD). DD subfolder empty -- need full DD checklist for due_diligence stage"}
+  ]
+}

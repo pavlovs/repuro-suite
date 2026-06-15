@@ -1,0 +1,67 @@
+{
+  "code_name": "Wolf",
+  "source_model": "260319_KVG_Model_v4.xlsx",
+  "currency": "EUR_K",
+  "pnl": {
+    "2022": {
+      "revenue": 5773.74,
+      "cogs_adj": -4249.05,
+      "personnel_adj": -1059.1,
+      "other_opex_adj": -282.02,
+      "other_income_adj": 149.22,
+      "ebitda_adj": 332.79,
+      "da_adj": 0.0,
+      "ebit_adj": 332.79,
+      "interest_expense": 0.0,
+      "interest_income": 0.0,
+      "ebt_adj": 332.79,
+      "tax": -79.99,
+      "net_income_adj": 252.8
+    },
+    "2023": {
+      "revenue": 6217.67,
+      "cogs_adj": -4485.89,
+      "personnel_adj": -1141.31,
+      "other_opex_adj": -303.04,
+      "other_income_adj": 78.28,
+      "ebitda_adj": 365.71,
+      "da_adj": 0.0,
+      "ebit_adj": 365.71,
+      "interest_expense": 0.0,
+      "interest_income": 0.0,
+      "ebt_adj": 365.71,
+      "tax": -93.46,
+      "net_income_adj": 272.25
+    },
+    "2024": {
+      "revenue": 7449.04,
+      "cogs_adj": -5348.42,
+      "personnel_adj": -1074.83,
+      "other_opex_adj": -390.57,
+      "other_income_adj": 91.49,
+      "ebitda_adj": 726.71,
+      "da_adj": -42.62,
+      "ebit_adj": 684.09,
+      "interest_expense": -8.6,
+      "interest_income": 49.61,
+      "ebt_adj": 725.1,
+      "tax": -87.0,
+      "net_income_adj": 638.1
+    },
+    "2025": {
+      "revenue": 8307.25,
+      "cogs_adj": -5924.35,
+      "personnel_adj": -1244.65,
+      "other_opex_adj": -451.0,
+      "other_income_adj": 113.91,
+      "ebitda_adj": 801.16,
+      "da_adj": -42.62,
+      "ebit_adj": 758.54,
+      "interest_expense": 0.0,
+      "interest_income": 0.6,
+      "ebt_adj": 759.14,
+      "tax": -87.0,
+      "net_income_adj": 672.14
+    }
+  }
+}

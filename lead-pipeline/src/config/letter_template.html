@@ -1,0 +1,86 @@
+<!--
+  Repuro Serienbrief Template — editable letter format.
+  Merge fields use {{field_name}} syntax. Available fields:
+
+  Address block:
+    {{name_briefkopf}}      Company name for letterhead (full_name)
+    {{anrede}}              "Herr" / "Frau"
+    {{vorname}}             Owner first name
+    {{nachname}}            Owner last name
+    {{street}}              Street address
+    {{plz_ort}}             PLZ + Stadt
+    {{datum}}               Today's date (DD.MM.YYYY)
+
+  Letter body:
+    {{salutation}}          "Sehr geehrter Herr X" / "Sehr geehrte Frau Y"
+    {{name_ueberschrift}}   Company name in subject line (defaults to full_name)
+    {{name_absatz_1}}       Company name in paragraph 1 (defaults to full_name)
+    {{name_absatz_3}}       Company name in paragraph 3 (defaults to full_name)
+    {{leistung_text}}       Dative noun phrase: "Medizintechnik-Experten"
+    {{region_prep}}         "in Berlin", "im Allgäu"
+    {{compliment_draft}}    Kompliment 1 (K1)
+    {{compliment_2}}        Kompliment 2 (K2)
+    {{leistung_absatz_2}}   Dative noun phrase: "Medizintechnik-Dienstleistern"
+    {{mehrwerte}}           Dative noun phrase for support areas
+    {{gruppe_1}}            Category group label: "Handels- und Servicespezialisten"
+    {{gruppe_2}}            Category value prop: "Komplettangebot mit..."
+    {{gesellschafter_field}} Gendered: "Gesellschafter" / "Gesellschafterin"
+
+  To edit: change the text below, save the file, and refresh the dashboard.
+  Merge fields in {{}} will be highlighted in the preview
+  (yellow = filled, red = missing).
+-->
+
+<!-- Address block -->
+<div style="margin-bottom:20px;font-size:12px;">
+  {{name_briefkopf}}<br>
+  {{anrede}} {{vorname}} {{nachname}}<br>
+  {{street}}<br>
+  {{plz_ort}}
+</div>
+
+<!-- Date -->
+<div style="text-align:right;margin-bottom:20px;font-size:12px;">Berlin, {{datum}}</div>
+
+<!-- Subject -->
+<div style="font-weight:700;margin-bottom:14px;font-size:12px;">
+  {{name_ueberschrift}} &ndash; gemeinsam mit der Repuro Gruppe den n&auml;chsten Schritt gehen
+</div>
+
+<!-- Opening -->
+<div style="margin-bottom:12px;">
+  {{salutation}},
+</div>
+
+<!-- Para 1 -->
+<div style="margin-bottom:12px;">
+  bei unserer Suche nach erfolgreichen {{leistung_text}} {{region_prep}} sind wir auf {{name_absatz_1}} aufmerksam geworden. Besonders beeindruckt hat uns {{compliment_draft}}. Auch {{compliment_2}} uns davon &uuml;berzeugt, dass Ihr Unternehmen zu den f&uuml;hrenden Spezialisten z&auml;hlt.
+</div>
+
+<!-- Para 2 -->
+<div style="margin-bottom:12px;">
+  Mein Name ist Florian Fischer &ndash; ich bin Gr&uuml;nder und Gesch&auml;ftsf&uuml;hrer der Repuro Gruppe. Als inhabergef&uuml;hrte Unternehmensgruppe beteiligen wir uns an etablierten {{leistung_absatz_2}} in Deutschland. Unsere Vision: Eine f&uuml;hrende Gruppe, die den technologischen Wandel im Gesundheitswesen vorantreibt und die Kompetenzen von {{gruppe_1}} verbindet. Wir schaffen damit ein {{gruppe_2}} f&uuml;r Praxen, Krankenh&auml;user und weitere medizinische Einrichtungen.
+</div>
+
+<!-- Para 3 -->
+<div style="margin-bottom:12px;">
+  Wir verhandeln bereits mit den ersten vier Partnerunternehmen der Gruppe und sind &uuml;berzeugt, dass {{name_absatz_3}} eine f&uuml;hrende Rolle bei der Umsetzung unserer Vision &uuml;bernehmen kann. Gerne w&uuml;rden wir mit Ihnen &uuml;ber eine Unternehmensbeteiligung sprechen und bieten Ihnen als {{gesellschafter_field}} eine ma&szlig;geschneiderte L&ouml;sung: Von der Sicherung Ihres Lebenswerks in Form einer Nachfolgel&ouml;sung mit attraktiver Unternehmensbewertung bis hin zur strategischen Partnerschaft mit Beteiligung am Gruppenwachstum.
+</div>
+
+<!-- Para 4 -->
+<div style="margin-bottom:12px;">
+  Wir legen gro&szlig;en Wert darauf, die Unternehmenskultur unserer Partner zu bewahren, denn Ihr Unternehmenserfolg beruht auf der Zufriedenheit Ihrer Mitarbeiter und Kunden. Wir geben Ihren Mitarbeitern langfristige Sicherheit, f&ouml;rdern sie weiter und erschlie&szlig;en gemeinsam neue Wachstumspotenziale. Als Partnerunternehmen behalten Sie dabei Ihre operative Unabh&auml;ngigkeit vor Ort, profitieren aber gleichzeitig von den Vorteilen einer starken Gruppe. Wir unterst&uuml;tzen insbesondere bei {{mehrwerte}}, um Ihr Unternehmen zukunftssicher aufzustellen.
+</div>
+
+<!-- Closing -->
+<div style="margin-bottom:20px;">
+  Gerne m&ouml;chten wir Sie kennenlernen und unsere Vision in einem pers&ouml;nlichen Termin oder virtuell mit Ihnen besprechen. Wir freuen uns, von Ihnen zu h&ouml;ren.
+</div>
+
+<div style="margin-bottom:28px;">Mit freundlichen Gr&uuml;&szlig;en</div>
+
+<!-- Signatures -->
+<div style="display:flex;justify-content:space-between;font-size:12px;">
+  <div><div>Florian Fischer</div><div style="font-size:11px;color:#6b7280;">Gesch&auml;ftsf&uuml;hrer</div></div>
+  <div><div>Roman Dobriakov</div><div style="font-size:11px;color:#6b7280;">Gesch&auml;ftsf&uuml;hrer</div></div>
+</div>

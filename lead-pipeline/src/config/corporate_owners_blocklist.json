@@ -1,0 +1,8 @@
+[
+  {
+    "_comment": "Curated list of confirmed non-fit corporate owners.",
+    "_comment2": "Add entries here when a legal_person majority owner is confirmed as a PE firm or corporate parent.",
+    "_comment3": "Matching is case-insensitive substring on the owner name returned by OpenRegister.",
+    "_format": { "name": "string (substring match)", "type": "pe_fund | corporate_parent | other", "notes": "string" }
+  }
+]

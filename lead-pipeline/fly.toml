@@ -1,0 +1,23 @@
+app = "repuro-suite"
+primary_region = "fra"
+
+[build]
+
+[env]
+  PIPELINE_DB_PATH = "/data/pipeline.db"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[[mounts]]
+  source = "pipeline_data"
+  destination = "/data"

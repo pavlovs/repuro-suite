@@ -1,0 +1,86 @@
+/* Repuro Suite — shared design system
+   Loaded by all 3 apps + landing page.
+   Defines: Inter font, suite topbar, shared tokens, common button styles. */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ===== Canonical design tokens — single source of truth ===== */
+:root {
+  --rs-brand: #0891B2;
+  --rs-brand-hover: #0e7490;
+  --rs-brand-dark: #0b5567;
+  --rs-brand-light: #e0f2f7;
+  --rs-brand-bg: #ecfeff;
+  --rs-cyan-accent: #22D3EE;
+  --rs-signal: #E11D48;
+  --rs-success: #16a34a;
+  --rs-warning: #eab308;
+}
+
+/* ===== Suite navigation (embedded in each app's chrome) ===== */
+.suite-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.suite-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-decoration: none;
+  transition: color 0.15s, background 0.15s;
+  white-space: nowrap;
+  -webkit-font-smoothing: antialiased;
+}
+.suite-nav a:hover {
+  color: #374151;
+  background: #f3f4f6;
+}
+.suite-nav-icon {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ===== Shared button atoms ===== */
+.rs-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  padding: 7px 14px;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+  -webkit-font-smoothing: antialiased;
+}
+.rs-btn-primary {
+  background: var(--rs-brand);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(8, 145, 178, 0.3);
+}
+.rs-btn-primary:hover {
+  background: var(--rs-brand-hover);
+}
+.rs-btn-ghost {
+  background: #fff;
+  border-color: #e5e7eb;
+  color: #374151;
+}
+.rs-btn-ghost:hover {
+  border-color: #d1d5db;
+  background: #f9fafb;
+}

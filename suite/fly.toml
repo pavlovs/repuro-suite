@@ -1,0 +1,39 @@
+app = "repuro-suite"
+primary_region = "fra"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[mounts]
+  source = "suite_data"
+  destination = "/data"
+
+[env]
+  # ALLEX
+  PIPELINE_DB_PATH = "/data/pipeline.db"
+  # DEALROOM
+  DEALROOM_DB_PATH = "/data/dealroom.db"
+  ALLEX_PIPELINE_DB = "/data/pipeline.db"
+  # COCKPIT
+  COCKPIT_DB = "/data/cockpit.db"
+  COCKPIT_DEALROOM_DB = "/data/dealroom.db"
+  COCKPIT_BASE_PATH = "/cockpit"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
+
+[[http_service.checks]]
+  interval = "15s"
+  timeout = "5s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/healthz"

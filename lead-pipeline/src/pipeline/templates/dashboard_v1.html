@@ -1,0 +1,2949 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALLEX — Repuro Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    background: #f0f2f5;
+    color: #1a1a2e;
+  }
+  h1 { font-size: 18px; font-weight: 700; }
+  h2 { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 10px; }
+  .header {
+    background: #0891B2;
+    color: #fff;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header .badge {
+    background: #e11d48;
+    color: #fff;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .header-logo {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: 10px 20px 0;
+    border-bottom: 2px solid #e5e7eb;
+    background: #fff;
+    position: sticky;
+    top: 44px;
+    z-index: 99;
+  }
+  .tab-btn {
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    color: #6b7280;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: color 0.15s;
+  }
+  .tab-btn.active {
+    color: #0891B2;
+    border-bottom-color: #0891B2;
+  }
+  .tab-content { display: none; padding: 20px; }
+  .tab-content.active { display: block; }
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: 1fr 1fr; }
+  .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .prep-grid { grid-template-columns: 3fr 2fr; }
+  .card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  /* Lead table */
+  .table-controls {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .table-controls input, .table-controls select {
+    padding: 6px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 12px;
+    background: #fff;
+    color: #1a1a2e;
+  }
+  .table-controls input { width: 200px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  th {
+    background: #f9fafb;
+    padding: 8px 10px;
+    text-align: left;
+    font-weight: 600;
+    color: #374151;
+    border-bottom: 2px solid #e5e7eb;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+  }
+  th:hover { background: #f3f4f6; }
+  th.sort-asc::after { content: ' ↑'; color: #e11d48; }
+  th.sort-desc::after { content: ' ↓'; color: #e11d48; }
+  td {
+    padding: 7px 10px;
+    border-bottom: 1px solid #f3f4f6;
+    vertical-align: middle;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  tr:hover td { background: #fafbff; cursor: pointer; }
+  .klass-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 11px;
+  }
+  .klass-A { background: #16a34a; color: #fff; }
+  .klass-B { background: #2563eb; color: #fff; }
+  .klass-C, .klass-D, .klass-E, .klass-S { background: #e5e7eb; color: #374151; }
+
+  /* Legend bar */
+  .legend-bar {
+    background: #fff;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 0 20px;
+  }
+  .legend-bar details { display: inline-block; width: 100%; }
+  .legend-bar summary {
+    padding: 8px 0;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+  }
+  .legend-bar summary::after { content: " ▾"; }
+  .legend-bar details[open] summary::after { content: " ▴"; }
+  .legend-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px 24px;
+    padding: 10px 0 14px;
+    font-size: 12px;
+  }
+  .legend-item .kb {
+    display: inline-block;
+    font-weight: 700;
+    width: 20px;
+    text-align: center;
+    border-radius: 3px;
+    padding: 1px 0;
+    margin-right: 6px;
+    font-size: 11px;
+    color: #fff;
+  }
+  .kb-A { background: #16a34a; }
+  .kb-B { background: #2563eb; }
+  .kb-C { background: #9333ea; }
+  .kb-D { background: #6b7280; }
+  .kb-E { background: #d97706; }
+  .kb-S { background: #dc2626; }
+
+  /* KPI cards */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .kpi-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    text-align: center;
+    border-top: 3px solid transparent;
+  }
+  .kpi-card.kpi-alert { border-top-color: #e11d48; }
+  .kpi-card.kpi-good  { border-top-color: #16a34a; }
+  .kpi-card.kpi-neutral { border-top-color: #d97706; }
+  .kpi-num  { font-size: 22px; font-weight: 700; color: #1a1a2e; line-height: 1.3; }
+  .kpi-label { font-size: 11px; font-weight: 600; color: #6b7280; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.3px; }
+  .kpi-sub  { font-size: 11px; color: #9ca3af; margin-top: 2px; }
+  .kpi-large .kpi-num { font-size: 32px; }
+  .kpi-large .kpi-label { font-size: 12px; }
+
+  /* Funnel table */
+  .funnel-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .funnel-table td { padding: 6px 8px; border-bottom: 1px solid #f3f4f6; }
+  .funnel-table .ft-stage { color: #374151; }
+  .funnel-table .ft-count { text-align: right; font-weight: 600; font-size: 13px; white-space: nowrap; }
+  .funnel-table .ft-rate  { text-align: right; font-size: 11px; white-space: nowrap; min-width: 40px; }
+  .funnel-table .ft-sep   { height: 10px; background: #f9fafb; }
+  .funnel-table .ft-head  { background: #f9fafb; font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.4px; color: #9ca3af; }
+  .rate-high { color: #16a34a; font-weight: 600; }
+  .rate-mid  { color: #d97706; }
+  .rate-low  { color: #6b7280; }
+
+  /* Action / blockers queue */
+  .action-list { list-style: none; }
+  .action-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 4px; border-bottom: 1px solid #f3f4f6;
+  }
+  .action-item.clickable { cursor: pointer; }
+  .action-item.clickable:hover { background: #fafbff; border-radius: 4px; }
+  .action-count { font-size: 20px; font-weight: 700; min-width: 44px; text-align: right; }
+  .ac-red    { color: #dc2626; }
+  .ac-orange { color: #d97706; }
+  .ac-yellow { color: #ca8a04; }
+  .ac-green  { color: #16a34a; }
+  .ac-blue   { color: #2563eb; }
+  .ac-grey   { color: #9ca3af; }
+  .action-label { font-size: 12px; color: #374151; flex: 1; }
+  .action-cmd { font-size: 10px; color: #9ca3af; font-family: monospace; }
+  .action-arrow { color: #d1d5db; font-size: 16px; }
+  .action-section-header {
+    font-size: 10px; font-weight: 700; color: #9ca3af;
+    letter-spacing: .6px; text-transform: uppercase;
+    padding: 10px 4px 4px; border-bottom: 2px solid #e5e7eb;
+    margin-top: 4px; list-style: none;
+  }
+
+  /* BA performance table */
+  .ba-perf-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .ba-perf-table th {
+    background: #f9fafb; padding: 8px 10px; text-align: right;
+    font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb; white-space: nowrap;
+  }
+  .ba-perf-table th:first-child { text-align: left; }
+  .ba-perf-table td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; text-align: right; }
+  .ba-perf-table td:first-child { text-align: left; font-weight: 600; }
+  .ba-perf-table tr.total-row { border-top: 2px solid #e5e7eb; font-weight: 700; }
+
+  /* Response breakdown table */
+  .rb-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .rb-table th { background: #f9fafb; padding: 7px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; white-space: nowrap; }
+  .rb-table th:not(:first-child) { text-align: right; }
+  .rb-table td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; }
+  .rb-table td:not(:first-child) { text-align: right; }
+  .rb-table tr.total-row { font-weight: 700; border-top: 2px solid #e5e7eb; }
+  .rb-table tr.total-row td { border-bottom: none; }
+
+  /* Briefaktion filter bar */
+  .ba-filter-bar {
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    padding: 7px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 12px;
+    color: #374151;
+  }
+  .ba-filter-bar label { font-weight: 600; }
+  .ba-filter-bar select {
+    padding: 4px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 5px;
+    font-size: 12px;
+    background: #fff;
+  }
+  .ba-filter-count { color: #6b7280; font-size: 11px; }
+
+  /* HubSpot link */
+  .btn-hubspot {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 4px 12px;
+    background: #ff7a59;
+    color: #fff;
+    border-radius: 4px;
+    font-size: 12px;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .outreach-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    background: #f3f4f6;
+    color: #374151;
+  }
+  .outreach-sent     { background: #d1fae5; color: #065f46; }
+  .outreach-followup { background: #dbeafe; color: #1e3a8a; }
+  .outreach-contact  { background: #fae8ff; color: #701a75; }
+  .outreach-meeting  { background: #f0fdf4; color: #14532d; }
+  .outreach-declined { background: #fee2e2; color: #991b1b; }
+  .outreach-hold     { background: #fef3c7; color: #92400e; }
+  .outreach-deal     { background: #d1fae5; color: #065f46; }
+
+  /* Company card side panel */
+  .panel-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.3);
+    z-index: 200;
+  }
+  .panel-overlay.open { display: block; }
+  .side-panel {
+    position: fixed;
+    top: 0; right: 0;
+    width: 90vw;
+    max-width: 1200px;
+    height: 100vh;
+    background: #fff;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+    z-index: 201;
+    transform: translateX(100%);
+    transition: transform 0.25s ease;
+  }
+  .side-panel.open { transform: translateX(0); }
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #0891B2;
+    color: #fff;
+    flex-shrink: 0;
+    gap: 8px;
+  }
+  .panel-nav-btn {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 2px 6px;
+    line-height: 1;
+    opacity: 0.85;
+    flex-shrink: 0;
+  }
+  .panel-nav-btn:hover { opacity: 1; }
+  .panel-nav-btn:disabled { opacity: 0.3; cursor: default; }
+  .panel-header h2 { color: #fff; font-size: 15px; margin: 0; }
+  .panel-close {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 6px;
+  }
+  .panel-body {
+    display: grid;
+    grid-template-columns: 420px 1fr;
+    flex: 1;
+    overflow: hidden;
+  }
+  .panel-left {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #e5e7eb;
+  }
+  .panel-right {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .panel-right iframe {
+    flex: 1;
+    border: none;
+    width: 100%;
+  }
+  .panel-right .iframe-fallback {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 100%;
+    color: #6b7280;
+    font-size: 13px;
+  }
+  .panel-right .iframe-fallback a {
+    color: #1a1a2e;
+    font-weight: 600;
+    text-decoration: underline;
+  }
+  #panelWebsiteView {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+  }
+  .toggle-btn {
+    padding: 4px 12px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid #d1d5db;
+    border-radius: 5px;
+    background: #fff;
+    cursor: pointer;
+    color: #6b7280;
+  }
+  .toggle-btn-active {
+    background: #0891B2;
+    color: #fff;
+    border-color: #0891B2;
+  }
+  .letter-preview-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+    background: #fff;
+  }
+  .letter-preview-field {
+    margin-bottom: 10px;
+  }
+  .letter-preview-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    margin-bottom: 2px;
+  }
+  .letter-preview-value {
+    font-size: 13px;
+    color: #111827;
+    word-break: break-word;
+  }
+  .letter-preview-missing {
+    font-size: 13px;
+    color: #dc2626;
+    font-style: italic;
+  }
+
+  /* Field groups in panel */
+  .field-group { margin-bottom: 14px; }
+  .field-label {
+    font-size: 10px;
+    font-weight: 600;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 3px;
+  }
+  .field-value {
+    font-size: 12px;
+    color: #1a1a2e;
+    line-height: 1.4;
+  }
+  .field-value.reasoning {
+    font-size: 11px;
+    color: #4b5563;
+    white-space: pre-wrap;
+    max-height: 120px;
+    overflow-y: auto;
+    background: #f9fafb;
+    padding: 6px 8px;
+    border-radius: 4px;
+  }
+
+  /* Write-back controls */
+  .writeback-section {
+    border-top: 1px solid #e5e7eb;
+    margin-top: 14px;
+    padding-top: 14px;
+  }
+  .writeback-section h3 {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6b7280;
+    margin-bottom: 10px;
+  }
+  .klass-buttons { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .klass-btn {
+    padding: 4px 12px;
+    border: 2px solid #e5e7eb;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 700;
+    font-size: 12px;
+    background: #fff;
+    transition: all 0.1s;
+  }
+  .klass-btn:hover { opacity: 0.8; }
+  .klass-btn.active-A { background: #dcfce7; border-color: #22c55e; color: #166534; }
+  .klass-btn.active-B { background: #dbeafe; border-color: #3b82f6; color: #1e40af; }
+  .klass-btn.active-C { background: #fef9c3; border-color: #eab308; color: #854d0e; }
+  .klass-btn.active-D { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+  .klass-btn.active-E { background: #f3e8ff; border-color: #a855f7; color: #6b21a8; }
+  .klass-btn.active-S { background: #e0f2fe; border-color: #0ea5e9; color: #075985; }
+  .form-row { margin-bottom: 8px; }
+  .form-row label { display: block; font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 3px; }
+  .form-row select, .form-row input, .form-row textarea {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 5px;
+    font-size: 12px;
+    color: #1a1a2e;
+    background: #fff;
+  }
+  .form-row textarea { resize: vertical; min-height: 60px; }
+  .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+  .btn {
+    padding: 7px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    transition: opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.85; }
+  .btn-primary { background: #0891B2; color: #fff; }
+  .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+  .save-feedback {
+    font-size: 11px;
+    margin-top: 6px;
+    color: #16a34a;
+  }
+  .save-feedback.error { color: #dc2626; }
+
+  /* Panel left tabs */
+  .panel-tabs {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    background: #f9fafb;
+    flex-shrink: 0;
+  }
+  .panel-tab-btn {
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .panel-tab-btn.active {
+    color: #0891B2;
+    border-bottom-color: #0891B2;
+  }
+  .panel-tab-content { display: none; padding: 16px; overflow-y: auto; }
+  .panel-tab-content.active { display: block; }
+
+  /* Collapsible sections */
+  .collapsible-header {
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .collapsible-header::after {
+    content: '▶';
+    font-size: 9px;
+    color: #9ca3af;
+    transition: transform 0.15s;
+  }
+  .collapsible-header.open::after {
+    transform: rotate(90deg);
+  }
+  .collapsible-body { display: none; }
+  .collapsible-body.open { display: block; }
+
+  /* Source quality table */
+  .sq-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .sq-table th { background: #f9fafb; padding: 7px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+  .sq-table td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; }
+
+  /* C-review cards */
+  .c-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+  .c-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 14px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    border-left: 4px solid #eab308;
+    cursor: pointer;
+  }
+  .c-card:hover { background: #fefce8; }
+  .c-card-name { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .c-card-meta { font-size: 11px; color: #6b7280; margin-bottom: 10px; }
+  .c-card-reasoning {
+    font-size: 11px;
+    color: #4b5563;
+    margin-bottom: 10px;
+    max-height: 80px;
+    overflow-y: auto;
+    background: #fefce8;
+    padding: 6px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+  }
+  .c-card-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+
+  /* Requires Attention sections */
+  .attn-section {
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .attn-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #f9fafb;
+    border-bottom: 1px solid #e5e7eb;
+    cursor: pointer;
+    user-select: none;
+  }
+  .attn-header::before {
+    content: '\25B6';
+    font-size: 9px;
+    margin-right: 8px;
+    transition: transform 0.15s;
+    color: #9ca3af;
+  }
+  .attn-section.open > .attn-header::before {
+    transform: rotate(90deg);
+  }
+  .attn-section:not(.open) > .attn-body {
+    display: none;
+  }
+  .attn-title { font-size: 13px; font-weight: 700; color: #374151; }
+  .attn-badge {
+    background: #e5e7eb;
+    color: #374151;
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .attn-badge.urgent { background: #fee2e2; color: #991b1b; }
+  .attn-badge.warn   { background: #fef3c7; color: #92400e; }
+  .attn-badge.info   { background: #dbeafe; color: #1e40af; }
+  .attn-body { padding: 16px; }
+  .attn-done { color: #16a34a; font-size: 12px; font-weight: 600; padding: 4px 0; }
+  .attn-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .attn-table th { background: #f9fafb; padding: 7px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; white-space: nowrap; }
+  .attn-table td { padding: 7px 10px; border-bottom: 1px solid #f3f4f6; vertical-align: middle; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .attn-table tr:hover td { background: #fafbff; cursor: pointer; }
+  .sub-section { margin-bottom: 20px; }
+  .sub-section:last-child { margin-bottom: 0; }
+  .sub-section h3 { font-size: 12px; font-weight: 700; color: #374151; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #e5e7eb; }
+
+  /* Outreach tracking tab */
+  .stat-bar { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat-pill {
+    background: #fff;
+    border-radius: 8px;
+    padding: 10px 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    text-align: center;
+    min-width: 90px;
+  }
+  .stat-pill .num { font-size: 22px; font-weight: 700; color: #1a1a2e; }
+  .stat-pill .lbl { font-size: 11px; color: #6b7280; font-weight: 500; }
+
+  /* misc */
+  .server-notice {
+    background: #fef9c3;
+    border: 1px solid #fcd34d;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: #854d0e;
+    margin-bottom: 12px;
+    display: none;
+  }
+  .server-notice.visible { display: block; }
+  @media (max-width: 900px) {
+    .grid-2, .grid-3, .prep-grid { grid-template-columns: 1fr; }
+    .panel-body { grid-template-columns: 1fr; }
+    .panel-right { display: none; }
+  }
+
+  /* Add Lead modal */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.45);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-box {
+    background: #fff;
+    border-radius: 10px;
+    padding: 24px;
+    width: 400px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  }
+  .modal-box h3 { font-size: 14px; font-weight: 700; margin-bottom: 8px; color: #1a1a2e; }
+  .modal-box p  { font-size: 12px; color: #6b7280; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+
+<!-- ===================== HEADER ===================== -->
+<div class="header">
+  <h1>ALLEX <span style="font-weight:400;opacity:0.6;font-size:14px;">— Repuro</span></h1>
+  <span class="badge">__LIVE_BADGE__</span>
+  <span style="margin-left:auto;font-size:11px;opacity:0.7;">__DATE_STR__</span>
+  __LOGO_IMG__
+</div>
+
+<!-- ===================== LEGEND ===================== -->
+<div class="legend-bar">
+  <details>
+    <summary>Classification guide</summary>
+    <div class="legend-grid">
+      <div class="legend-item"><span class="kb kb-A">A</span><strong>Platform</strong> — service + distribution, 20–80 employees, private, SSB signal</div>
+      <div class="legend-item"><span class="kb kb-B">B</span><strong>Add-on</strong> — partial fit, 5–20 employees or weaker service component</div>
+      <div class="legend-item"><span class="kb kb-C">C</span><strong>Unclear</strong> — website vague, needs manual review</div>
+      <div class="legend-item"><span class="kb kb-D">D</span><strong>No-fit</strong> — dental, pharmacy, hospital, too large, OEM, wrong sector</div>
+      <div class="legend-item"><span class="kb kb-E">E</span><strong>Special</strong> — competitor, adjacent niche, review quarterly</div>
+      <div class="legend-item"><span class="kb kb-S">S</span><strong>Ownership-gated</strong> — confirmed subsidiary or PE-backed, excluded from export</div>
+    </div>
+  </details>
+</div>
+
+<!-- ===================== BRIEFAKTION FILTER ===================== -->
+<div class="ba-filter-bar" id="baFilterBar">
+  <label for="baFilter">Briefaktion:</label>
+  <select id="baFilter" onchange="setBAFilter(this.value)">
+    <option value="">All</option>
+    <option value="CURRENT">Current (new pipeline)</option>
+    <option value="BA1">BA1 — 10 Jun 2025</option>
+    <option value="BA2">BA2 — 17 Jun 2025</option>
+    <option value="BA3">BA3 — 23 Jun 2025</option>
+    <option value="BA4">BA4 — 09 Jul 2025</option>
+    <option value="BA5">BA5 — 06 Aug 2025</option>
+    <option value="BA6">BA6 — 15 Oct 2025</option>
+    <option value="BA7">BA7 — 11 Nov 2025</option>
+  </select>
+  <span class="ba-filter-count" id="baFilterCount"></span>
+</div>
+
+<!-- ===================== TABS ===================== -->
+<div class="tabs">
+  <button class="tab-btn" onclick="showTab('performance')">Performance</button>
+  <button class="tab-btn active" onclick="showTab('prep')">Current BA Prep</button>
+  <button class="tab-btn" onclick="showTab('attention')">Requires Attention</button>
+  <button class="tab-btn" onclick="showTab('leads')">Lead Table</button>
+  <button class="tab-btn" onclick="showTab('outreach')">Outreach Tracker</button>
+</div>
+
+<!-- ===================== PERFORMANCE TAB ===================== -->
+<div id="tab-performance" class="tab-content">
+
+  <!-- KPI Row -->
+  <div class="kpi-grid" id="perfKpiGrid" style="margin-bottom:16px;"></div>
+
+  <!-- BA Performance Table -->
+  <div class="card" style="margin-bottom:16px;">
+    <h2>Briefaktion Performance</h2>
+    <table class="ba-perf-table">
+      <thead><tr>
+        <th>Cohort</th>
+        <th>Sent</th>
+        <th>No Response</th>
+        <th>NR%</th>
+        <th>Contact Made</th>
+        <th>CM%</th>
+        <th>Positive</th>
+        <th>Pos%</th>
+        <th>Negative</th>
+        <th>Neg%</th>
+      </tr></thead>
+      <tbody id="baPerfBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Response Breakdown Table -->
+  <div class="card" style="margin-bottom:16px;">
+    <h2>Response Breakdown</h2>
+    <table class="rb-table" id="responseBreakdownTable">
+      <thead><tr>
+        <th>Status</th>
+        <th>Count</th>
+        <th>% of Approached</th>
+        <th>Description</th>
+      </tr></thead>
+      <tbody id="responseBreakdownBody"></tbody>
+    </table>
+  </div>
+
+  <!-- Source Quality -->
+  <div class="card">
+    <h2>Source Quality</h2>
+    <table class="sq-table" id="sqTable">
+      <thead><tr>
+        <th>Source</th><th>A</th><th>B</th><th>A+B%</th><th>C</th><th>D</th><th>E</th><th>S</th><th>Total</th>
+      </tr></thead>
+      <tbody id="sqBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===================== CURRENT BA PREP TAB ===================== -->
+<div id="tab-prep" class="tab-content active">
+
+  <!-- KPI Row -->
+  <div class="kpi-grid" id="prepKpiGrid" style="margin-bottom:16px;"></div>
+
+  <!-- Funnel + Blockers -->
+  <div class="grid prep-grid">
+    <div class="card">
+      <h2>Pipeline Funnel</h2>
+      <table class="funnel-table" id="prepFunnelTable"></table>
+    </div>
+    <div class="card">
+      <h2>Blockers / Next Steps</h2>
+      <ul class="action-list" id="blockersList"></ul>
+    </div>
+  </div>
+
+  <!-- A/B Targets Prep Table -->
+  <div class="card" style="margin-top:16px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <h2 style="margin-bottom:0;">A/B Targets — Prep View</h2>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <label style="font-size:12px;color:#374151;display:flex;align-items:center;gap:5px;cursor:pointer;">
+          <input type="checkbox" id="prepShowAll" onchange="renderPrepTable()"> Show all klasses
+        </label>
+        <button class="btn btn-primary" onclick="openAddLeadModal()">+ Add lead manually</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;">
+      <table>
+        <thead><tr>
+          <th style="width:30px;"><input type="checkbox" id="prepSelectAll" onchange="toggleSelectAll(this)" title="Select all"></th>
+          <th title="Completion: email+anrede+briefform+region_prep+leistung+K1+K2+approved">Ready</th>
+          <th>Name</th>
+          <th>Domain</th>
+          <th>Region</th>
+          <th>MA</th>
+          <th>Owner Age</th>
+          <th>Klass</th>
+          <th>Email</th>
+          <th>K1</th>
+          <th>K2</th>
+        </tr></thead>
+        <tbody id="prepTableBody"></tbody>
+      </table>
+    </div>
+    <!-- Floating batch action bar -->
+    <div id="batchActionBar" style="display:none;margin-top:12px;padding:10px 16px;background:#1a1a2e;color:#fff;border-radius:6px;display:none;align-items:center;justify-content:space-between;">
+      <span id="batchCount" style="font-size:13px;font-weight:600;"></span>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" style="background:#6b7280;color:#fff;font-size:12px;" onclick="clearSelection()">Cancel</button>
+        <button class="btn btn-primary" style="font-size:12px;" onclick="batchApprove()">Approve Selected</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== REQUIRES ATTENTION TAB ===================== -->
+<div id="tab-attention" class="tab-content">
+
+  <!-- Section 1: Positive Replies -->
+  <div class="attn-section">
+    <div class="attn-header">
+      <span class="attn-title">1 — Positive Replies — Action Needed</span>
+      <span class="attn-badge" id="positiveRepliesBadge">0</span>
+    </div>
+    <div class="attn-body" id="positiveRepliesBody"></div>
+  </div>
+
+  <!-- Section 2: Follow-Up Queue -->
+  <div class="attn-section">
+    <div class="attn-header">
+      <span class="attn-title">2 — Follow-Up Queue</span>
+      <span class="attn-badge" id="followUpBadge">0</span>
+    </div>
+    <div class="attn-body" id="followUpBody"></div>
+  </div>
+
+  <!-- Section 3: Ownership Review Needed -->
+  <div class="attn-section">
+    <div class="attn-header">
+      <span class="attn-title">3 — Ownership Review Needed</span>
+      <span class="attn-badge" id="ownershipReviewBadge">0</span>
+    </div>
+    <div class="attn-body" id="ownershipReviewBody"></div>
+  </div>
+
+  <!-- Section 4: C Records — Classify Now -->
+  <div class="attn-section">
+    <div class="attn-header">
+      <span class="attn-title">4 — C Records — Classify Now</span>
+      <span class="attn-badge" id="cQueueBadge">0</span>
+    </div>
+    <div class="attn-body" id="cQueueBody">
+      <div class="server-notice" id="cReviewServerNotice">
+        Write-back controls are disabled — server not running. Use <code>python pipeline.py dashboard --serve</code> to enable.
+      </div>
+      <div class="c-grid" id="cGrid"></div>
+    </div>
+  </div>
+
+  <!-- Section 5: A/B Missing Email -->
+  <div class="attn-section">
+    <div class="attn-header">
+      <span class="attn-title">5 — A/B Targets — Email Missing</span>
+      <span class="attn-badge" id="missingEmailBadge">0</span>
+    </div>
+    <div class="attn-body" id="missingEmailBody"></div>
+  </div>
+
+  <!-- Section 6: S Records -->
+  <div class="attn-section">
+    <div class="attn-header">
+      <span class="attn-title">6 — S Records — Confirm Exclusion</span>
+      <span class="attn-badge" id="sReviewBadge">0</span>
+    </div>
+    <div class="attn-body" id="sReviewBody"></div>
+  </div>
+</div>
+
+<!-- ===================== LEADS TAB ===================== -->
+<div id="tab-leads" class="tab-content">
+  <div class="table-controls">
+    <input type="text" id="searchInput" placeholder="Search name / domain..." oninput="applyFilters()">
+    <select id="filterKlass" onchange="applyFilters()">
+      <option value="">All klasses</option>
+      <option>A</option><option>B</option><option>C</option>
+      <option>D</option><option>E</option><option>S</option>
+    </select>
+    <select id="filterSource" onchange="applyFilters()">
+      <option value="">All sources</option>
+    </select>
+    <select id="filterRegion" onchange="applyFilters()">
+      <option value="">All regions</option>
+    </select>
+    <select id="filterOutreach" onchange="applyFilters()">
+      <option value="">All outreach</option>
+      <option value="__none__">No outreach</option>
+      <option value="sent">Letter Sent</option>
+      <option value="followup1">Follow-Up 1 Sent</option>
+      <option value="followup2">Follow-Up 2 Sent</option>
+      <option value="contact">Contact Made</option>
+      <option value="meeting">Meeting Done</option>
+      <option value="financials">Financials Received</option>
+      <option value="offer">Offer Sent</option>
+      <option value="deal">Deal</option>
+      <option value="hold">Hold</option>
+      <option value="declined">Lost</option>
+    </select>
+    <select id="filterBA" onchange="applyFilters()">
+      <option value="">All BAs</option>
+      <option value="CURRENT">Current</option>
+      <option>BA1</option><option>BA2</option><option>BA3</option>
+      <option>BA4</option><option>BA5</option><option>BA6</option><option>BA7</option>
+    </select>
+    <span id="rowCount" style="margin-left:auto;font-size:11px;color:#6b7280;"></span>
+  </div>
+  <div style="overflow-x:auto;">
+    <table id="leadTable">
+      <thead><tr>
+        <th data-col="full_name" onclick="sortBy('full_name')">Name</th>
+        <th data-col="domain" onclick="sortBy('domain')">Domain</th>
+        <th data-col="_readiness" onclick="sortBy('_readiness')">Ready %</th>
+        <th data-col="source" onclick="sortBy('source')">Source</th>
+        <th data-col="region" onclick="sortBy('region')">Region</th>
+        <th data-col="ma_count" onclick="sortBy('ma_count')">MA</th>
+        <th data-col="gesellschafter_age" onclick="sortBy('gesellschafter_age')">Owner Age</th>
+        <th data-col="klass" onclick="sortBy('klass')">Klass</th>
+        <th data-col="services_score" onclick="sortBy('services_score')">Svc Score</th>
+        <th data-col="gf_email" onclick="sortBy('gf_email')">Email</th>
+        <th data-col="outreach_status" onclick="sortBy('outreach_status')">Outreach</th>
+        <th data-col="briefaktion" onclick="sortBy('briefaktion')">BA</th>
+      </tr></thead>
+      <tbody id="leadBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===================== OUTREACH TRACKER TAB ===================== -->
+<div id="tab-outreach" class="tab-content">
+  <div class="stat-bar" id="outreachStats"></div>
+  <div style="overflow-x:auto;">
+    <table id="outreachTable">
+      <thead><tr>
+        <th onclick="sortByOutreach('full_name')">Name</th>
+        <th onclick="sortByOutreach('domain')">Domain</th>
+        <th onclick="sortByOutreach('klass')">Klass</th>
+        <th onclick="sortByOutreach('outreach_status')">Status</th>
+        <th onclick="sortByOutreach('outreach_sent_at')">Sent At</th>
+        <th onclick="sortByOutreach('followup1_at')">Followup 1</th>
+        <th onclick="sortByOutreach('followup2_at')">Followup 2</th>
+        <th onclick="sortByOutreach('briefaktion')">BA</th>
+        <th>Comment</th>
+      </tr></thead>
+      <tbody id="outreachBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ===================== ADD LEAD MODAL ===================== -->
+<div class="modal-overlay" id="addLeadModal" onclick="if(event.target===this)closeAddLeadModal()">
+  <div class="modal-box">
+    <h3>Add lead manually</h3>
+    <p>Domain will be added at 'ingested' stage and go through the full pipeline funnel (scrape → classify → enrich → export).</p>
+    <div class="form-row">
+      <label>Domain (e.g. example.de)</label>
+      <input type="text" id="addLeadDomain" placeholder="example.de" onkeydown="if(event.key==='Enter')submitAddLead()">
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="submitAddLead()">Add</button>
+      <button class="btn btn-secondary" onclick="closeAddLeadModal()">Cancel</button>
+    </div>
+    <div id="addLeadFeedback" class="save-feedback" style="margin-top:8px;"></div>
+  </div>
+</div>
+
+<!-- ===================== SIDE PANEL ===================== -->
+<div class="panel-overlay" id="panelOverlay" onclick="closePanel()"></div>
+<div class="side-panel" id="sidePanel">
+  <div class="panel-header">
+    <div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">
+      <button class="panel-nav-btn" id="panelPrev" onclick="navigatePanel(-1)" title="Previous">&#x2190;</button>
+      <button class="panel-nav-btn" id="panelNext" onclick="navigatePanel(1)" title="Next">&#x2192;</button>
+      <span id="panelNavCounter" style="font-size:11px;opacity:0.7;white-space:nowrap;margin-left:6px;"></span>
+    </div>
+    <h2 id="panelTitle" style="flex:1;margin:0 12px;font-size:14px;">Company Card</h2>
+    <button class="panel-close" onclick="closePanel()">&#x2715;</button>
+  </div>
+  <div class="panel-body">
+    <div class="panel-left" id="panelLeft"></div>
+    <div class="panel-right" id="panelRight">
+      <div id="panelRightToggle" style="display:none;padding:6px 12px;border-bottom:1px solid #e5e7eb;background:#f9fafb;display:flex;gap:8px;align-items:center;">
+        <button id="toggleWebsite" class="toggle-btn toggle-btn-active" onclick="setPanelView('website')">Website</button>
+        <button id="toggleLetter" class="toggle-btn" onclick="setPanelView('letter')">Letter Preview</button>
+      </div>
+      <div id="panelWebsiteView">
+      <iframe id="panelIframe" src="" title="Company website"></iframe>
+      <div class="iframe-fallback" id="iframeFallback">
+        <span>Cannot embed website</span>
+        <a id="iframeFallbackLink" href="#" target="_blank" rel="noopener">Open in new tab</a>
+      </div>
+      </div><!-- /panelWebsiteView -->
+      <div id="panelLetterView" style="display:none;padding:16px;overflow-y:auto;height:100%;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== Data bootstrap =====================
+const SERVE_MODE = __SERVE_MODE_JS__;
+const EMBEDDED_DATA = __DATA_JSON__;
+const HUBSPOT_PORTAL_ID = __HUBSPOT_PORTAL_ID__;
+const REGION_MAPPING = __REGION_MAPPING_JSON__;
+const LETTER_TEMPLATE = `__LETTER_TEMPLATE__`;
+
+let DATA = null;
+let VIEW = null;
+let currentBA = '';
+let currentSortCol = 'full_name';
+let currentSortDir = 1;
+let outreachSortCol = 'outreach_sent_at';
+let outreachSortDir = -1;
+let currentRecord = null;
+let serverOk = SERVE_MODE;
+let panelRecordList = [];  // records currently shown in whichever table opened the panel
+let _prepTableRecs = [];  // set by renderPrepTable so inline onclick rows can reference it
+
+function setPanelRecordList(list) {
+  panelRecordList = list || [];
+}
+
+function _updatePanelNav() {
+  const idx = panelRecordList.findIndex(r => r.domain === (currentRecord && currentRecord.domain));
+  const total = panelRecordList.length;
+  const counter = document.getElementById('panelNavCounter');
+  const prev = document.getElementById('panelPrev');
+  const next = document.getElementById('panelNext');
+  if (!counter || !prev || !next) return;
+  if (total > 1 && idx >= 0) {
+    counter.textContent = `${idx + 1} / ${total}`;
+    prev.disabled = idx === 0;
+    next.disabled = idx === total - 1;
+  } else {
+    counter.textContent = '';
+    prev.disabled = true;
+    next.disabled = true;
+  }
+}
+
+function navigatePanel(dir) {
+  if (!panelRecordList.length || !currentRecord) return;
+  const idx = panelRecordList.findIndex(r => r.domain === currentRecord.domain);
+  if (idx < 0) return;
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= panelRecordList.length) return;
+  openPanel(panelRecordList[newIdx]);
+}
+
+// Tabs where the BA filter bar is relevant
+const BA_FILTER_TABS = new Set(['performance', 'leads', 'outreach']);
+
+async function initData() {
+  if (SERVE_MODE) {
+    try {
+      const resp = await fetch('/api/data', {signal: AbortSignal.timeout(3000)});
+      if (resp.ok) DATA = await resp.json();
+      else DATA = EMBEDDED_DATA;
+    } catch (e) {
+      DATA = EMBEDDED_DATA;
+      serverOk = false;
+    }
+  } else {
+    DATA = EMBEDDED_DATA;
+  }
+  populateFilters();
+  renderAll();
+}
+
+async function refreshData() {
+  if (!SERVE_MODE) return;
+  try {
+    const resp = await fetch('/api/data', {signal: AbortSignal.timeout(5000)});
+    if (resp.ok) {
+      DATA = await resp.json();
+      renderAll();
+    }
+  } catch(e) { /* silent */ }
+}
+
+function computeView(ba) {
+  if (!ba) return {...DATA};
+  const recs = ba === 'CURRENT'
+    ? DATA.records.filter(r => !r.briefaktion)
+    : DATA.records.filter(r => r.briefaktion === ba);
+  const kc = {};
+  recs.forEach(r => { if (r.klass) kc[r.klass] = (kc[r.klass] || 0) + 1; });
+  const dm = {};
+  recs.filter(r => r.klass === 'D').forEach(r => {
+    const k = r.reclassify_reason || r.filter_reason || 'unknown';
+    dm[k] = (dm[k] || 0) + 1;
+  });
+  return {
+    records: recs,
+    funnel: {
+      Total: recs.length,
+      Filtered: recs.filter(r => r.filter_pass != null).length,
+      Scraped: recs.filter(r => SCRAPED_SET.has(r.pipeline_stage)).length,
+      Classified: recs.filter(r => r.klass).length,
+      A: kc['A']||0, B: kc['B']||0, C: kc['C']||0, D: kc['D']||0, E: kc['E']||0, S: kc['S']||0,
+      Approached: recs.filter(r => r.briefaktion).length,
+    },
+    klass_counts: kc,
+    d_reasons: Object.entries(dm).sort((a,b)=>b[1]-a[1]).map(([reason,count])=>({reason,count})),
+    source_quality: DATA.source_quality,
+    briefaktion_counts: DATA.briefaktion_counts,
+  };
+}
+
+function setBAFilter(val) {
+  currentBA = val;
+  const count = val && val !== 'CURRENT'
+    ? DATA.records.filter(r => r.briefaktion === val).length
+    : val === 'CURRENT'
+    ? DATA.records.filter(r => !r.briefaktion).length
+    : DATA.records.length;
+  document.getElementById('baFilterCount').textContent = val ? `(${count} records)` : '';
+  renderAll();
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const btn = document.querySelector(`.tab-btn[onclick*="'${name}'"]`);
+  if (btn) btn.classList.add('active');
+  // BA filter bar only shown on performance, leads, outreach tabs
+  document.getElementById('baFilterBar').style.display = BA_FILTER_TABS.has(name) ? '' : 'none';
+}
+
+function destroyChart(id) {
+  // No-op — charts removed in M15
+}
+
+function renderAll() {
+  VIEW = computeView(currentBA);
+  // Performance tab
+  renderPerformanceKPIs();
+  renderBATable();
+  renderResponseBreakdown();
+  renderSourceQuality();
+  // Current BA Prep tab: compute once, pass to all three functions
+  const currPipeline = DATA.records.filter(r => !r.briefaktion && !r.already_approached);
+  renderPrepKPIs(currPipeline);
+  renderPrepFunnel(currPipeline);
+  renderBlockers(currPipeline);
+  renderPrepTable();
+  // Requires Attention tab
+  renderRequiresAttention();
+  // Lead table
+  applyFilters();
+  // Outreach tracker
+  renderOutreach();
+}
+
+// ===================== Outreach constants =====================
+const SCRAPED_SET = new Set(['scraped','scrape_failed','classified','ownership_enriched','ownership_review_needed','ownership_gated','email_enriched','approached']);
+const NO_RESPONSE = new Set(['sent','followup1','followup2']);
+const POSITIVE    = new Set(['contact','meeting','financials','offer','deal']);
+const STATUS_LABEL = {
+  sent: 'Letter Sent', followup1: 'Follow-Up 1', followup2: 'Follow-Up 2',
+  contact: 'Contact Made', meeting: 'Meeting Done', financials: 'Financials Received',
+  offer: 'Offer Sent', deal: 'Converted to Deal', hold: 'Hold', declined: 'Lost',
+};
+
+// ===================== Shared helpers =====================
+
+function renderKpiGrid(elementId, kpis) {
+  document.getElementById(elementId).innerHTML = kpis.map(k => `
+    <div class="kpi-card ${k.cls} ${k.large ? 'kpi-large' : ''}">
+      <div class="kpi-num">${typeof k.num === 'number' ? k.num.toLocaleString() : k.num}</div>
+      <div class="kpi-label">${k.label}</div>
+      ${k.sub ? '<div class="kpi-sub">' + k.sub + '</div>' : ''}
+    </div>
+  `).join('');
+}
+
+// ===================== Performance Tab =====================
+
+function renderPerformanceKPIs() {
+  const approached = DATA.records.filter(r => r.briefaktion).length;
+  const ob = DATA.outreach_breakdown || {};
+  const posCount = (ob.contact||0) + (ob.meeting||0) + (ob.financials||0) + (ob.offer||0) + (ob.deal||0);
+  const meetAdv   = (ob.meeting||0) + (ob.financials||0) + (ob.offer||0) + (ob.deal||0);
+  const negCount  = ob.declined || 0;
+  const holdCount = ob.hold || 0;
+  const totalAnswers = posCount + negCount + holdCount;
+  const posRate = approached ? (posCount / approached * 100).toFixed(1) : '0.0';
+  const ansRate = approached ? (totalAnswers / approached * 100).toFixed(1) : '0.0';
+  const negPct  = approached ? (negCount / approached * 100).toFixed(1) : '0.0';
+
+  const kpis = [
+    { num: posRate + '%', label: 'Positive Response Rate', sub: posCount + ' of ' + approached + ' approached', cls: parseFloat(posRate) >= 15 ? 'kpi-good' : 'kpi-alert', large: true },
+    { num: ansRate + '%', label: 'Total Answer Rate',      sub: totalAnswers + ' total answers',               cls: '', large: false },
+    { num: posCount,      label: 'Positive Answers',       sub: 'Contact + Meeting + More',                    cls: 'kpi-good', large: false },
+    { num: meetAdv,       label: 'Meetings / Advanced',    sub: 'Meeting + Financials + Offer',                cls: 'kpi-good', large: false },
+    { num: approached,    label: 'Total Approached',       sub: 'BA1–BA7',                                     cls: '', large: false },
+    { num: negCount,      label: 'Lost',                   sub: negPct + '% of approached',                    cls: negCount > 0 ? 'kpi-neutral' : '', large: false },
+  ];
+
+  renderKpiGrid('perfKpiGrid', kpis);
+}
+
+function renderBATable() {
+  const bas = DATA.briefaktion_counts;
+  if (!bas || !bas.length) {
+    document.getElementById('baPerfBody').innerHTML = '<tr><td colspan="10" style="text-align:center;color:#6b7280;padding:16px;">No Briefaktion data.</td></tr>';
+    return;
+  }
+  function pctCell(num, denom) {
+    if (!denom || !num) return '<td style="color:#d1d5db;">—</td>';
+    const v = (num / denom * 100).toFixed(1);
+    const vn = parseFloat(v);
+    const cls = vn >= 20 ? 'rate-high' : vn >= 10 ? 'rate-mid' : 'rate-low';
+    return `<td class="${cls}">${v}%</td>`;
+  }
+  const rows = bas.map(b => {
+    const total = b.total || 0;
+    const noResp = (b.sent||0) + (b.followup1||0) + (b.followup2||0);
+    const contact = b.contact || 0;
+    const pos = contact + (b.meeting||0) + (b.financials||0) + (b.offer||0) + (b.deal||0);
+    const neg = b.declined || 0;
+    return { ba: b.briefaktion, total, noResp, contact, pos, neg };
+  });
+  const tot = rows.reduce((a, r) => ({
+    ba:'Total', total: a.total+r.total, noResp: a.noResp+r.noResp,
+    contact: a.contact+r.contact, pos: a.pos+r.pos, neg: a.neg+r.neg
+  }), { ba:'Total', total:0, noResp:0, contact:0, pos:0, neg:0 });
+
+  const makeRow = (r, isTot) => `<tr ${isTot ? 'class="total-row"' : ''}>
+    <td>${r.ba}</td>
+    <td>${r.total}</td>
+    <td>${r.noResp}</td>${pctCell(r.noResp, r.total)}
+    <td>${r.contact}</td>${pctCell(r.contact, r.total)}
+    <td>${r.pos}</td>${pctCell(r.pos, r.total)}
+    <td>${r.neg}</td>${pctCell(r.neg, r.total)}
+  </tr>`;
+
+  document.getElementById('baPerfBody').innerHTML =
+    rows.map(r => makeRow(r, false)).join('') + makeRow(tot, true);
+}
+
+function renderResponseBreakdown() {
+  // Always uses full approached set (not VIEW) — backward-looking, all BAs
+  const approached = DATA.records.filter(r => r.briefaktion).length;
+  const ob = DATA.outreach_breakdown || {};
+
+  const rows = [
+    { status: 'followup2',  label: 'Follow-Up 2 Sent',     desc: 'FU2 sent'          },
+    { status: 'followup1',  label: 'Follow-Up 1 Sent',     desc: 'FU1 sent'           },
+    { status: 'sent',       label: 'Letter Sent',           desc: 'No FU yet'          },
+    { status: 'contact',    label: 'Contact Made',          desc: 'Replied'            },
+    { status: 'meeting',    label: 'Meeting Done',          desc: 'Meeting held'       },
+    { status: 'financials', label: 'Financials Received',   desc: 'Data received'      },
+    { status: 'offer',      label: 'Offer Sent',            desc: 'Offer out'          },
+    { status: 'deal',       label: 'Deal',                  desc: 'Converted to deal'  },
+    { status: 'hold',       label: 'Hold',                  desc: 'Timing / wait'      },
+    { status: 'declined',   label: 'Lost',                  desc: 'Declined'           },
+  ];
+
+  let total = 0;
+  let html = '';
+  for (const row of rows) {
+    const count = ob[row.status] || 0;
+    if (count === 0) continue;
+    total += count;
+    const pct = approached ? (count / approached * 100).toFixed(1) + '%' : '—';
+    html += `<tr>
+      <td>${outreachHtml(row.status)} ${row.label}</td>
+      <td>${count}</td>
+      <td>${pct}</td>
+      <td style="color:#6b7280;">${row.desc}</td>
+    </tr>`;
+  }
+  html += `<tr class="total-row">
+    <td>Total</td>
+    <td>${total}</td>
+    <td></td>
+    <td></td>
+  </tr>`;
+  document.getElementById('responseBreakdownBody').innerHTML = html;
+}
+
+function renderSourceQuality() {
+  const tbody = document.getElementById('sqBody');
+  tbody.innerHTML = '';
+  for (const row of DATA.source_quality) {
+    const total = row.total || 0;
+    const ab = (row.A || 0) + (row.B || 0);
+    const abPct = total ? Math.round(ab / total * 100) : 0;
+    const abCls = abPct >= 30 ? 'rate-high' : abPct >= 15 ? 'rate-mid' : 'rate-low';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${row.source}</strong></td>
+      <td>${row.A || 0}</td><td>${row.B || 0}</td>
+      <td><span class="${abCls}">${total ? abPct + '%' : ''}</span></td>
+      <td>${row.C || 0}</td><td>${row.D || 0}</td><td>${row.E || 0}</td><td>${row.S || 0}</td>
+      <td>${total}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+// ===================== Current BA Prep Tab =====================
+
+function renderPrepKPIs(curr) {
+  const filterPass = curr.filter(r => r.filter_pass);
+  const scraped = curr.filter(r => SCRAPED_SET.has(r.pipeline_stage));
+  const ab = curr.filter(r => r.klass === 'A' || r.klass === 'B');
+  const approved     = ab.filter(r => r.approved_for_sendout);
+  const readyToExport= ab.filter(r => hasFirstAndLast(r.owner_name) && r.compliment_draft && r.compliment_2 && r.region_prep && r.anrede && r.salutation && r.leistung_text && r.leistung_absatz_2 && r.mehrwerte && r.approved_for_sendout);
+  const missingEmail = ab.filter(r => !r.gf_email);
+  const unclassified = scraped.filter(r => !r.klass);
+  const unscraped    = filterPass.filter(r => !SCRAPED_SET.has(r.pipeline_stage));
+
+  const kpis = [
+    { num: curr.length,            label: 'Current Pipeline',  sub: 'Not yet approached',          cls: '', large: false },
+    { num: ab.length,              label: 'A + B Qualified',   sub: 'Pipeline-ready targets',       cls: ab.length > 0 ? 'kpi-good' : '', large: false },
+    { num: readyToExport.length,   label: 'Ready to Export',   sub: 'All fields + approved',        cls: readyToExport.length > 0 ? 'kpi-good' : 'kpi-neutral', large: true },
+    { num: missingEmail.length,    label: 'Missing Email',     sub: 'A/B + no email found',         cls: missingEmail.length > 0 ? 'kpi-neutral' : '', large: false },
+    { num: unclassified.length,    label: 'Unclassified',      sub: 'Scraped, no klass yet',        cls: unclassified.length > 0 ? 'kpi-neutral' : '', large: false },
+    { num: unscraped.length,       label: 'Unscraped',         sub: 'Filter pass, not yet scraped', cls: unscraped.length > 0 ? 'kpi-alert' : '', large: false },
+  ];
+
+  renderKpiGrid('prepKpiGrid', kpis);
+}
+
+function renderPrepFunnel(curr) {
+  const total = curr.length;
+  const filterPass = curr.filter(r => r.filter_pass).length;
+  const scraped    = curr.filter(r => SCRAPED_SET.has(r.pipeline_stage)).length;
+  const classified = curr.filter(r => r.klass).length;
+  const a = curr.filter(r => r.klass === 'A').length;
+  const b = curr.filter(r => r.klass === 'B').length;
+  const c = curr.filter(r => r.klass === 'C').length;
+  const d = curr.filter(r => r.klass === 'D').length;
+  const e = curr.filter(r => r.klass === 'E').length;
+  const s = curr.filter(r => r.klass === 'S').length;
+  const ab      = a + b;
+  const withEmail    = curr.filter(r => (r.klass==='A'||r.klass==='B') && r.gf_email).length;
+  const withoutEmail = curr.filter(r => (r.klass==='A'||r.klass==='B') && !r.gf_email).length;
+
+  function pct(num, denom) {
+    if (!denom || !num) return '';
+    const v = Math.round(num / denom * 100);
+    const cls = v >= 70 ? 'rate-high' : v >= 30 ? 'rate-mid' : 'rate-low';
+    return `<span class="${cls}">${v}%</span>`;
+  }
+  function row(stage, count, rate, indent) {
+    const pad = indent ? 'style="padding-left:18px;color:#6b7280;"' : '';
+    return `<tr><td class="ft-stage" ${pad}>${stage}</td><td class="ft-count">${count.toLocaleString()}</td><td class="ft-rate">${rate}</td></tr>`;
+  }
+  function head(label) {
+    return `<tr><td colspan="3" class="ft-head">${label}</td></tr>`;
+  }
+  function sep() {
+    return `<tr><td colspan="3" class="ft-sep"></td></tr>`;
+  }
+
+  const thead = `<thead><tr>
+    <th class="ft-head" style="background:#f9fafb;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#9ca3af;padding:6px 8px;border-bottom:2px solid #e5e7eb;">Stage</th>
+    <th style="text-align:right;background:#f9fafb;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#9ca3af;padding:6px 8px;border-bottom:2px solid #e5e7eb;">Count</th>
+    <th style="text-align:right;background:#f9fafb;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;color:#9ca3af;padding:6px 8px;border-bottom:2px solid #e5e7eb;">Conv.</th>
+  </tr></thead>`;
+
+  let tbody = '<tbody>';
+  tbody += head('Discovery');
+  tbody += row('Total ingested', total, '', false);
+  tbody += row('Filter pass', filterPass, pct(filterPass, total), true);
+  tbody += row('Scraped', scraped, pct(scraped, filterPass), true);
+  tbody += row('Classified', classified, pct(classified, scraped), true);
+  tbody += sep();
+  tbody += head('Classification');
+  tbody += row('A — Platform', a, pct(a, classified), true);
+  tbody += row('B — Add-on',   b, pct(b, classified), true);
+  tbody += row('C — Unclear',  c, pct(c, classified), true);
+  tbody += row('D — No-fit',   d, pct(d, classified), true);
+  if (e) tbody += row('E — Special',    e, pct(e, classified), true);
+  if (s) tbody += row('S — Subsidiary', s, pct(s, classified), true);
+  tbody += sep();
+  tbody += head('Outreach Readiness');
+  tbody += row('A+B with email',     withEmail,    pct(withEmail, ab),    true);
+  tbody += row('A+B missing email',  withoutEmail, pct(withoutEmail, ab), true);
+  tbody += '</tbody>';
+
+  document.getElementById('prepFunnelTable').innerHTML = thead + tbody;
+}
+
+function renderBlockers(curr) {
+  const filterPass   = curr.filter(r => r.filter_pass);
+  const scraped      = curr.filter(r => SCRAPED_SET.has(r.pipeline_stage));
+  const ab           = curr.filter(r => r.klass === 'A' || r.klass === 'B');
+  const unscraped    = filterPass.filter(r => !SCRAPED_SET.has(r.pipeline_stage)).length;
+  const unclassified = scraped.filter(r => !r.klass).length;
+  const cRecords     = curr.filter(r => r.klass === 'C').length;
+  const missingEmail = ab.filter(r => !r.gf_email).length;
+  const missingK1    = ab.filter(r => !r.compliment_draft).length;
+  const missingK2    = ab.filter(r => !r.compliment_2).length;
+  const missingRegion= ab.filter(r => !r.region_prep).length;
+  const missingAnrede= ab.filter(r => !r.anrede).length;
+  const readyToExport= ab.filter(r => hasFirstAndLast(r.owner_name) && r.compliment_draft && r.compliment_2 && r.region_prep && r.anrede && r.salutation && r.leistung_text && r.leistung_absatz_2 && r.mehrwerte && r.approved_for_sendout).length;
+
+  function actionItem(count, label, cmd, cls, tab) {
+    if (count === 0) return '';
+    return `<li class="action-item ${tab ? 'clickable' : ''}" ${tab ? `onclick="showTab('${tab}')"` : ''}>
+      <span class="action-count ${cls}">${count.toLocaleString()}</span>
+      <span class="action-label">
+        ${label}
+        ${cmd ? '<br><span class="action-cmd">' + cmd + '</span>' : ''}
+      </span>
+      ${tab ? '<span class="action-arrow">›</span>' : ''}
+    </li>`;
+  }
+
+  const runNow = [
+    actionItem(unscraped,    'Records need scraping',        'python pipeline.py scrape',    'ac-red',    null),
+    actionItem(unclassified, 'Scraped, unclassified',        'python pipeline.py classify',  'ac-orange', null),
+    actionItem(missingRegion,'Populate regions (A/B)',        'python pipeline.py enrich-regions', 'ac-yellow', null),
+  ].filter(Boolean);
+  const manual = [
+    actionItem(cRecords,     'C records - reclassify',       null, 'ac-orange', 'attention'),
+    actionItem(missingEmail, 'A/B missing email',            null, 'ac-yellow', 'attention'),
+    actionItem(missingK1+missingK2, 'A/B missing K1 or K2', null, 'ac-yellow', null),
+    actionItem(missingAnrede,'A/B missing Anrede',           null, 'ac-yellow', null),
+  ].filter(Boolean);
+
+  let html = '';
+  if (runNow.length)  html += `<li class="action-section-header">RUN NOW</li>` + runNow.join('');
+  if (manual.length)  html += `<li class="action-section-header" style="margin-top:8px;">MANUAL REVIEW</li>` + manual.join('');
+  html += `<li class="action-section-header" style="margin-top:8px;">READY TO EXPORT</li>`;
+  html += `<li class="action-item">
+      <span class="action-count ${readyToExport>0?'ac-green':'ac-grey'}">${readyToExport}</span>
+      <span class="action-label">A/B: all fields + approved<br><span class="action-cmd">python pipeline.py export --approved-only</span></span>
+    </li>`;
+  if (readyToExport > 0 && SERVE_MODE) {
+    html += `<li class="action-item" style="padding:8px 12px;">
+      <button id="exportPdfBtn" onclick="exportPDF()" style="background:#2563eb;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px;font-weight:600;">
+        Export PDF (${readyToExport} letters)
+      </button>
+    </li>`;
+  }
+
+  document.getElementById('blockersList').innerHTML = html;
+}
+
+// ===================== Requires Attention Tab =====================
+
+async function exportPDF() {
+  const btn = document.getElementById('exportPdfBtn');
+  if (!btn) return;
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Generating PDF...';
+  btn.style.opacity = '0.7';
+  try {
+    const resp = await fetch('/api/export-pdf', {method: 'POST'});
+    if (!resp.ok) {
+      const errText = await resp.text();
+      throw new Error(errText);
+    }
+    const blob = await resp.blob();
+    const disp = resp.headers.get('Content-Disposition') || '';
+    const fnMatch = disp.match(/filename="(.+?)"/);
+    const fname = fnMatch ? fnMatch[1] : 'serienbriefe.pdf';
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fname; a.click();
+    URL.revokeObjectURL(url);
+    btn.textContent = 'PDF Downloaded';
+    btn.style.background = '#16a34a';
+    setTimeout(() => { btn.textContent = origText; btn.style.background = '#2563eb'; btn.disabled = false; btn.style.opacity = '1'; }, 3000);
+  } catch(e) {
+    alert('PDF export failed: ' + e.message);
+    btn.textContent = origText;
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
+}
+
+function renderRequiresAttention() {
+  renderPositiveReplies();
+  renderFollowUpQueue();
+  renderOwnershipReview();
+  renderCQueue();
+  renderMissingEmail();
+  renderSReview();
+  autoExpandAttnSections();
+}
+
+function autoExpandAttnSections() {
+  document.querySelectorAll('#tab-attention .attn-section').forEach(sec => {
+    const badge = sec.querySelector('.attn-badge');
+    const count = badge ? parseInt(badge.textContent, 10) : 0;
+    if (count > 0) sec.classList.add('open');
+    else sec.classList.remove('open');
+    sec.querySelector('.attn-header').onclick = () => sec.classList.toggle('open');
+  });
+}
+
+function _setBadge(id, count, urgency) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = count;
+  el.className = 'attn-badge' + (count > 0 && urgency ? ' ' + urgency : '');
+}
+
+function renderPositiveReplies() {
+  // Positive = contact/meeting/financials/offer (not deal — deal is done)
+  const ACTIONABLE = new Set(['contact','meeting','financials','offer']);
+  const recs = VIEW.records.filter(r => ACTIONABLE.has(r.outreach_status))
+    .sort((a,b) => {
+      const order = {offer:0, financials:1, meeting:2, contact:3};
+      return (order[a.outreach_status]||9) - (order[b.outreach_status]||9);
+    });
+
+  _setBadge('positiveRepliesBadge', recs.length, 'urgent');
+  const body = document.getElementById('positiveRepliesBody');
+
+  if (recs.length === 0) {
+    body.innerHTML = '<div class="attn-done">&#10003; All positive replies actioned</div>';
+    return;
+  }
+
+  const ACTION_HINT = {
+    contact:    'Schedule meeting',
+    meeting:    'Request financials',
+    financials: 'Prepare offer',
+    offer:      'Follow up on offer',
+  };
+
+  let html = `<table class="attn-table"><thead><tr>
+    <th>Name</th><th>BA</th><th>Status</th><th>Owner</th><th>Email</th><th>Phone</th><th>Action</th>
+  </tr></thead><tbody>`;
+  for (const r of recs) {
+    const owner = escHtml(r.owner_name || r.gesellschafter_name || '—');
+    const email = r.gf_email
+      ? `<a href="mailto:${escHtml(r.gf_email)}" onclick="event.stopPropagation()">${escHtml(r.gf_email)}</a>`
+      : '';
+    html += `<tr onclick="openPanelByDomain('${r.domain}')">
+      <td title="${escHtml(r.full_name)}"><strong>${escHtml(r.full_name)}</strong></td>
+      <td>${r.briefaktion||''}</td>
+      <td>${outreachHtml(r.outreach_status)}</td>
+      <td>${owner}</td>
+      <td style="max-width:180px;">${email}</td>
+      <td>${escHtml(r.gf_phone||'')}</td>
+      <td style="color:#6b7280;font-style:italic;font-size:11px;">${ACTION_HINT[r.outreach_status]||''}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+function renderFollowUpQueue() {
+  const fu1 = VIEW.records
+    .filter(r => r.outreach_status === 'sent')
+    .sort((a,b) => (a.outreach_sent_at||'').localeCompare(b.outreach_sent_at||''));
+  const fu2 = VIEW.records
+    .filter(r => r.outreach_status === 'followup1')
+    .sort((a,b) => (a.followup1_at||'').localeCompare(b.followup1_at||''));
+
+  const total = fu1.length + fu2.length;
+  _setBadge('followUpBadge', total, total > 50 ? 'warn' : '');
+  const body = document.getElementById('followUpBody');
+
+  if (total === 0) {
+    body.innerHTML = '<div class="attn-done">&#10003; No follow-ups pending</div>';
+    return;
+  }
+
+  function makeSubTable(recs, dateCol, dateLabel) {
+    if (recs.length === 0) return '';
+    let html = `<table class="attn-table"><thead><tr>
+      <th>Name</th><th>BA</th><th>${dateLabel}</th><th>Owner</th><th>Email</th>
+    </tr></thead><tbody>`;
+    for (const r of recs) {
+      const owner = escHtml(r.owner_name || r.gesellschafter_name || '—');
+      const email = r.gf_email
+        ? `<a href="mailto:${escHtml(r.gf_email)}" onclick="event.stopPropagation()">${escHtml(r.gf_email)}</a>`
+        : '';
+      html += `<tr onclick="openPanelByDomain('${r.domain}')">
+        <td title="${escHtml(r.full_name)}">${escHtml(r.full_name)}</td>
+        <td>${r.briefaktion||''}</td>
+        <td>${r[dateCol]||''}</td>
+        <td>${owner}</td>
+        <td>${email}</td>
+      </tr>`;
+    }
+    html += '</tbody></table>';
+    return html;
+  }
+
+  let html = '';
+  if (fu1.length > 0) {
+    html += `<div class="sub-section"><h3>FU1 Pending — ${fu1.length} records (letter sent, no follow-up yet)</h3>`;
+    html += makeSubTable(fu1, 'outreach_sent_at', 'Sent At');
+    html += '</div>';
+  }
+  if (fu2.length > 0) {
+    html += `<div class="sub-section"><h3>FU2 Pending — ${fu2.length} records (FU1 sent, no FU2 yet)</h3>`;
+    html += makeSubTable(fu2, 'followup1_at', 'FU1 At');
+    html += '</div>';
+  }
+  body.innerHTML = html;
+}
+
+function renderCQueue() {
+  if (!serverOk && SERVE_MODE) {
+    document.getElementById('cReviewServerNotice').classList.add('visible');
+  }
+  const cRecs = VIEW.records
+    .filter(r => r.klass === 'C')
+    .sort((a, b) => (b.services_score || 0) - (a.services_score || 0));
+
+  _setBadge('cQueueBadge', cRecs.length, cRecs.length > 0 ? 'info' : '');
+  const grid = document.getElementById('cGrid');
+  grid.innerHTML = '';
+
+  if (cRecs.length === 0) {
+    grid.innerHTML = '<div class="attn-done">&#10003; No C records — all classified</div>';
+    return;
+  }
+
+  for (const r of cRecs) {
+    const div = document.createElement('div');
+    div.className = 'c-card';
+    const wbBtns = SERVE_MODE
+      ? `<div class="c-card-actions">
+          <button class="klass-btn" onclick="event.stopPropagation();inlinePatch('${r.domain}',{klass:'A'})">→ A</button>
+          <button class="klass-btn" onclick="event.stopPropagation();inlinePatch('${r.domain}',{klass:'B'})">→ B</button>
+          <button class="klass-btn" onclick="event.stopPropagation();inlinePatch('${r.domain}',{klass:'D'})">→ D</button>
+          <button class="klass-btn" onclick="event.stopPropagation();inlinePatch('${r.domain}',{klass:'E'})">→ E</button>
+        </div>`
+      : '';
+    div.innerHTML = `
+      <div class="c-card-name">${escHtml(r.full_name)}</div>
+      <div class="c-card-meta">${escHtml(r.domain)} &bull; ${r.region||'–'} &bull; MA: ${r.ma_count||'–'} &bull; Score: ${r.services_score||'–'}</div>
+      ${r.reasoning ? '<div class="c-card-reasoning">' + escHtml(r.reasoning) + '</div>' : ''}
+      ${wbBtns}
+    `;
+    div.addEventListener('click', () => openPanel(r));
+    grid.appendChild(div);
+  }
+}
+
+function renderMissingEmail() {
+  // A/B, not yet approached (briefaktion IS NULL), no gf_email
+  const recs = DATA.records
+    .filter(r => (r.klass==='A'||r.klass==='B') && !r.briefaktion && !r.gf_email)
+    .sort((a,b) => (b.services_score||0) - (a.services_score||0));
+
+  _setBadge('missingEmailBadge', recs.length, recs.length > 0 ? 'warn' : '');
+  const body = document.getElementById('missingEmailBody');
+
+  if (recs.length === 0) {
+    body.innerHTML = '<div class="attn-done">&#10003; All A/B targets have email</div>';
+    return;
+  }
+
+  let html = `<table class="attn-table"><thead><tr>
+    <th>Name</th><th>Domain</th><th>Klass</th><th>Owner</th><th>Region</th><th>MA</th><th>Link</th>
+  </tr></thead><tbody>`;
+  for (const r of recs) {
+    html += `<tr onclick="openPanelByDomain('${r.domain}')">
+      <td title="${escHtml(r.full_name)}">${escHtml(r.full_name)}</td>
+      <td>${escHtml(r.domain)}</td>
+      <td>${klassHtml(r.klass)}</td>
+      <td>${escHtml(r.owner_name||r.gesellschafter_name||'—')}</td>
+      <td>${r.region||''}</td>
+      <td>${r.ma_count!=null?r.ma_count:''}</td>
+      <td><a href="https://${escHtml(r.domain)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">&#x2197;</a></td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+function _extractParentName(reason) {
+  if (!reason) return null;
+  const m = reason.match(/(?:Legal entity|Corporate owner)\s*\(([^,]+)/i)
+    || reason.match(/majority owner \(([^,]+)/i)
+    || reason.match(/UBO chain:\s*([^(]+?)\s*\(/i)
+    || reason.match(/owns through\s+(.+?)(?:\s*(?:--|—|–)|$)/i);
+  return m ? m[1].trim() : null;
+}
+
+function _ownershipButtons(domain, rec) {
+  const parent = _extractParentName(rec.ownership_reason);
+  let resolveTargets = [];
+  if (parent) {
+    resolveTargets.push(parent);
+  } else if (rec.all_gesellschafter) {
+    try {
+      const gs = JSON.parse(rec.all_gesellschafter);
+      for (const o of gs) {
+        if (o.type === 'legal_person' && o.name) resolveTargets.push(o.name);
+      }
+    } catch(e) {}
+  }
+  // Button row: Resolve + Pass + Exclude always visible on one line
+  let resolveBtns = '';
+  for (const t of resolveTargets) {
+    const short = t.length > 22 ? t.substring(0,22) + '…' : t;
+    const safeT = escHtml(t);
+    resolveBtns += `<button class="klass-btn" style="background:#3b82f6;color:#fff;"
+      onclick="event.stopPropagation();resolveParent('${domain}','${safeT}',this)">Resolve: ${escHtml(short)}</button>`;
+  }
+  const passBtnHtml = `<button class="klass-btn" onclick="event.stopPropagation();passWithOwner('${domain}')">Pass</button>`;
+  const excludeBtnHtml = `<button class="klass-btn" onclick="event.stopPropagation();inlinePatch('${domain}',{klass:'S',pipeline_stage:'ownership_gated',is_subsidiary:1,reclassify_reason:'ownership_excluded'})">Exclude (S)</button>`;
+  return `<div style="display:flex;flex-wrap:nowrap;gap:4px;align-items:center;">${resolveBtns}${passBtnHtml}${excludeBtnHtml}</div>
+<div id="resolve-panel-${domain}" style="margin-top:4px;"></div>`;
+}
+
+function passWithOwner(domain) {
+  const input = document.getElementById('owner-' + domain);
+  const name = input ? input.value.trim() : '';
+  const patch = {pipeline_stage:'ownership_gated', is_subsidiary:0, is_pe_backed:0};
+  if (name) patch.gesellschafter_name = name;
+  inlinePatch(domain, patch);
+}
+
+async function resolveParent(domain, parentName, btn) {
+  btn.disabled = true; btn.textContent = 'Resolving...';
+  try {
+    const resp = await fetch('/api/resolve-parent/' + domain, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({parent_name: parentName})
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      btn.textContent = data.detail;
+      btn.style.background = '#16a34a';
+      const ownerInput = document.getElementById('owner-' + domain);
+      if (ownerInput && data.detail) {
+        const nm = data.detail.match(/^UBO:\s*(.+?)\s*\(/);
+        if (nm) ownerInput.value = nm[1];
+      }
+      setTimeout(() => refreshData(), 1500);
+    } else {
+      // Insert retry panel BELOW the button row (into the dedicated sub-div), not inside the button row
+      const panel = document.getElementById('resolve-panel-' + domain);
+      const tried = (data.tried_queries || [parentName]).join(', ');
+      btn.disabled = false; btn.textContent = 'Resolve: ' + (parentName.length > 22 ? parentName.substring(0,22) + '…' : parentName);
+      if (panel) {
+        panel.innerHTML = `<div style="font-size:10px;color:#dc2626;margin-bottom:3px;">Tried: ${escHtml(tried)}</div>
+          <div style="display:flex;align-items:center;gap:4px;">
+            <input type="text" value="${escHtml(parentName)}"
+              style="font-size:11px;padding:2px 4px;flex:1;min-width:0;border:1px solid #d1d5db;border-radius:3px;"
+              onclick="event.stopPropagation()" />
+            <button class="klass-btn" style="background:#3b82f6;color:#fff;white-space:nowrap;"
+              onclick="event.stopPropagation();retryResolve('${domain}',this)">Retry</button>
+          </div>`;
+      }
+    }
+  } catch(e) {
+    btn.textContent = 'Error'; btn.disabled = false;
+  }
+}
+
+async function retryResolve(domain, retryBtn) {
+  const panel = document.getElementById('resolve-panel-' + domain);
+  const input = panel ? panel.querySelector('input') : retryBtn.closest('div').querySelector('input');
+  const name = input ? input.value.trim() : '';
+  if (!name) return;
+  retryBtn.disabled = true; retryBtn.textContent = 'Resolving...';
+  try {
+    const resp = await fetch('/api/resolve-parent/' + domain, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({parent_name: name})
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      if (panel) panel.innerHTML = `<span style="color:#16a34a;font-size:11px;">${escHtml(data.detail)}</span>`;
+      setTimeout(() => refreshData(), 1500);
+    } else {
+      const tried = (data.tried_queries || [name]).join(', ');
+      if (panel) {
+        const triedDiv = panel.querySelector('div');
+        if (triedDiv) triedDiv.textContent = 'Tried: ' + tried;
+      }
+      retryBtn.disabled = false; retryBtn.textContent = 'Retry';
+    }
+  } catch(e) {
+    retryBtn.textContent = 'Error'; retryBtn.disabled = false;
+  }
+}
+
+async function reEnrich(domain, btn) {
+  btn.disabled = true; btn.textContent = 'Enriching...';
+  try {
+    const resp = await fetch('/api/re-enrich/' + domain, {method:'POST'});
+    const data = await resp.json();
+    if (data.ok) {
+      btn.textContent = data.detail;
+      btn.style.background = '#16a34a';
+      setTimeout(() => refreshData(), 1500);
+    } else {
+      btn.textContent = data.detail;
+      btn.style.background = '#dc2626';
+      btn.disabled = false;
+    }
+  } catch(e) {
+    btn.textContent = 'Error'; btn.disabled = false;
+  }
+}
+
+function renderOwnershipReview() {
+  const recs = DATA.records.filter(r => r.pipeline_stage === 'ownership_review_needed')
+    .sort((a,b) => (a.full_name||'').localeCompare(b.full_name||''));
+
+  _setBadge('ownershipReviewBadge', recs.length, recs.length > 0 ? 'warn' : '');
+  const body = document.getElementById('ownershipReviewBody');
+
+  if (recs.length === 0) {
+    body.innerHTML = '<div class="attn-done">&#10003; No ownership reviews pending</div>';
+    return;
+  }
+
+  let html = `<table class="attn-table"><thead><tr>
+    <th>Unternehmen</th><th style="min-width:200px;">Ansprechpartner</th>
+    ${SERVE_MODE ? '<th style="min-width:240px;">Aktion</th>' : ''}
+    <th style="max-width:400px;">Grundlage</th>
+  </tr></thead><tbody>`;
+  for (const r of recs) {
+    const gs = r.gesellschafter_name || '';
+    const gf = r.gf_name || '';
+    const pct = r.gesellschafter_share_pct;
+    const reason = r.ownership_reason || '';
+    const isViaHolding = reason.toLowerCase().includes('owns through');
+
+    // Ansprechpartner column: editable name + share % + GF fallback
+    let apHtml = '';
+    if (SERVE_MODE) {
+      apHtml += `<input type="text" value="${escHtml(gs)}" placeholder="Gesellschafter"
+        id="owner-${r.domain}" onclick="event.stopPropagation()"
+        style="font-size:11px;padding:2px 4px;width:170px;border:1px solid #d1d5db;border-radius:3px;" />`;
+      if (pct != null) {
+        const pctLabel = isViaHolding ? '% der Holding' : '%';
+        apHtml += `<div style="font-size:10px;color:#6b7280;">${Number(pct).toFixed(1)}${pctLabel}</div>`;
+      }
+      if (gf && gf !== gs) {
+        apHtml += `<div style="font-size:10px;color:#9ca3af;margin-top:2px;">GF: ${escHtml(gf)}</div>`;
+      }
+    } else {
+      apHtml = gs ? escHtml(gs) : (gf ? `<span style="color:#9ca3af;">GF: ${escHtml(gf)}</span>` : '<span style="color:#dc2626;">—</span>');
+      if (pct != null) {
+        const pctLabel = isViaHolding ? '% der Holding' : '%';
+        apHtml += ` <span style="font-size:10px;color:#6b7280;">(${Number(pct).toFixed(1)}${pctLabel})</span>`;
+      }
+    }
+
+    // Grundlage column: raw ownership_reason
+    const grundlage = reason ? escHtml(reason) : '<span style="color:#9ca3af;">Keine Daten</span>';
+
+    html += `<tr id="owr-${r.domain}" onclick="openPanelByDomain('${r.domain}')">
+      <td title="${escHtml(r.full_name)}"><strong>${escHtml(r.full_name)}</strong><br><span style="font-size:10px;color:#6b7280;">${escHtml(r.domain)}</span></td>
+      <td onclick="event.stopPropagation()">${apHtml}</td>
+      ${SERVE_MODE ? '<td onclick="event.stopPropagation()">' + _ownershipButtons(r.domain, r) + '</td>' : ''}
+      <td style="font-size:11px;color:#6b7280;max-width:400px;white-space:normal;">${grundlage}</td>
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+function renderSReview() {
+  const recs = DATA.records.filter(r => r.klass === 'S')
+    .sort((a,b) => (a.full_name||'').localeCompare(b.full_name||''));
+
+  _setBadge('sReviewBadge', recs.length, '');
+  const body = document.getElementById('sReviewBody');
+
+  if (recs.length === 0) {
+    body.innerHTML = '<div class="attn-done">&#10003; No S records pending review</div>';
+    return;
+  }
+
+  let html = `<table class="attn-table"><thead><tr>
+    <th>Name</th><th>Domain</th><th>Ownership Reason</th>
+    ${SERVE_MODE ? '<th>Override</th>' : ''}
+  </tr></thead><tbody>`;
+  for (const r of recs) {
+    const reason = escHtml(r.reclassify_reason || r.filter_reason || '—');
+    const overrideBtns = SERVE_MODE
+      ? `<td onclick="event.stopPropagation()">
+          <button class="klass-btn" onclick="inlinePatch('${r.domain}',{klass:'B'})">→ B</button>
+          <button class="klass-btn" onclick="inlinePatch('${r.domain}',{klass:'C'})">→ C</button>
+        </td>`
+      : '';
+    html += `<tr onclick="openPanelByDomain('${r.domain}')">
+      <td title="${escHtml(r.full_name)}"><strong>${escHtml(r.full_name)}</strong></td>
+      <td>${escHtml(r.domain)}</td>
+      <td style="font-size:11px;color:#6b7280;max-width:300px;white-space:normal;">${reason}</td>
+      ${overrideBtns}
+    </tr>`;
+  }
+  html += '</tbody></table>';
+  body.innerHTML = html;
+}
+
+// Inline write-back for C-card and S-record buttons
+async function inlinePatch(domain, payload) {
+  if (!SERVE_MODE) return;
+  try {
+    const resp = await fetch('/api/company/' + encodeURIComponent(domain), {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (resp.ok) {
+      const rec = DATA.records.find(r => r.domain === domain);
+      if (rec) Object.assign(rec, payload);
+      const action = payload.klass === 'S' ? 'excluded' : 'passed';
+      const color = payload.klass === 'S' ? '#fef2f2' : '#f0fdf4';
+      const row = document.getElementById('owr-' + domain);
+      if (row) {
+        row.style.transition = 'background 0.3s';
+        row.style.background = color;
+        row.querySelector('td:last-child').innerHTML =
+          `<span style="font-size:11px;font-weight:600;color:${payload.klass==='S'?'#dc2626':'#16a34a'};">${action.toUpperCase()}</span>`;
+        await new Promise(r => setTimeout(r, 1200));
+      }
+      renderAll();
+    }
+  } catch (e) {
+    // silent — server may not be running
+  }
+}
+
+// ===================== Lead Table =====================
+function populateFilters() {
+  const sources = [...new Set(DATA.records.map(r => r.source).filter(Boolean))].sort();
+  const regions = [...new Set(DATA.records.map(r => r.region).filter(Boolean))].sort();
+  const srcSel = document.getElementById('filterSource');
+  const regSel = document.getElementById('filterRegion');
+  srcSel.querySelectorAll('option:not([value=""])').forEach(o => o.remove());
+  regSel.querySelectorAll('option:not([value=""])').forEach(o => o.remove());
+  sources.forEach(s => { srcSel.appendChild(new Option(s, s)); });
+  regions.forEach(r => { regSel.appendChild(new Option(r, r)); });
+}
+
+function getFilteredRecords() {
+  const search   = document.getElementById('searchInput').value.toLowerCase();
+  const klass    = document.getElementById('filterKlass').value;
+  const source   = document.getElementById('filterSource').value;
+  const region   = document.getElementById('filterRegion').value;
+  const outreach = document.getElementById('filterOutreach').value;
+  const baLocal  = document.getElementById('filterBA').value;
+
+  return VIEW.records.filter(r => {
+    if (search && !((r.full_name||'').toLowerCase().includes(search) || (r.domain||'').toLowerCase().includes(search))) return false;
+    if (klass && r.klass !== klass) return false;
+    if (source && r.source !== source) return false;
+    if (region && r.region !== region) return false;
+    if (outreach === '__none__' && r.outreach_status) return false;
+    if (outreach && outreach !== '__none__' && r.outreach_status !== outreach) return false;
+    if (baLocal === 'CURRENT' && r.briefaktion) return false;
+    if (baLocal && baLocal !== 'CURRENT' && r.briefaktion !== baLocal) return false;
+    return true;
+  });
+}
+
+function sortBy(col) {
+  if (currentSortCol === col) currentSortDir = -currentSortDir;
+  else { currentSortCol = col; currentSortDir = 1; }
+  document.querySelectorAll('#leadTable th').forEach(th => {
+    th.classList.remove('sort-asc','sort-desc');
+    if (th.dataset.col === col) th.classList.add(currentSortDir === 1 ? 'sort-asc' : 'sort-desc');
+  });
+  applyFilters();
+}
+
+function compareVal(a, b) {
+  if (a == null && b == null) return 0;
+  if (a == null) return 1;
+  if (b == null) return -1;
+  if (typeof a === 'number' && typeof b === 'number') return a - b;
+  return String(a).localeCompare(String(b));
+}
+
+function applyFilters() {
+  let recs = getFilteredRecords();
+  recs = recs.slice().sort((a, b) => compareVal(a[currentSortCol], b[currentSortCol]) * currentSortDir);
+  renderLeadTable(recs);
+  document.getElementById('rowCount').textContent = recs.length + ' records';
+}
+
+function klassHtml(k) {
+  if (!k) return '';
+  return `<span class="klass-badge klass-${k}">${k}</span>`;
+}
+
+const OUTREACH_CSS_GROUP = {
+  sent: 'sent', followup1: 'followup', followup2: 'followup',
+  contact: 'contact', meeting: 'meeting', financials: 'meeting',
+  offer: 'meeting', deal: 'deal', hold: 'hold', declined: 'declined',
+};
+function outreachHtml(s) {
+  if (!s) return '';
+  return `<span class="outreach-badge outreach-${OUTREACH_CSS_GROUP[s] || s}">${STATUS_LABEL[s] || s}</span>`;
+}
+
+function renderLeadTable(recs) {
+  // Compute readiness for sorting
+  recs.forEach(r => {
+    r._readiness = prepCompletenessPct(r);
+  });
+  const tbody = document.getElementById('leadBody');
+  tbody.innerHTML = '';
+  for (const r of recs) {
+    const pct = r._readiness;
+    const pctColor = pct === 100 ? '#16a34a' : pct >= 70 ? '#d97706' : '#dc2626';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td title="${escHtml(r.full_name||'')}">${escHtml(r.full_name||'')}</td>
+      <td><a href="https://${r.domain}" target="_blank" rel="noopener" onclick="event.stopPropagation()">${r.domain}</a></td>
+      <td style="font-weight:700;color:${pctColor}">${pct}%</td>
+      <td>${r.source||''}</td>
+      <td>${r.region||''}</td>
+      <td>${r.ma_count != null ? r.ma_count : ''}</td>
+      <td>${ownerAge(r.gesellschafter_age) ?? ''}</td>
+      <td>${klassHtml(r.klass)}</td>
+      <td>${r.services_score != null ? r.services_score : ''}</td>
+      <td>${r.gf_email ? '<a href="mailto:' + r.gf_email + '" onclick="event.stopPropagation()">' + r.gf_email + '</a>' : ''}</td>
+      <td>${outreachHtml(r.outreach_status)}</td>
+      <td>${r.briefaktion||''}</td>
+    `;
+    tr.addEventListener('click', () => { setPanelRecordList(recs); openPanel(r); });
+    tbody.appendChild(tr);
+  }
+}
+
+// ===================== Outreach Tracker =====================
+function sortByOutreach(col) {
+  if (outreachSortCol === col) outreachSortDir = -outreachSortDir;
+  else { outreachSortCol = col; outreachSortDir = 1; }
+  renderOutreach();
+}
+
+function renderOutreach() {
+  const recs = VIEW.records
+    .filter(r => r.outreach_status)
+    .sort((a, b) => compareVal(a[outreachSortCol], b[outreachSortCol]) * outreachSortDir);
+
+  const stats = document.getElementById('outreachStats');
+  stats.innerHTML = '';
+  const approached  = VIEW.records.filter(r => r.briefaktion).length;
+  const posCount    = VIEW.records.filter(r => POSITIVE.has(r.outreach_status)).length;
+  const negCount    = VIEW.records.filter(r => r.outreach_status === 'declined').length;
+  const holdCount   = VIEW.records.filter(r => r.outreach_status === 'hold').length;
+  const totalAnswers = posCount + negCount + holdCount;
+  const posRate = approached ? (posCount/approached*100).toFixed(1)+'%' : '—';
+  const ansRate = approached ? (totalAnswers/approached*100).toFixed(1)+'%' : '—';
+  [
+    [approached, 'Total Approached'],
+    [posRate,    'Positive Rate'],
+    [ansRate,    'Answer Rate'],
+    [posCount,   'Positive'],
+    [negCount,   'Lost'],
+    [holdCount,  'Hold'],
+  ].forEach(([num, lbl]) => {
+    const pill = document.createElement('div');
+    pill.className = 'stat-pill';
+    pill.innerHTML = `<div class="num">${num}</div><div class="lbl">${lbl}</div>`;
+    stats.appendChild(pill);
+  });
+
+  const tbody = document.getElementById('outreachBody');
+  tbody.innerHTML = '';
+  for (const r of recs) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td title="${escHtml(r.full_name)}">${escHtml(r.full_name)}</td>
+      <td>${escHtml(r.domain)}</td>
+      <td>${klassHtml(r.klass)}</td>
+      <td>${outreachHtml(r.outreach_status)}</td>
+      <td>${r.outreach_sent_at||''}</td>
+      <td>${r.followup1_at||''}</td>
+      <td>${r.followup2_at||''}</td>
+      <td>${r.briefaktion||''}</td>
+      <td title="${escHtml(r.outreach_comment||'')}">${escHtml((r.outreach_comment||'').slice(0,40))}</td>
+    `;
+    tr.addEventListener('click', () => { setPanelRecordList(recs); openPanel(r); });
+    tbody.appendChild(tr);
+  }
+  if (recs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#6b7280;padding:20px;">No outreach records.</td></tr>';
+  }
+}
+
+// ===================== Side Panel =====================
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+function field(label, value) {
+  if (value == null || value === '' || value === 'None') return '';
+  return `<div class="field-group"><div class="field-label">${label}</div><div class="field-value">${escHtml(String(value))}</div></div>`;
+}
+function fieldHtml(label, htmlContent) {
+  if (!htmlContent) return '';
+  return `<div class="field-group"><div class="field-label">${label}</div><div class="field-value">${htmlContent}</div></div>`;
+}
+
+function fieldReasoning(label, value) {
+  if (!value) return '';
+  return `<div class="field-group"><div class="field-label">${label}</div><div class="field-value reasoning">${escHtml(value)}</div></div>`;
+}
+
+function setPanelView(view) {
+  const websiteView = document.getElementById('panelWebsiteView');
+  const letterView  = document.getElementById('panelLetterView');
+  const btnWebsite  = document.getElementById('toggleWebsite');
+  const btnLetter   = document.getElementById('toggleLetter');
+  if (view === 'letter') {
+    websiteView.style.display = 'none';
+    letterView.style.display  = 'block';
+    btnWebsite.className = 'toggle-btn';
+    btnLetter.className  = 'toggle-btn toggle-btn-active';
+    if (currentRecord) letterView.innerHTML = buildLetterPreview(currentRecord);
+  } else {
+    websiteView.style.display = 'flex';
+    letterView.style.display  = 'none';
+    btnWebsite.className = 'toggle-btn toggle-btn-active';
+    btnLetter.className  = 'toggle-btn';
+  }
+}
+
+function buildLetterPreview(rec) {
+  // Render a DB-backed merge field: filled = light yellow, missing = red with label
+  function mf(value, label) {
+    if (value) return `<span style="background:#fef9c3;border-radius:2px;padding:0 2px;">${escHtml(value)}</span>`;
+    return `<span style="background:#fee2e2;color:#dc2626;border-radius:2px;padding:0 2px;font-style:italic;">! ${label}</span>`;
+  }
+  // Use impressum_name as authoritative company name if set (overrides ORBIS full_name)
+  const displayName = rec.impressum_name || rec.full_name;
+  // Split owner_name into first + last for address block
+  const nameParts = rec.owner_name ? rec.owner_name.trim().split(/\s+/) : [];
+  const vorname = nameParts.length >= 2 ? nameParts.slice(0, -1).join(' ') : null;
+  const nachname = nameParts.length >= 2 ? nameParts[nameParts.length - 1] : (nameParts[0] || null);
+
+  const today = new Date();
+  const dateStr = `${String(today.getDate()).padStart(2,'0')}.${String(today.getMonth()+1).padStart(2,'0')}.${today.getFullYear()}`;
+
+  // Build merge field map: {{field_name}} -> mf(value, label)
+  const fields = {
+    'name_briefkopf': { val: displayName, label: 'Name Briefkopf' },
+    'anrede': { val: rec.anrede, label: 'Anrede' },
+    'vorname': { val: vorname, label: 'Vorname' },
+    'nachname': { val: nachname, label: 'Nachname' },
+    'street': { val: rec.street, label: 'Strasse' },
+    'plz_ort': { val: rec.plz_ort, label: 'PLZ + Stadt' },
+    'datum': { val: dateStr, label: 'Datum' },
+    'salutation': { val: rec.salutation, label: 'Anrede (Briefform)' },
+    'leistung_text': { val: rec.leistung_text, label: 'Leistung' },
+    'region_prep': { val: rec.region_prep, label: 'Region' },
+    'compliment_draft': { val: rec.compliment_draft, label: 'Kompliment 1' },
+    'compliment_2': { val: rec.compliment_2, label: 'Kompliment 2' },
+    'leistung_absatz_2': { val: rec.leistung_absatz_2, label: 'Leistung Absatz 2' },
+    'mehrwerte': { val: rec.mehrwerte, label: 'Mehrwerte' },
+  };
+
+  // Replace {{field_name}} placeholders in template with highlighted merge fields
+  let html = LETTER_TEMPLATE.replace(/\{\{(\w+)\}\}/g, (match, key) => {
+    const f = fields[key];
+    if (!f) return match;
+    return mf(f.val, f.label);
+  });
+
+  // Wrap in letter styling + legend
+  return `
+<div style="font-family:Georgia,serif;font-size:12px;line-height:1.65;color:#111;padding:20px 24px;background:#fff;">
+  ${html}
+  <div style="margin-top:16px;font-size:10px;color:#9ca3af;border-top:1px solid #e5e7eb;padding-top:8px;">
+    <span style="background:#fef9c3;border-radius:2px;padding:0 3px;">filled field</span> &nbsp;
+    <span style="background:#fee2e2;color:#dc2626;border-radius:2px;padding:0 3px;">! missing field</span>
+    &nbsp; Template: src/config/letter_template.html
+  </div>
+</div>`;
+}
+
+function openPanel(rec) {
+  currentRecord = rec;
+  document.getElementById('panelTitle').textContent = rec.full_name;
+  document.getElementById('panelLeft').innerHTML = buildPanelLeft(rec);
+  // Auto-fill region_prep if empty and city is in mapping
+  if (!rec.region_prep && rec.city) {
+    const mapped = REGION_MAPPING[(rec.city || '').toLowerCase()];
+    if (mapped) {
+      const rpInput = document.getElementById('wb-region-prep');
+      if (rpInput) rpInput.value = mapped.region_prep;
+    }
+  }
+  setupIframe(rec.domain);
+  // Default to letter preview and show toggle
+  setPanelView('letter');
+  document.getElementById('panelRightToggle').style.display = 'flex';
+  document.getElementById('panelOverlay').classList.add('open');
+  document.getElementById('sidePanel').classList.add('open');
+  _updatePanelNav();
+}
+
+function openPanelByDomain(domain) {
+  const r = DATA.records.find(rec => rec.domain === domain);
+  if (r) openPanel(r);
+}
+
+function closePanel() {
+  document.getElementById('panelOverlay').classList.remove('open');
+  document.getElementById('sidePanel').classList.remove('open');
+  document.getElementById('panelRightToggle').style.display = 'none';
+  currentRecord = null;
+  document.getElementById('panelIframe').src = '';
+}
+
+function setupIframe(domain) {
+  const iframe = document.getElementById('panelIframe');
+  const fallback = document.getElementById('iframeFallback');
+  const fallbackLink = document.getElementById('iframeFallbackLink');
+  const url = 'https://' + domain;
+  fallbackLink.href = url;
+  fallbackLink.textContent = 'Open ' + domain + ' in new tab';
+  iframe.style.display = 'block';
+  fallback.style.display = 'none';
+  iframe.src = url;
+  iframe.onerror = () => {
+    iframe.style.display = 'none';
+    fallback.style.display = 'flex';
+  };
+}
+
+function buildPanelLeft(rec) {
+  const overviewTab = buildOverviewTab(rec);
+  const letterPrepTab = buildWriteBack(rec);
+  return `
+    <div class="panel-tabs">
+      <button class="panel-tab-btn active" data-tab="overview" onclick="switchPanelTab('overview')">Overview</button>
+      <button class="panel-tab-btn" data-tab="letterprep" onclick="switchPanelTab('letterprep')">Letter Prep</button>
+    </div>
+    <div class="panel-tab-content active" data-tab="overview">${overviewTab}</div>
+    <div class="panel-tab-content" data-tab="letterprep">${letterPrepTab}</div>
+  `;
+}
+
+function buildOverviewTab(rec) {
+  const klassBadge = rec.klass ? `<span class="klass-badge klass-${rec.klass}" style="margin-left:8px;">${rec.klass}</span>` : '';
+  const ssbBadge = '';
+  const domainLink = rec.domain
+    ? `<div class="field-group"><div class="field-label">Domain</div><div class="field-value"><a href="https://${escHtml(rec.domain)}" target="_blank" rel="noopener">${escHtml(rec.domain)}</a></div></div>`
+    : '';
+  const hubspotLink = rec.hubspot_company_id && HUBSPOT_PORTAL_ID
+    ? `<a class="btn-hubspot" href="https://app.hubspot.com/contacts/${HUBSPOT_PORTAL_ID}/companies/${rec.hubspot_company_id}" target="_blank" rel="noopener">Open in HubSpot</a>`
+    : '';
+
+  return `
+    <div style="margin-bottom:14px;">
+      <div style="font-size:16px;font-weight:700;color:#1a1a2e;">${escHtml(rec.full_name||'')}${klassBadge}${ssbBadge}</div>
+    </div>
+    ${domainLink}
+    <div class="field-group">
+      <div class="field-label">Key Metrics</div>
+      <div class="field-value" style="display:flex;gap:16px;flex-wrap:wrap;">
+        <span><strong>MA:</strong> ${rec.ma_count != null ? rec.ma_count : '—'}</span>
+        <span><strong>Rev:</strong> ${rec.revenue_tsd_eur != null ? rec.revenue_tsd_eur + ' Tsd EUR' : '—'}</span>
+        <span><strong>Owner Age:</strong> ${ownerAge(rec.gesellschafter_age) ?? '—'}</span>
+      </div>
+    </div>
+    ${field('City + Region', [rec.city, rec.region].filter(Boolean).join(' · ') || null)}
+    <hr style="margin:10px 0;border:none;border-top:1px solid #e5e7eb;">
+    ${(()=>{
+      // ── Ownership & Management block ──────────────────────────────────
+      const owner = rec.owner_name;
+      const gs = rec.gesellschafter_name;
+      const gsPct = rec.gesellschafter_share_pct != null ? ` (${Number(rec.gesellschafter_share_pct).toFixed(1)}%)` : '';
+      const _age = ownerAge(rec.gesellschafter_age);
+      const gsAge = _age != null ? `, ${_age} J.` : '';
+      const gf = rec.gf_name;
+
+      // Ansprechpartner (used in letter)
+      let ownerHtml;
+      if (!owner) {
+        ownerHtml = '<span style="color:#dc2626;font-style:italic;">⚠ Nicht gesetzt</span>';
+      } else {
+        const hasFirst = owner.trim().split(/\s+/).length >= 2;
+        const warn = !hasFirst ? ' <span style="color:#d97706;font-size:10px;">⚠ Kein Vorname</span>' : '';
+        ownerHtml = `<strong>${escHtml(owner)}</strong>${warn}`;
+      }
+
+      // Gesellschafter row(s) from ORBIS (ingest) or OpenRegister (enrich)
+      // If all_gesellschafter JSON is available (post bug-fix enrich), show every owner.
+      // Falls back to single gesellschafter_name for records enriched before the fix.
+      let gsRows = '';
+      const allGs = rec.all_gesellschafter ? (() => { try { return JSON.parse(rec.all_gesellschafter); } catch(e) { return null; } })() : null;
+      const parentOwners = rec.parent_owners ? (() => { try { return JSON.parse(rec.parent_owners); } catch(e) { return null; } })() : null;
+      const ownsThrough = (rec.ownership_reason || '').match(/owns through\s+(.+?)(?:\s*(?:--|—|–)|$)/i);
+      const resolvedHolding = ownsThrough ? ownsThrough[1].trim().toLowerCase() : null;
+      if (allGs && allGs.length > 0) {
+        gsRows = allGs.map((o, idx) => {
+          const pctStr = o.pct != null ? ` (${Number(o.pct).toFixed(1)}%)` : '';
+          const typeLabel = o.type === 'natural_person' || o.type === 'person' ? 'Person' : o.type === 'legal_person' ? 'Unternehmen' : o.type || '';
+          const isMajority = idx === 0;
+          const mismatch = isMajority && owner && o.name !== owner
+            ? ' <span style="color:#d97706;font-size:10px;" title="Brief adressiert Ansprechpartner, nicht diesen Gesellschafter">≠ Brief</span>' : '';
+          const majorityBadge = isMajority && allGs.length > 1
+            ? ' <span style="color:#6b7280;font-size:9px;">★</span>' : '';
+          let row = `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f3f4f6;">
+            <span>${escHtml(o.name)}${escHtml(pctStr)}${escHtml(gsAge && isMajority ? gsAge : '')}${majorityBadge}</span>
+            <span style="font-size:10px;color:#6b7280;">${escHtml(typeLabel)}${mismatch}</span>
+          </div>`;
+          // Drill-down: if this shareholder is the holding that was resolved, show all holding shareholders
+          const isHolding = resolvedHolding && o.name.toLowerCase().includes(resolvedHolding.substring(0, 15).toLowerCase());
+          if (isHolding && parentOwners && parentOwners.length > 0) {
+            for (const po of parentOwners) {
+              const poPct = po.pct != null ? ` (${Number(po.pct).toFixed(1)}%)` : '';
+              const isUbo = gs && po.name && po.name.toLowerCase() === gs.toLowerCase();
+              const poType = po.type === 'natural_person' || po.type === 'person' ? 'Person' : po.type === 'legal_person' ? 'Unternehmen' : po.type || '';
+              row += `<div style="display:flex;justify-content:space-between;padding:3px 0 3px 20px;border-bottom:1px solid #f3f4f6;${isUbo ? 'background:#f0fdf4;' : ''}">
+                <span${isUbo ? ' style="font-weight:600;"' : ''}>└─ ${escHtml(po.name)}${poPct}</span>
+                <span style="font-size:10px;color:${isUbo ? '#16a34a' : '#6b7280'};">${isUbo ? 'UBO (ermittelt)' : escHtml(poType)}</span>
+              </div>`;
+            }
+          } else if (isHolding && gs) {
+            row += `<div style="display:flex;justify-content:space-between;padding:3px 0 3px 20px;border-bottom:1px solid #f3f4f6;background:#f0fdf4;">
+              <span style="font-weight:600;">└─ ${escHtml(gs)}${escHtml(gsPct)}</span>
+              <span style="font-size:10px;color:#16a34a;">UBO (ermittelt)</span>
+            </div>`;
+          }
+          return row;
+        }).join('');
+      } else if (gs) {
+        const mismatch = owner && gs !== owner
+          ? ' <span style="color:#d97706;font-size:10px;" title="Brief adressiert Ansprechpartner, nicht diesen Gesellschafter">≠ Brief</span>' : '';
+        gsRows = `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f3f4f6;">
+          <span>${escHtml(gs)}${escHtml(gsPct)}${escHtml(gsAge)}</span>
+          <span style="font-size:10px;color:#6b7280;">Gesellschafter${mismatch}</span>
+        </div>`;
+      } else {
+        gsRows = '<div style="color:#9ca3af;font-size:11px;font-style:italic;">Kein Gesellschafter ermittelt</div>';
+      }
+
+      // GF from impressum
+      let gfRow = '';
+      if (gf) {
+        const noOwnerWarn = !owner
+          ? ' <span style="color:#d97706;font-size:10px;">⚠ Als Adressat prüfen</span>' : '';
+        gfRow = `<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f3f4f6;">
+          <span>${escHtml(gf)}${noOwnerWarn}</span>
+          <span style="font-size:10px;color:#6b7280;">GF (Impressum)</span>
+        </div>`;
+      }
+
+      // Impressum name mismatch warning
+      const imp = rec.impressum_name;
+      const fn = rec.full_name || '';
+      let impWarn = '';
+      if (imp && imp !== fn) {
+        impWarn = `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:4px;padding:5px 8px;margin:0 0 6px;font-size:11px;">
+          <span style="color:#92400e;font-weight:600;">⚠ Name mismatch — </span>
+          Impressum: <b>${escHtml(imp)}</b> · ORBIS: ${escHtml(fn)}
+        </div>`;
+      }
+
+      return `
+        ${impWarn}
+        <div class="field-group">
+          <div class="field-label">Ansprechpartner (Brief)</div>
+          <div class="field-value">${ownerHtml}</div>
+        </div>
+        <div class="field-group">
+          <div class="field-label" style="margin-bottom:4px;">Gesellschafter der Zielgesellschaft</div>
+          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:5px;padding:6px 10px;font-size:12px;">
+            ${gsRows}${gfRow}
+          </div>
+        </div>
+        ${rec.ownership_reason ? (() => {
+          const isVia = (rec.ownership_reason || '').toLowerCase().includes('owns through');
+          const pctNote = isVia && rec.gesellschafter_share_pct != null
+            ? `<div style="padding:3px 0;border-bottom:1px solid #f3f4f6;">
+                <span style="color:#6b7280;">Anteil:</span> ${Number(rec.gesellschafter_share_pct).toFixed(1)}% <em>der Holding</em>, nicht der Zielgesellschaft
+              </div>` : '';
+          return `<div class="field-group">
+            <div class="field-label" style="margin-bottom:4px;">Herkunft Ansprechpartner</div>
+            <div style="background:#fefce8;border:1px solid #fde68a;border-radius:5px;padding:6px 10px;font-size:11px;">
+              <div style="padding:3px 0;border-bottom:1px solid #f3f4f6;">
+                <span style="color:#6b7280;">Gesellschafter:</span> <strong>${escHtml(gs || '—')}</strong>${gsPct ? ' '+escHtml(gsPct) : ''}
+              </div>
+              ${gf ? `<div style="padding:3px 0;border-bottom:1px solid #f3f4f6;">
+                <span style="color:#6b7280;">GF (Impressum):</span> ${escHtml(gf)}
+              </div>` : ''}
+              ${pctNote}
+              <div style="padding:3px 0;color:#713f12;">
+                <span style="color:#6b7280;">Grundlage:</span> ${escHtml(rec.ownership_reason)}
+              </div>
+            </div>
+          </div>`;
+        })() : ''}`;
+    })()}
+    ${(()=>{
+      const addr = rec.impressum_address;
+      if (!addr) return '';
+      const orbis = ((rec.street||'') + ' ' + (rec.plz_ort||'')).trim();
+      if (orbis && !orbis.includes(addr.substring(0,10))) {
+        return `<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:4px;padding:5px 8px;margin:4px 0;font-size:11px;color:#1e40af;">
+          Impressum-Adresse: ${escHtml(addr)}
+        </div>`;
+      }
+      return '';
+    })()}
+    ${field('E-Mail', rec.gf_email)}
+    <hr style="margin:10px 0;border:none;border-top:1px solid #e5e7eb;">
+    ${fieldReasoning('Reasoning', rec.reasoning)}
+    ${fieldReasoning('Kompliment 1', rec.compliment_draft)}
+    ${fieldReasoning('Kompliment 2', rec.compliment_2)}
+    ${hubspotLink}
+  `;
+}
+
+const _CURRENT_YEAR = new Date().getFullYear();
+function ownerAge(birthYear) {
+  return (birthYear != null && birthYear > 1900) ? _CURRENT_YEAR - birthYear : null;
+}
+
+function hasFirstAndLast(name) {
+  return !!(name && name.trim().split(/\s+/).length >= 2);
+}
+
+function completenessHtml(rec) {
+  const fields = [
+    { label: 'Vorname',    val: hasFirstAndLast(rec.owner_name) ? '✓' : null },
+    { label: 'E-Mail',     val: rec.gf_email },
+    { label: 'Anrede',     val: rec.anrede },
+    { label: 'Briefform',  val: rec.salutation },
+    { label: 'Straße',     val: rec.street },
+    { label: 'PLZ+Ort',    val: rec.plz_ort },
+    { label: 'Region',     val: rec.region_prep },
+    { label: 'Leistung',   val: rec.leistung_text },
+    { label: 'Leistung 2', val: rec.leistung_absatz_2 },
+    { label: 'Mehrwerte',  val: rec.mehrwerte },
+    { label: 'K1',         val: rec.compliment_draft },
+    { label: 'K2',         val: rec.compliment_2 },
+  ];
+  const total = fields.length;
+  const filled = fields.filter(f => f.val).length;
+  const dots = fields.map(f =>
+    `<span title="${f.label}" style="color:${f.val?'#16a34a':'#dc2626'};font-size:14px;">●</span>`
+  ).join(' ');
+  const color = filled === total ? '#16a34a' : filled >= 7 ? '#d97706' : '#dc2626';
+  const approvedBadge = rec.approved_for_sendout
+    ? ' <span style="color:#16a34a;font-weight:700;">✓ Approved</span>' : '';
+  return `${dots} &nbsp;<span style="font-weight:700;color:${color}">${filled}/${total} fields</span>${approvedBadge}`;
+}
+
+function prepCompletenessPct(r) {
+  const fields = [hasFirstAndLast(r.owner_name), r.gf_email, r.compliment_draft, r.compliment_2, r.region_prep, r.anrede, r.salutation, r.leistung_text, r.leistung_absatz_2, r.mehrwerte, r.street, r.plz_ort];
+  const filled = fields.filter(Boolean).length;
+  const approved = r.approved_for_sendout ? 1 : 0;
+  return Math.round((filled + approved) / 13 * 100);
+}
+
+function prepCompleteness(r) {
+  const pct = prepCompletenessPct(r);
+  const color = pct === 100 ? '#16a34a' : pct >= 50 ? '#d97706' : '#dc2626';
+  return `<span style="font-weight:700;color:${color};font-size:11px;">${pct}%</span>`;
+}
+
+function buildWriteBack(rec) {
+  const disabled = !SERVE_MODE ? 'title="Start server with --serve to enable write-back"' : '';
+  const klasses = ['A','B','C','D','E'];
+  const kBtns = klasses.map(k =>
+    `<button class="klass-btn ${rec.klass === k ? 'active-'+k : ''}" data-klass="${k}" onclick="handleKlassBtn('${k}')" ${disabled}>${k}</button>`
+  ).join('');
+
+  const statuses = ['','sent','followup1','followup2','contact','meeting','financials','offer','deal','hold','declined'];
+  const statusOpts = statuses.map(s =>
+    `<option value="${s}" ${rec.outreach_status === s ? 'selected' : ''}>${s ? STATUS_LABEL[s] || s : '(none)'}</option>`
+  ).join('');
+
+  const cityKey = (rec.city || '').toLowerCase();
+  const regionHint = REGION_MAPPING[cityKey]
+    ? `Mapping found: <strong>${REGION_MAPPING[cityKey].region_prep}</strong> — edit above to override`
+    : (rec.city ? 'City not in mapping — enter manually' : 'No city on record');
+
+  if (!SERVE_MODE) {
+    return `<p style="font-size:11px;color:#9ca3af;padding:8px 0;">Read-only mode. Use --serve to enable write-back.</p>`;
+  }
+
+  return `
+    <div class="writeback-section">
+      <h3>Address Block</h3>
+      <div class="form-row">
+        <label>Name (Firmenbrief)</label>
+        <div style="font-size:11px;color:#6b7280;padding:4px 0 2px;">ORBIS: ${escHtml(rec.full_name||'—')}</div>
+        <input type="text" id="wb-impressum-name" value="${escHtml(rec.impressum_name||'')}" ${disabled}
+               placeholder="Impressum-Name (leer = ORBIS-Name verwenden)">
+        <div style="font-size:10px;color:#9ca3af;margin-top:2px;">Überschreibt ORBIS-Name im Brief wenn gefüllt</div>
+      </div>
+      <div class="form-row">
+        <label>Ansprechpartner</label>
+        <input type="text" id="wb-owner-name" value="${escHtml(rec.owner_name||'')}" ${disabled}>
+      </div>
+      <div class="form-row">
+        <label>GF (Impressum)</label>
+        <input type="text" id="wb-gf-name" value="${escHtml(rec.gf_name||'')}" ${disabled}
+               placeholder="Automatisch aus Impressum (M21)">
+      </div>
+      <div class="form-row">
+        <label>Gesellschafter (ORBIS)</label>
+        <input type="text" id="wb-gesellschafter" value="${escHtml(rec.gesellschafter_name||'')}" ${disabled}>
+      </div>
+      <div class="form-row">
+        <label>Anrede</label>
+        <select id="wb-anrede" ${disabled}>
+          <option value="">—</option>
+          <option value="Herr" ${rec.anrede==='Herr'?'selected':''}>Herr</option>
+          <option value="Frau" ${rec.anrede==='Frau'?'selected':''}>Frau</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Anrede (Briefform)</label>
+        <div style="display:flex;align-items:center;gap:4px;">
+          <input type="text" id="wb-salutation" value="${escHtml(rec.salutation||'')}" ${disabled}
+                 placeholder="Sehr geehrter Herr Müller" style="flex:1;">
+          <button onclick="autoSalutation()" style="margin-left:6px;padding:3px 10px;font-size:11px;border:1px solid #d1d5db;border-radius:4px;background:#f9fafb;cursor:pointer;" ${disabled}>Generate</button>
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Straße</label>
+        <div class="field-value" style="padding:6px 0;">${escHtml(rec.street||'—')}</div>
+      </div>
+      <div class="form-row">
+        <label>PLZ + Stadt</label>
+        <div class="field-value" style="padding:6px 0;">${escHtml(rec.plz_ort||'—')}</div>
+      </div>
+      <div class="form-row">
+        <label>Region</label>
+        <input type="text" id="wb-region" value="${escHtml(rec.region||'')}" ${disabled}
+               placeholder="Allgäu">
+        <div style="font-size:10px;color:#9ca3af;margin-top:2px;">Anzeigename (Filter/Tabelle)</div>
+      </div>
+      <div class="form-row">
+        <label>Region (Briefform)</label>
+        <input type="text" id="wb-region-prep" value="${escHtml(rec.region_prep||'')}" ${disabled}
+               placeholder="im Allgäu">
+        <div style="font-size:10px;color:#9ca3af;margin-top:2px;">${regionHint}</div>
+      </div>
+    </div>
+    <div class="writeback-section">
+      <h3>Letter Body</h3>
+      <div class="form-row">
+        <label>Leistung (Kurzform)</label>
+        <textarea id="wb-leistung" rows="2" ${disabled} placeholder="Medizinprodukt-Händlern">${escHtml(rec.leistung_text||'')}</textarea>
+      </div>
+      <div class="form-row">
+        <label>Leistung Absatz 2</label>
+        <textarea id="wb-leistung-2" rows="2" ${disabled}>${escHtml(rec.leistung_absatz_2||'')}</textarea>
+      </div>
+      <div class="form-row">
+        <label>Mehrwerte</label>
+        <textarea id="wb-mehrwerte" rows="3" ${disabled}>${escHtml(rec.mehrwerte||'')}</textarea>
+      </div>
+      <div class="form-row">
+        <label>Kompliment 1</label>
+        <textarea id="wb-compliment-1" rows="3" ${disabled}>${escHtml(rec.compliment_draft||'')}</textarea>
+      </div>
+      <div class="form-row">
+        <label>Kompliment 2</label>
+        <textarea id="wb-compliment-2" rows="3" ${disabled}>${escHtml(rec.compliment_2||'')}</textarea>
+      </div>
+    </div>
+    <div class="writeback-section">
+      <h3>Kontakt</h3>
+      <div class="form-row">
+        <label>E-Mail</label>
+        <input type="email" id="wb-gf-email" value="${escHtml(rec.gf_email||'')}" ${disabled}>
+      </div>
+    </div>
+    <div class="writeback-section">
+      <h3 class="collapsible-header" onclick="toggleCollapsible(this)">Outreach</h3>
+      <div class="collapsible-body">
+        <div class="form-row" style="margin-top:8px;">
+          <label>Outreach Status</label>
+          <select id="wb-outreach-status" ${disabled}>${statusOpts}</select>
+        </div>
+        <div class="form-row">
+          <label>Versanddatum</label>
+          <input type="date" id="wb-sent-at" value="${rec.outreach_sent_at||''}" ${disabled}>
+        </div>
+        <div class="form-row">
+          <label>Follow-Up 1</label>
+          <input type="date" id="wb-followup1" value="${rec.followup1_at||''}" ${disabled}>
+        </div>
+        <div class="form-row">
+          <label>Follow-Up 2</label>
+          <input type="date" id="wb-followup2" value="${rec.followup2_at||''}" ${disabled}>
+        </div>
+        <div class="form-row">
+          <label>Kommentar</label>
+          <textarea id="wb-comment" ${disabled}>${escHtml(rec.outreach_comment||'')}</textarea>
+        </div>
+        <div class="form-row">
+          <label>Follow-Up Kommentar</label>
+          <textarea id="wb-followup-comment" ${disabled}>${escHtml(rec.followup_comment||'')}</textarea>
+        </div>
+      </div>
+    </div>
+    <div class="writeback-section">
+      <h3>Classification</h3>
+      <div class="klass-buttons" id="wb-klass-btns">${kBtns}</div>
+    </div>
+    <div class="writeback-section">
+      <h3>Approval</h3>
+      <div style="font-size:11px;color:#6b7280;margin-bottom:8px;">${completenessHtml(rec)}</div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:600;">
+        <input type="checkbox" id="wb-approved" ${rec.approved_for_sendout?'checked':''} ${disabled}
+               style="width:16px;height:16px;">
+        Approved for BA send-out
+      </label>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn btn-primary" onclick="saveWriteback()" ${disabled}>Save</button>
+      </div>
+      <div id="wb-feedback" class="save-feedback"></div>
+    </div>
+  `;
+}
+
+function switchPanelTab(tab) {
+  document.querySelectorAll('.panel-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.panel-tab-content').forEach(c => c.classList.toggle('active', c.dataset.tab === tab));
+}
+
+function toggleCollapsible(el) {
+  el.classList.toggle('open');
+  el.nextElementSibling.classList.toggle('open');
+}
+
+function autoSalutation() {
+  const anrede = document.getElementById('wb-anrede').value;
+  // Prefer Ansprechpartner (owner_name); fall back to GF name when owner_name is empty
+  const name = (
+    (document.getElementById('wb-owner-name').value || '') ||
+    (document.getElementById('wb-gf-name').value || '')
+  ).trim();
+  if (!anrede || !name) return;
+  const parts = name.split(' ');
+  const last = parts[parts.length - 1];
+  const prefix = anrede === 'Herr' ? 'Sehr geehrter Herr' : 'Sehr geehrte Frau';
+  document.getElementById('wb-salutation').value = `${prefix} ${last}`;
+}
+
+function handleKlassBtn(klass) {
+  if (!SERVE_MODE) return;
+  document.querySelectorAll('#wb-klass-btns .klass-btn').forEach(btn => {
+    btn.className = 'klass-btn';
+    if (btn.dataset.klass === klass) btn.classList.add('active-' + klass);
+  });
+  currentRecord._pendingKlass = klass;
+}
+
+async function saveWriteback() {
+  if (!SERVE_MODE || !currentRecord) return;
+  const domain = currentRecord.domain;
+  const payload = {
+    klass: currentRecord._pendingKlass || currentRecord.klass,
+    outreach_status: document.getElementById('wb-outreach-status').value || null,
+    outreach_sent_at: document.getElementById('wb-sent-at').value || null,
+    outreach_comment: document.getElementById('wb-comment').value || null,
+    followup1_at: document.getElementById('wb-followup1').value || null,
+    followup2_at: document.getElementById('wb-followup2').value || null,
+    followup_comment: document.getElementById('wb-followup-comment').value || null,
+    gf_email: document.getElementById('wb-gf-email').value || null,
+    compliment_draft: document.getElementById('wb-compliment-1').value || null,
+    compliment_2: document.getElementById('wb-compliment-2').value || null,
+    anrede: document.getElementById('wb-anrede').value || null,
+    owner_name: document.getElementById('wb-owner-name').value || null,
+    salutation: document.getElementById('wb-salutation').value || null,
+    region: document.getElementById('wb-region').value || null,
+    region_prep: document.getElementById('wb-region-prep').value || null,
+    leistung_text: document.getElementById('wb-leistung').value || null,
+    leistung_absatz_2: document.getElementById('wb-leistung-2').value || null,
+    mehrwerte: document.getElementById('wb-mehrwerte').value || null,
+    gesellschafter_name: document.getElementById('wb-gesellschafter').value || null,
+    impressum_name: document.getElementById('wb-impressum-name').value || null,
+    gf_name: document.getElementById('wb-gf-name').value || null,
+    approved_for_sendout: document.getElementById('wb-approved').checked ? 1 : 0,
+  };
+  const fb = document.getElementById('wb-feedback');
+  try {
+    const resp = await fetch('/api/company/' + encodeURIComponent(domain), {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    });
+    if (resp.ok) {
+      fb.textContent = 'Saved.';
+      fb.className = 'save-feedback';
+      Object.assign(currentRecord, payload);
+      if (currentRecord._pendingKlass) currentRecord.klass = currentRecord._pendingKlass;
+      renderAll();
+      // Refresh letter preview if visible
+      const letterView = document.getElementById('panelLetterView');
+      if (letterView && letterView.style.display !== 'none') {
+        letterView.innerHTML = buildLetterPreview(currentRecord);
+      }
+    } else {
+      const text = await resp.text();
+      fb.textContent = 'Error: ' + text;
+      fb.className = 'save-feedback error';
+    }
+  } catch (e) {
+    fb.textContent = 'Server not running. Changes not saved.';
+    fb.className = 'save-feedback error';
+  }
+}
+
+// ===================== Prep Table =====================
+
+// ---- Batch selection state ----
+const selectedDomains = new Set();
+
+function updateBatchBar() {
+  const bar = document.getElementById('batchActionBar');
+  const count = document.getElementById('batchCount');
+  if (selectedDomains.size > 0) {
+    bar.style.display = 'flex';
+    count.textContent = `${selectedDomains.size} selected`;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function toggleSelectAll(el) {
+  const checkboxes = document.querySelectorAll('.prep-row-cb');
+  checkboxes.forEach(cb => {
+    cb.checked = el.checked;
+    const domain = cb.dataset.domain;
+    if (el.checked) selectedDomains.add(domain);
+    else selectedDomains.delete(domain);
+  });
+  updateBatchBar();
+}
+
+function toggleSelectRow(cb, e) {
+  e.stopPropagation();
+  if (cb.checked) selectedDomains.add(cb.dataset.domain);
+  else selectedDomains.delete(cb.dataset.domain);
+  const all = document.getElementById('prepSelectAll');
+  const boxes = document.querySelectorAll('.prep-row-cb');
+  all.checked = boxes.length > 0 && [...boxes].every(b => b.checked);
+  updateBatchBar();
+}
+
+function clearSelection() {
+  selectedDomains.clear();
+  document.querySelectorAll('.prep-row-cb').forEach(cb => cb.checked = false);
+  const all = document.getElementById('prepSelectAll');
+  if (all) all.checked = false;
+  updateBatchBar();
+}
+
+async function batchApprove() {
+  if (selectedDomains.size === 0) return;
+  if (!SERVE_MODE) { alert('Server not running.'); return; }
+  const domains = [...selectedDomains];
+  try {
+    const resp = await fetch('/api/batch', {
+      method: 'PATCH',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({domains, updates: {approved_for_sendout: 1}}),
+    });
+    if (!resp.ok) { const d = await resp.json(); alert(d.error || 'Batch update failed'); return; }
+    clearSelection();
+    await initData();
+  } catch (e) {
+    alert('Batch approve failed: ' + e.message);
+  }
+}
+
+function renderPrepTable() {
+  const tbody = document.getElementById('prepTableBody');
+  if (!tbody) return;
+  const curr = DATA.records.filter(r => !r.briefaktion && !r.already_approached);
+  const showAll = document.getElementById('prepShowAll')?.checked;
+  let recs = showAll ? curr : curr.filter(r => r.klass === 'A' || r.klass === 'B');
+  if (recs.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;color:#6b7280;padding:20px;">${
+      showAll ? 'No records without briefaktion.' : 'No A/B targets without briefaktion.'
+    }</td></tr>`;
+    return;
+  }
+  // Sort: 100% approved at bottom (done), then by ascending completion (most work needed first)
+  recs = [...recs].sort((a, b) => {
+    const pa = prepCompletenessPct(a);
+    const pb = prepCompletenessPct(b);
+    if (pa === 100 && pb !== 100) return 1;
+    if (pb === 100 && pa !== 100) return -1;
+    return pa - pb;
+  });
+  _prepTableRecs = recs;
+  tbody.innerHTML = recs.map(r => `
+    <tr onclick="setPanelRecordList(_prepTableRecs);openPanelByDomain('${escHtml(r.domain)}')">
+      <td onclick="event.stopPropagation()"><input type="checkbox" class="prep-row-cb" data-domain="${escHtml(r.domain)}" ${selectedDomains.has(r.domain)?'checked':''} onchange="toggleSelectRow(this, event)"></td>
+      <td>${prepCompleteness(r)}</td>
+      <td title="${escHtml(r.full_name)}">${escHtml(r.full_name)}</td>
+      <td>${escHtml(r.domain)}</td>
+      <td>${r.region||''}</td>
+      <td>${r.ma_count||''}</td>
+      <td>${ownerAge(r.gesellschafter_age) ?? ''}</td>
+      <td>${klassHtml(r.klass)}</td>
+      <td>${escHtml(r.gf_email||'')}</td>
+      <td title="${escHtml(r.compliment_draft||'')}">${escHtml((r.compliment_draft||'').slice(0,30))}</td>
+      <td title="${escHtml(r.compliment_2||'')}">${escHtml((r.compliment_2||'').slice(0,30))}</td>
+    </tr>
+  `).join('');
+}
+
+// ===================== Add Lead Modal =====================
+
+function openAddLeadModal() {
+  document.getElementById('addLeadDomain').value = '';
+  document.getElementById('addLeadFeedback').textContent = '';
+  document.getElementById('addLeadModal').classList.add('open');
+  setTimeout(() => document.getElementById('addLeadDomain').focus(), 50);
+}
+
+function closeAddLeadModal() {
+  document.getElementById('addLeadModal').classList.remove('open');
+}
+
+async function submitAddLead() {
+  const domain = document.getElementById('addLeadDomain').value.trim();
+  if (!domain) return;
+  const fb = document.getElementById('addLeadFeedback');
+  if (!SERVE_MODE) {
+    fb.textContent = 'Server not running. Start with python pipeline.py dashboard --serve';
+    fb.className = 'save-feedback error';
+    return;
+  }
+  fb.textContent = 'Adding…';
+  fb.className = 'save-feedback';
+  try {
+    const resp = await fetch('/api/ingest-domain', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({domain}),
+    });
+    const data = await resp.json();
+    if (resp.ok) {
+      fb.textContent = data.message || 'Domain added.';
+      fb.className = 'save-feedback';
+      setTimeout(closeAddLeadModal, 1500);
+    } else {
+      fb.textContent = data.error || 'Error adding domain.';
+      fb.className = 'save-feedback error';
+    }
+  } catch (e) {
+    fb.textContent = 'Server not running.';
+    fb.className = 'save-feedback error';
+  }
+}
+
+// ===================== Boot =====================
+initData();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+# Local / machine-specific
+.claude/settings.local.json
+.codex/
+
+# Throwaway scripts and raw dumps
+tmp_*.py
+*_dump.txt
+
+# Generated artifacts
+data/output/
+*_backup_*.html

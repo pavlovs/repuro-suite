@@ -1,0 +1,35 @@
+{
+  "id": "test_profile",
+  "name": "Test Profile",
+  "description": "Minimal profile for unit tests.",
+  "geography": {"country": "DE"},
+  "discovery": {
+    "wlw_search_terms": ["TestTerm"],
+    "wlw_base_url": "https://www.wer-liefert-was.de"
+  },
+  "filters": {
+    "ma_min": 5,
+    "ma_max": 100,
+    "nace_exclude": ["4774"],
+    "name_exclude_keywords": ["zahn", "dental"]
+  },
+  "classification": {
+    "target_description": "Test target description.",
+    "class_definitions": {
+      "A": "Platform candidate",
+      "B": "Add-on",
+      "C": "Unclear",
+      "D": "No-fit",
+      "E": "Special case"
+    },
+    "examples": []
+  },
+  "ownership": {
+    "hard_disqualify_subsidiary_threshold_pct": 75.0,
+    "hard_disqualify_pe_backed": true
+  },
+  "export": {
+    "format": "serienbriefe",
+    "region_prepositions": {"Bayern": "in"}
+  }
+}

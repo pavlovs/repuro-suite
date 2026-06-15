@@ -1,0 +1,10 @@
+**/.venv
+**/__pycache__
+**/.git
+**/.pytest_cache
+**/node_modules
+**/*.pyc
+**/ai/
+**/tests/
+**/.claude/
+**/tmp_*

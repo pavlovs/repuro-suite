@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DEALROOM</title>
+<link rel="stylesheet" href="/shared.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<style>
+:root {
+  --bg:#f0f2f5; --bg-card:#fff; --bg-header:#ffffff; --bg-sidebar:#ffffff; --bg-sidebar-hover:#f3f4f6;
+  --text:#111827; --text-muted:#6b7280; --text-light:#374151; --text-white:#111827;
+  --border:#e5e7eb; --border-light:#f3f4f6; --accent:#0891B2; --accent-light:#ecfeff;
+  --danger:#e11d48; --danger-light:#fff1f4; --danger-border:#fecdd3;
+  --success:#16a34a; --warning:#eab308; --info:#0891B2;
+  --amber:#eab308; --blue:#3b82f6; --indigo:#6366f1; --purple:#a855f7;
+  --green:#16a34a; --gray:#6b7280; --red:#e11d48;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:13px;overflow:hidden;height:100vh;-webkit-font-smoothing:antialiased}
+
+/* Layout */
+.layout{display:flex;height:100vh;flex-direction:column;overflow:hidden}
+.header{background:var(--bg-header);border-bottom:1px solid var(--border);color:var(--text-white);padding:10px 20px;display:flex;align-items:center;gap:14px;flex-shrink:0;z-index:100}
+.header h1{font-size:15px;font-weight:700;letter-spacing:.3px;cursor:pointer;color:var(--text)}
+.header .badge{font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600}
+.badge-live{background:var(--success);color:#fff}
+.badge-static{background:var(--gray);color:#fff}
+.header .date{margin-left:auto;font-size:11px;color:var(--text-muted)}
+.header .lang-toggle{background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:10px;cursor:pointer;font-weight:600}
+.header .lang-toggle:hover{background:var(--border-light);border-color:#d1d5db}
+.header-home{display:flex;align-items:center;padding:2px;border-radius:6px;text-decoration:none}
+.header-home:hover{opacity:0.75}
+.header .suite-nav{margin-right:10px;padding-right:12px;border-right:1px solid var(--border)}
+
+/* Breadcrumb */
+.breadcrumb{display:flex;align-items:center;gap:6px;padding:0 0 12px;font-size:12px;color:var(--text-muted)}
+.breadcrumb a{color:var(--accent);text-decoration:none;cursor:pointer}
+.breadcrumb a:hover{text-decoration:underline}
+.breadcrumb .sep{color:var(--border)}
+
+/* Next step indicator */
+.next-step{background:var(--accent-light);color:var(--accent);padding:4px 12px;border-radius:6px;font-size:11px;font-weight:600;margin-left:auto;max-width:400px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Cockpit strip (deal summary bar) */
+.cockpit{background:var(--bg-card);border-bottom:1px solid var(--border);color:var(--text);padding:8px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;flex-shrink:0}
+.cockpit .code{font-size:15px;font-weight:700;color:var(--text)}
+.cockpit .company{font-size:13px;color:var(--text-muted)}
+.cockpit .stage-badge{padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.cockpit .metric{font-size:11px;color:var(--text-muted)}
+.cockpit .metric strong{color:var(--text)}
+.conflict-badge{background:var(--danger);color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+
+/* Stage colors */
+.stage-meeting_concluded{background:var(--amber);color:#000}
+.stage-valuation_rfi{background:var(--blue);color:#fff}
+.stage-indicative_offer{background:var(--indigo);color:#fff}
+.stage-loi_signed{background:var(--purple);color:#fff}
+.stage-due_diligence{background:#059669;color:#fff}
+.stage-contract_negotiation{background:#0d9488;color:#fff}
+.stage-closed{background:#065f46;color:#fff}
+.stage-on_hold{background:var(--gray);color:#fff}
+.stage-dead{background:var(--red);color:#fff}
+
+/* Main area: sidebar + content */
+.main{display:flex;flex:1;overflow:hidden}
+.sidebar{width:220px;background:var(--bg-sidebar);flex-shrink:0;overflow-y:auto;border-right:1px solid var(--border)}
+.sidebar-item{padding:9px 16px;color:var(--text-muted);font-size:13px;cursor:pointer;border-left:3px solid transparent;display:flex;align-items:center;gap:8px;border-radius:0;transition:background .12s,color .12s}
+.sidebar-item:hover{background:var(--bg-sidebar-hover);color:var(--text)}
+.sidebar-item.active{background:var(--accent-light);border-left-color:var(--accent);color:var(--accent);font-weight:600}
+.sidebar-item .count{margin-left:auto;font-size:10px;background:var(--border-light);color:var(--text-muted);padding:1px 6px;border-radius:8px}
+.sidebar-divider{border-top:1px solid var(--border);margin:6px 16px}
+.sidebar-block-header{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);padding:8px 16px 4px;font-weight:600;user-select:none;pointer-events:none}
+.content{flex:1;overflow-y:auto;padding:20px 24px}
+
+/* Sub-tabs (Layer 2) */
+.subtabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:16px}
+.subtab{padding:8px 16px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:500;color:var(--text-muted);border-bottom:2px solid transparent}
+.subtab:hover{color:var(--text);background:#f1f3f5}
+.subtab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.subtab.stubbed{color:#ccc;cursor:default;font-style:italic}
+.subcontent{display:none}
+.subcontent.active{display:block}
+
+/* Financials table */
+.fin-table{width:100%;border-collapse:collapse;margin-bottom:20px}
+.fin-table th{text-align:right;padding:6px 10px;font-size:11px;font-weight:600;color:var(--text-muted);border-bottom:2px solid var(--border);text-transform:uppercase;letter-spacing:.3px}
+.fin-table th:first-child{text-align:left}
+.fin-table td{padding:5px 10px;text-align:right;font-variant-numeric:tabular-nums;font-family:inherit;font-size:13px;border-bottom:1px solid var(--border-light)}
+.fin-table td:first-child{text-align:left;font-family:-apple-system,sans-serif;font-weight:500;font-size:13px}
+.fin-table tr.summary-row td{font-weight:700;border-top:1px solid var(--border)}
+.fin-table tr.margin-row td{color:var(--text-muted);font-size:11px;font-style:italic}
+tr.expandable td:first-child{cursor:pointer;padding-left:4px}
+tr.expandable td:first-child:before{content:'\25B8';margin-right:6px;color:var(--text-muted);font-size:10px}
+tr.expandable.expanded td:first-child:before{content:'\25BE'}
+tr.detail-row{display:none;background:#fafbfc}
+tr.detail-row.visible{display:table-row}
+.fin-table tr.detail-row td,tr.detail-row td{font-size:11px;color:var(--text-muted);padding:3px 10px}
+.fin-table tr.detail-row td:first-child,tr.detail-row td:first-child{padding-left:24px;font-style:italic}
+.conflict-cell{background:var(--danger-light);border:1px solid var(--danger-border)}
+.conflict-cell[title]{cursor:help}
+
+/* Overview (DR-M8) */
+.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.overview-grid.single-col{grid-template-columns:1fr}
+.overview-card{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px}
+.overview-card.hero{border-left:4px solid #1D7080}
+.overview-card h3{margin:0 0 12px;font-size:14px;color:#1D7080;border-bottom:1px solid #e2e8f0;padding-bottom:6px}
+.overview-fact{display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid #f1f5f9}
+.overview-fact .label{color:#64748b}
+.overview-fact .value{font-weight:600;text-align:right}
+.overview-fact .value.muted{font-weight:400;font-style:italic;color:#94a3b8}
+.overview-map{width:100%;height:220px;border:1px solid #e2e8f0;border-radius:6px;margin-top:8px;z-index:1}
+.stage-timeline{display:flex;gap:4px;margin-top:12px;overflow-x:auto}
+.stage-pill{padding:3px 8px;border-radius:12px;font-size:11px;background:#e2e8f0;color:#475569;white-space:nowrap;flex-shrink:0}
+.stage-pill.active{background:#1D7080;color:#fff;font-weight:700}
+.stage-pill.passed{background:#d1fae5;color:#065f46}
+.overview-thesis{padding:10px 12px;background:#f8fafc;border-radius:6px;font-size:13px;line-height:1.5;color:#334155}
+.overview-bullets{font-size:13px;color:#475569;margin:0 0 8px 0;padding:0 0 0 18px;line-height:1.6}
+.overview-bullets li{margin-bottom:3px}
+
+/* Portfolio table — Repuro CI */
+:root{--repuro:#0891B2;--repuro-accent2:#22D3EE;--repuro-light:#e0f5fa;--repuro-dark:#0670a2;--wip:#E11D48}
+.portfolio-wrap{overflow-x:auto}
+.portfolio-table{border-collapse:collapse;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:clamp(13px,0.85vw,15px);table-layout:fixed;width:100%}
+.portfolio-table col.c-code{width:6%}
+.portfolio-table col.c-rev{width:6%}
+.portfolio-table col.c-ebitda{width:6%}
+.portfolio-table col.c-pct{width:5%}
+.portfolio-table col.c-emp{width:4%}
+.portfolio-table col.c-desc{width:24%}
+.portfolio-table col.c-ev{width:6%}
+.portfolio-table col.c-mul{width:5%}
+.portfolio-table col.c-stage{width:10%}
+.portfolio-table col.c-comment{width:28%}
+.portfolio-table thead tr{background:#0891B2}
+.portfolio-table th{padding:7px 8px;font-size:clamp(13px,0.85vw,15px);font-weight:700;color:#fff;font-family:inherit;white-space:normal;vertical-align:middle;line-height:1.3}
+.portfolio-table th.r{text-align:right}
+.portfolio-table th.c{text-align:center}
+.portfolio-table td{padding:5px 8px;border-bottom:1px solid #ddeef2;vertical-align:middle;overflow:hidden;line-height:1.4}
+.portfolio-table td.stage-cell{overflow:visible;position:relative}
+.portfolio-table tbody tr:nth-child(even){background:#f4fafc}
+.portfolio-table tbody tr:hover{background:var(--repuro-light)}
+.portfolio-table td.r{text-align:right}
+.portfolio-table td.text-cell{vertical-align:middle;overflow:hidden;padding-top:7px;text-align:left}
+.clamp3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.portfolio-table td.code-cell{font-weight:700;cursor:pointer;white-space:nowrap;text-align:center}
+.portfolio-table td.code-cell:hover{color:var(--repuro)}
+.note{display:block;color:var(--wip);font-size:10px;line-height:1.3}
+.portfolio-table tfoot tr{background:none}
+.portfolio-table tfoot td{padding:6px 8px;font-weight:700;color:var(--repuro);border-top:2px solid var(--repuro);font-family:inherit;font-size:inherit}
+.portfolio-table tfoot td.r{text-align:right}
+/* Editable cells */
+.portfolio-table td[contenteditable="true"]{outline:none}
+.portfolio-table td[contenteditable="true"]:focus{background:#fffbea;box-shadow:inset 0 -1px 0 var(--repuro)}
+.save-indicator{display:none;font-size:10px;color:var(--repuro);margin-left:6px;font-family:inherit}
+.save-indicator.saving{display:inline}
+.save-indicator.saved{display:inline;color:#28a745}
+.save-indicator.error{display:inline;color:var(--wip)}
+
+/* Custom stage dropdown */
+.stage-dropdown-wrap{position:relative;display:inline-block}
+.stage-dropdown-trigger{cursor:pointer;padding:2px 4px;font-size:inherit;font-weight:600;display:inline-flex;align-items:center;gap:5px;user-select:none;color:#334155;background:none}
+.stage-dropdown-menu{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);z-index:200;background:#fff;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:4px 0;min-width:140px;margin-top:4px}
+.stage-dropdown-menu.open{display:block}
+.stage-dropdown-option{padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.stage-dropdown-option:hover{background:#f1f5f9}
+.stage-dropdown-option .stage-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* Bullet comment cell */
+.comment-bullets{list-style:disc;margin:0;padding:0 0 0 16px;font-size:inherit;line-height:1.5}
+.comment-bullets li{margin-bottom:2px}
+.comment-cell-wrap{min-height:24px;outline:none}
+.comment-cell-wrap:empty:before{content:'Click to add investor update\2026';color:#94a3b8;font-style:italic}
+.comment-cell-wrap:focus{background:#fffbea;box-shadow:inset 0 -1px 0 var(--repuro)}
+
+/* Portfolio section title — onepager style */
+.portfolio-section-title{font-size:16px;font-weight:700;font-family:inherit;color:#1D7080;margin-bottom:12px}
+
+/* Stage filter */
+.stage-filter{display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.stage-filter label{font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px}
+.stage-filter .filter-btn{padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;border:1px solid var(--border);background:var(--bg-card);color:var(--text-muted);cursor:pointer;transition:all 0.15s}
+.stage-filter .filter-btn:hover{border-color:var(--accent);color:var(--accent)}
+.stage-filter .filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* Documents */
+.doc-group{margin-bottom:16px}
+.doc-group h3{font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;border-bottom:1px solid var(--border-light);padding-bottom:4px}
+.doc-item{padding:3px 0;font-size:12px;display:flex;gap:10px}
+.doc-item .fname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-item .meta{color:var(--text-muted);font-size:11px;white-space:nowrap}
+
+/* Notes */
+.note-item{padding:10px;margin-bottom:6px;background:var(--bg-card);border:1px solid var(--border-light);border-radius:4px}
+.note-item .note-meta{font-size:10px;color:var(--text-muted);margin-bottom:3px}
+.note-item .note-text{white-space:pre-wrap;font-size:13px}
+
+/* Risk flags */
+.flag-item{padding:5px 10px;background:#fff3cd;border:1px solid #ffc107;border-radius:3px;margin-bottom:4px;font-size:12px}
+
+/* Stub */
+.stub{text-align:center;padding:48px 20px;color:var(--text-muted)}
+.stub h3{margin-bottom:6px;font-size:14px}
+.stub p{font-size:12px}
+
+/* Empty */
+.empty{text-align:center;padding:32px;color:var(--text-muted);font-size:13px}
+.empty code{background:#e9ecef;padding:2px 6px;border-radius:3px;font-size:12px}
+
+/* Section header */
+.section-title{font-size:15px;font-weight:600;margin-bottom:12px;color:var(--text)}
+
+/* Questions badge in cockpit */
+.questions-badge{background:#6366f1;color:#fff;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600}
+
+/* RFI table */
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:1px 6px;border-radius:8px;line-height:1.6}
+.src-template{background:#e9ecef;color:#495057}
+.src-account{background:#dbeafe;color:#1e40af}
+.src-conflict{background:#fef3c7;color:#92400e}
+.src-manual{background:#ede9fe;color:#5b21b6}
+.st-draft{background:#fef3c7;color:#92400e}
+.st-sent{background:#dbeafe;color:#1e40af}
+.st-answered{background:#d1fae5;color:#065f46}
+.st-waived{background:#e9ecef;color:#6b7280}
+.imp-high{background:#fee2e2;color:#991b1b}
+.imp-medium{background:#f3f4f6;color:#6b7280}
+/* RFI table */
+.rfi-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+.rfi-toolbar select{font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--text);cursor:pointer}
+.rfi-toolbar .rfi-stats{margin-left:auto;font-size:11px;color:var(--text-muted)}
+.rfi-table{width:100%;border-collapse:collapse;font-size:12px}
+.rfi-table th{text-align:left;padding:6px 10px;background:#f1f3f5;border-bottom:2px solid var(--border);font-weight:600;color:var(--text-muted);text-transform:uppercase;font-size:10px;letter-spacing:.4px;white-space:nowrap}
+.rfi-table td{padding:7px 10px;border-bottom:1px solid var(--border-light);vertical-align:top}
+.rfi-table tr:hover td{background:#f8f9fa}
+.rfi-table tr.hidden{display:none}
+.rfi-table .q-text{line-height:1.45;color:var(--text)}
+.rfi-table td.imp-cell-high{border-left:3px solid var(--danger)}
+.rfi-table td.imp-cell-medium{border-left:3px solid var(--border-light)}
+.rfi-footer{margin-top:12px;padding:8px 12px;background:#f8fafc;border:1px solid var(--border-light);border-radius:4px;font-size:11px;color:var(--text-muted)}
+.rfi-footer code{background:#e9ecef;padding:1px 5px;border-radius:3px;font-size:11px}
+
+/* One-pager grid */
+.onepager { margin-bottom:20px }
+.onepager-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; padding:8px 0 }
+.onepager-header .op-title { font-size:16px; font-weight:700; color:var(--text); font-family:inherit }
+.onepager-header .op-stage { padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600 }
+.onepager-header .op-days { font-size:11px; color:var(--text-muted) }
+.onepager-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px }
+.op-quadrant { background:var(--bg-card); border:1px solid var(--border-light); border-radius:8px; overflow:hidden }
+.op-quadrant-header { background:#0891B2; color:#fff; padding:10px 16px; font-size:16px; font-weight:700; display:flex; align-items:center; justify-content:space-between; font-family:inherit }
+.op-quadrant-header .draft-badge { background:#f59e0b; color:#000; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700 }
+.op-quadrant-header .approved-badge { background:#10b981; color:#fff; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700 }
+.op-quadrant-body { padding:16px 20px; font-size:clamp(12px,0.78vw,14px); line-height:1.6; min-height:120px; font-family:inherit }
+.op-quadrant-body ul { margin:0; padding-left:18px }
+.op-quadrant-body li { margin-bottom:5px }
+.op-quadrant-body .empty-state { color:var(--text-muted); font-style:italic }
+.op-drilldown { text-align:right; padding:4px 20px 10px; font-size:11px }
+.op-drilldown a { color:var(--accent); cursor:pointer; text-decoration:none }
+.op-drilldown a:hover { text-decoration:underline }
+.op-footnote { font-size:10px; color:var(--text-muted); padding:8px 0; border-top:1px solid var(--border-light); margin-top:12px }
+.op-metrics-row { display:flex; gap:16px; padding:10px 20px; background:#f8fafc; border-top:1px solid var(--border-light); font-size:11px; flex-wrap:wrap }
+.op-metrics-row .metric-item { display:flex; flex-direction:column; align-items:center }
+.op-metrics-row .metric-label { color:var(--text-muted); font-size:9px; text-transform:uppercase }
+.op-metrics-row .metric-value { font-weight:700; color:var(--text) }
+.op-approve-btn { background:none; border:1px solid rgba(255,255,255,0.4); color:#fff; padding:1px 8px; border-radius:3px; font-size:9px; cursor:pointer; margin-left:6px }
+.op-approve-btn:hover { background:rgba(255,255,255,0.2) }
+
+/* Q2 Chart */
+.op-chart { position:relative; height:140px; display:flex; align-items:flex-end; gap:2px; padding:0 4px; margin-bottom:12px }
+.op-chart-group { flex:1; display:flex; flex-direction:column; align-items:center; gap:1px }
+.op-chart-bars { display:flex; gap:2px; align-items:flex-end; width:100%; justify-content:center; height:120px }
+.op-chart-bar { width:14px; border-radius:2px 2px 0 0; position:relative; min-height:2px }
+.op-chart-bar.rev { background:#67e8f9 }
+.op-chart-bar.ebitda { background:#0891B2 }
+.op-chart-year { font-size:9px; color:var(--text-muted); text-align:center }
+.op-chart-legend { display:flex; gap:12px; font-size:9px; color:var(--text-muted); margin-bottom:6px }
+.op-chart-legend .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:3px; vertical-align:middle }
+.op-ct-card { background:#f0fdfa; border:1px solid #99f6e4; border-radius:4px; padding:6px 8px; font-size:10px; margin-top:6px }
+.op-table-fallback { font-size:11px; width:100% }
+.op-table-fallback th { text-align:left; font-weight:600; padding:2px 6px; border-bottom:1px solid var(--border-light) }
+.op-table-fallback td { padding:2px 6px }
+
+/* P&L Financial Table */
+.op-fin-table { width:100%; border-collapse:collapse; font-size:clamp(12px,0.78vw,15px); font-family:inherit }
+.op-fin-table thead th { background:#0891B2; color:#fff; font-weight:600; font-size:clamp(11px,0.72vw,13px); padding:4px 8px; text-align:right; border-bottom:2px solid #1D7080 }
+.op-fin-table thead th.op-fin-label { text-align:left; min-width:110px }
+.op-fin-table thead th.op-fin-ct { background:#0891B2 }
+.op-fin-table thead th.op-fin-cagr { background:#0891B2 }
+.op-fin-table tbody td { padding:4px 8px; text-align:right; border-bottom:1px solid rgba(0,0,0,0.06) }
+.op-fin-table tbody td:first-child { text-align:left; color:var(--text-muted); font-size:clamp(11px,0.73vw,13px) }
+.op-fin-table tr.op-fin-bold td { font-weight:700; color:var(--text) }
+.op-fin-table tr.op-fin-bold td:first-child { color:var(--text) }
+.op-fin-table tr.op-fin-highlight td { font-weight:600; color:#000; background:#8DE8F6 }
+.op-fin-table tr.op-fin-highlight td:first-child { color:#000 }
+.op-fin-table tr.op-fin-bold.op-fin-highlight td { font-weight:700 }
+.op-fin-table tr.op-fin-highlight td.op-fin-sep { background:transparent !important }
+.op-fin-table tr.op-fin-spacer td { padding:2px 0; border:none }
+.op-fin-table tr.op-fin-kpi td { font-size:clamp(11px,0.73vw,13px); color:#475569; border:none; padding:2px 8px; font-style:italic }
+.op-fin-table tr.op-fin-ct td { font-size:clamp(10px,0.68vw,12px); color:var(--text-muted); border-top:1px dashed rgba(0,0,0,0.1); padding:2px 8px }
+.op-fin-table thead th.op-fin-bp { background:#b8860b; color:#fff }
+.op-fin-table td.op-fin-bp-cell { background:#fef9e7 }
+.op-fin-table tr.op-fin-highlight td.op-fin-bp-cell { background:#8DE8F6 }
+.op-fin-table th.op-fin-sep, .op-fin-table td.op-fin-sep { width:6px; min-width:6px; max-width:6px; padding:0; border:none; background:transparent }
+/* Bullet bold override */
+.op-quadrant-body ul li strong { font-weight:700; color:inherit }
+/* Service portfolio split layout */
+.op-serv-split { display:flex; gap:8px; height:100% }
+.op-serv-chart-side { flex:0 0 180px; overflow:visible; display:flex; flex-direction:column }
+.op-serv-text-side { flex:1; overflow-y:auto }
+/* Service/Customer stacked bar chart (CSS div) */
+.svc-chart { display:flex; gap:8px; flex:1; align-items:stretch; min-height:0; margin-bottom:12px }
+.svc-col { display:flex; flex-direction:column; flex:1; min-width:0 }
+.svc-col-title { font-size:clamp(11px,0.7vw,13px); font-weight:600; color:#475569; text-align:center; padding-bottom:3px; flex-shrink:0 }
+.svc-col-bars { flex:1; display:flex; flex-direction:column; border-radius:3px; min-height:0; border:1px solid #cbd5e1 }
+.svc-seg { display:flex; flex-direction:column; align-items:center; justify-content:center; overflow:hidden; transition:flex .3s; padding:1px 2px; box-sizing:border-box }
+.svc-seg-inline { font-size:clamp(10px,0.65vw,12px); line-height:1.1; text-align:center; white-space:nowrap }
+.svc-seg-label { font-size:clamp(11px,0.7vw,13px); line-height:1.2; text-align:center; padding:0 3px; white-space:nowrap }
+.svc-seg-pct { font-size:clamp(11px,0.7vw,13px); line-height:1.2; white-space:nowrap }
+.svc-yr { font-size:9px; color:#94a3b8; text-align:right; margin-top:3px; flex-shrink:0 }
+/* Deal headline below header */
+.op-headline { padding:4px 12px 6px; font-size:clamp(11px,0.75vw,13px); font-weight:600; color:#0f172a; font-style:italic; border-bottom:1px solid rgba(8,145,178,0.15); min-height:1.4em }
+.op-headline:empty { display:none }
+.op-headline[contenteditable]:empty:before { content:'Click to add headline…'; color:#94a3b8; font-weight:400 }
+
+/* One-pager save indicator */
+.op-save-ind { font-size:10px; margin-left:auto; transition:opacity 0.3s }
+.op-save-ind.saved { color:var(--success) }
+.op-save-ind.error { color:var(--danger) }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<div class="header">
+  <a href="/" class="header-home" title="Repuro Home">
+    <svg width="20" height="20" viewBox="0 0 32 32" fill="none"><rect x=".5" y=".5" width="31" height="31" rx="9" fill="#0891B2"/><rect x="7" y="17.5" width="7.5" height="7.5" rx="2" fill="#fff" opacity=".95"/><rect x="12.25" y="12.25" width="7.5" height="7.5" rx="2" fill="#fff" opacity=".78"/><rect x="17.5" y="7" width="7.5" height="7.5" rx="2" fill="#fff"/></svg>
+  </a>
+  <nav class="suite-nav">
+    <a href="/">Suite</a>
+    <a href="/cockpit/">Cockpit</a>
+    <a href="/allex/">ALLEX</a>
+  </nav>
+  <h1 onclick="showPortfolio()">DEALROOM</h1>
+  <span class="badge" id="liveBadge">__LIVE_BADGE__</span>
+  <button class="lang-toggle" id="langToggle" onclick="toggleLang()">DE</button>
+  <span class="date">__DATE_STR__</span>
+</div>
+
+<div id="cockpit" class="cockpit" style="display:none"></div>
+
+<div class="main">
+  <div id="sidebar" class="sidebar" style="display:none"></div>
+  <div class="content" id="contentArea">
+    <div id="portfolioView"></div>
+    <div id="dealView" style="display:none"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+const SERVE_MODE = __SERVE_MODE_JS__;
+const INVESTOR_MODE = __INVESTOR_MODE_JS__;
+const WATERMARK_LABEL = __WATERMARK_LABEL__;
+let DATA = __DATA_JSON__;
+let LANG = 'de'; // 'de' or 'en'
+
+const LABELS = {
+  de: {
+    revenue:'Umsatzerl\u00f6se', other_income:'Sonstige betriebliche Ertr\u00e4ge',
+    cogs:'Materialaufwand', personnel:'Personalaufwand', da:'Abschreibungen',
+    other_opex:'Sonstige betriebliche Aufwendungen',
+    ebitda:'EBITDA', ebitda_margin:'EBITDA-Marge %',
+    ebit:'EBIT', interest_income:'Zinsertr\u00e4ge', interest_expense:'Zinsaufwendungen',
+    ebt:'Ergebnis vor Steuern (EBT)', tax:'Steuern vom Einkommen',
+    net_income:'Jahres\u00fcberschuss / -fehlbetrag',
+    total_assets:'Bilanzsumme (Aktiva)', fixed_assets:'Anlageverm\u00f6gen',
+    current_assets:'Umlaufverm\u00f6gen', cash:'Kasse / Bankguthaben',
+    receivables:'Forderungen aus LuL', equity:'Eigenkapital',
+    debt_lt:'Verbindlichkeiten gg. Kreditinstituten', debt_st:'Verbindlichkeiten aus LuL',
+    net_debt:'Nettoverschuldung', provisions:'R\u00fcckstellungen',
+    guv_header:'GuV Position (EUR K)', bilanz_header:'Bilanz Position (EUR K)',
+  },
+  en: {
+    revenue:'Revenue', other_income:'Other Operating Income',
+    cogs:'Cost of Sales (Material)', personnel:'Personnel Expenses', da:'Depreciation & Amortization',
+    other_opex:'Other Operating Expenses',
+    ebitda:'EBITDA', ebitda_margin:'EBITDA Margin %',
+    ebit:'EBIT', interest_income:'Interest Income', interest_expense:'Interest Expense',
+    ebt:'Earnings Before Tax (EBT)', tax:'Income Tax',
+    net_income:'Net Income',
+    total_assets:'Total Assets', fixed_assets:'Fixed Assets',
+    current_assets:'Current Assets', cash:'Cash & Bank',
+    receivables:'Trade Receivables', equity:'Equity',
+    debt_lt:'Bank Debt (LT)', debt_st:'Trade Payables (ST)',
+    net_debt:'Net Debt', provisions:'Provisions',
+    guv_header:'P&L (EUR K)', bilanz_header:'Balance Sheet (EUR K)',
+  }
+};
+
+function L(key) { return LABELS[LANG][key] || key; }
+
+function toggleLang() {
+  LANG = LANG === 'de' ? 'en' : 'de';
+  document.getElementById('langToggle').textContent = LANG.toUpperCase();
+  if (DATA.mode === 'deal') showSection(currentSection);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('liveBadge').classList.add(SERVE_MODE ? 'badge-live' : 'badge-static');
+  if (INVESTOR_MODE) applyInvestorMode();
+  if (SERVE_MODE) {
+    fetch('/api/data'+location.search).then(r=>r.json()).then(d=>{DATA=d;render()}).catch(()=>render());
+  } else { render(); }
+});
+
+function render() {
+  if (DATA.mode === 'portfolio') renderPortfolio();
+  else renderDeal();
+}
+
+// Investor (view-only) mode: tile the login identity as a diagonal watermark over
+// everything so any screenshot is traceable to the viewer. pointer-events:none keeps
+// the pipeline + one-pager fully clickable underneath.
+function applyInvestorMode() {
+  document.body.classList.add('investor-mode');
+  var label = String(WATERMARK_LABEL || 'CONFIDENTIAL').replace(/[<>&]/g, '');
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="360" height="220">'
+    + '<text x="20" y="120" transform="rotate(-28 180 110)" '
+    + 'fill="rgba(15,23,42,0.07)" font-family="Arial,Helvetica,sans-serif" '
+    + 'font-size="22" font-weight="700">' + label + ' · view-only</text></svg>';
+  var ov = document.createElement('div');
+  ov.id = 'investorWatermark';
+  ov.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:9000;'
+    + 'background-repeat:repeat;background-image:url("data:image/svg+xml;utf8,'
+    + encodeURIComponent(svg) + '")';
+  document.body.appendChild(ov);
+}
+
+
+
+// ─── Deal view ───────────────────────────────────────────────────────────────
+
+let currentSection = 'information';
+
+function renderDeal() {
+  document.getElementById('portfolioView').style.display='none';
+  document.getElementById('dealView').style.display='block';
+  document.getElementById('cockpit').style.display='flex';
+  document.getElementById('sidebar').style.display='block';
+
+  const d=DATA.deal;
+  const sc='stage-'+d.deal_stage;
+  const days=d.days_in_stage!=null?d.days_in_stage+' days in stage':'';
+  const contact=d.days_since_contact!=null?'Last contact '+d.days_since_contact+'d ago':'No contact recorded';
+  const conf=d.conflict_count>0?'<span class="conflict-badge">'+d.conflict_count+' conflicts</span>':'';
+  const qCount=d.question_count||0;
+  const qBadge=qCount>0?'<span class="questions-badge">'+qCount+' Fragen</span>':'';
+  const nextStep=getNextStep(d, DATA);
+
+  if (INVESTOR_MODE) {
+    // Investor cockpit: codename + stage only — no real name, no internal metrics
+    // (contact, conflicts, open questions, next step).
+    document.getElementById('cockpit').innerHTML=
+      '<span class="code">'+d.code_name+'</span>'+
+      '<span class="stage-badge '+sc+'">'+d.deal_stage.replace(/_/g,' ')+'</span>';
+  } else {
+    document.getElementById('cockpit').innerHTML=
+      '<span class="code">'+d.code_name+'</span>'+
+      '<span class="company">'+(d.company_name||'')+'</span>'+
+      '<span class="stage-badge '+sc+'">'+d.deal_stage.replace(/_/g,' ')+'</span>'+
+      '<span class="metric">'+days+'</span>'+
+      '<span class="metric">'+contact+'</span>'+conf+qBadge+
+      (nextStep?'<span class="next-step" title="'+esc(nextStep)+'">Next: '+esc(nextStep)+'</span>':'');
+    if (typeof _afDealVerdictChips === 'function') {
+      var _chips = _afDealVerdictChips();
+      if (_chips.length) {
+        var _chipHtml = '';
+        var _chipNav = {Revenue:'business_model',Customers:'customers',Valuation:'financials',Risks:'dd'};
+        _chips.forEach(function(ch) {
+          var _cc = typeof _afColor === 'function' ? _afColor(ch.verdict) : {bg:'#f8fafc',border:'#e2e8f0',text:'#475569',dot:'#94a3b8'};
+          var _nav = _chipNav[ch.label] || 'analysis';
+          _chipHtml += '<span onclick="showSection(\''+_nav+'\')" style="display:inline-flex;align-items:center;gap:5px;background:'+_cc.bg+';border:1px solid '+_cc.border+';border-radius:14px;padding:2px 10px;font-size:11px;line-height:1.6;margin-left:4px;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1">'
+            +'<span style="width:6px;height:6px;border-radius:50%;background:'+_cc.dot+';display:inline-block;flex-shrink:0"></span>'
+            +'<span style="font-weight:700;color:'+_cc.text+'">'+esc(ch.label)+'</span>'
+            +' <span style="font-weight:600;color:#1e293b">'+ch.val+'</span>'
+            +'</span>';
+        });
+        document.getElementById('cockpit').innerHTML += _chipHtml;
+      }
+    }
+  }
+
+  renderSidebar();
+
+  var dealViewEl = document.getElementById('dealView');
+  dealViewEl.innerHTML = '<div id="sectionContent"></div>';
+
+  showSection('onepager');
+}
+
+function renderSidebar() {
+  const docs=DATA.documents||[];
+  const notes=DATA.notes||[];
+  const docCount=docs.length;
+  const noteCount=notes.length;
+  const flags=(DATA.financials||{}).risk_flags||[];
+  const flagCount=flags.length;
+
+  const qCounts=(DATA.questions||{}).counts||{};
+  const qOpen=(qCounts.draft||0)+(qCounts.sent||0);
+
+  let h='';
+
+  // Investor (view-only) mode: only the one-pager is exposed.
+  if (INVESTOR_MODE) {
+    h+='<div class="sidebar-block-header">Deal</div>';
+    h+=sidebarItem('onepager','One-Pager',null);
+    document.getElementById('sidebar').innerHTML=h;
+    return;
+  }
+
+  // ── BLOCK A — Deal Economics ──────────────────────────────────────────────
+  h+='<div class="sidebar-block-header">Deal Economics</div>';
+  h+=sidebarItem('onepager','One-Pager',null);
+  h+=sidebarItem('analysis','Investment Analysis',DATA.cdd?null:'stub');
+  h+=sidebarItem('overview','Overview',null);
+  h+=sidebarItem('deal_history','Deal History','stub');
+  h+=sidebarItem('financials','Valuation & Financials',null);
+  h+=sidebarItem('offer','Offer & Negotiation','stub');
+
+  h+='<div class="sidebar-divider"></div>';
+
+  // ── BLOCK B — Business Fundamentals ──────────────────────────────────────
+  h+='<div class="sidebar-block-header">Business Fundamentals</div>';
+  h+=sidebarItem('business_model','Business Model',DATA.cdd?null:'stub');
+  h+=sidebarItem('customers','Customers & Suppliers',null);
+  h+=sidebarItem('employees','Employees','stub');
+  h+=sidebarItem('thesis','Thesis & Fit',null);
+  h+=sidebarItem('market','Market & Competition','stub');
+
+  h+='<div class="sidebar-divider"></div>';
+
+  // ── BLOCK C — Process Artifacts ───────────────────────────────────────────
+  h+='<div class="sidebar-block-header">Process Artifacts</div>';
+  h+=sidebarItem('rfi','RFI',qOpen>0?qOpen:null);
+  h+=sidebarItem('dd','Due Diligence',DATA.cdd?null:'stub');
+  h+=sidebarItem('documents','Documents',docCount);
+  h+=sidebarItem('notes','Notes',noteCount);
+  if(flagCount>0) h+=sidebarItem('flags','Risk Flags',flagCount);
+
+  document.getElementById('sidebar').innerHTML=h;
+}
+
+function sidebarItem(id,label,count) {
+  const cls=id===currentSection?'sidebar-item active':'sidebar-item';
+  const badge=count==='stub'?'<span class="count" style="background:#475569;font-style:italic">soon</span>'
+    :count!=null&&count>0?'<span class="count">'+count+'</span>':'';
+  return '<div class="'+cls+'" onclick="showSection(\''+id+'\')">'+label+badge+'</div>';
+}
+
+function showSection(id) {
+  // Investor mode can only ever land on the one-pager, regardless of breadcrumb links.
+  if (INVESTOR_MODE && id !== 'onepager') id='onepager';
+  currentSection=id;
+  renderSidebar();
+  const area=document.getElementById('sectionContent') || document.getElementById('dealView');
+  var contentEl=area.closest('.content'); if(contentEl) contentEl.style.overflow='';
+
+  // Breadcrumb
+  const bc='<div class="breadcrumb">'
+    +'<a onclick="showPortfolio()">All Deals</a>'
+    +'<span class="sep">/</span>'
+    +'<a onclick="showSection(\'overview\')">'+DATA.deal.code_name+'</a>'
+    +(id!=='overview'?'<span class="sep">/</span><strong>'+id.charAt(0).toUpperCase()+id.slice(1)+'</strong>':'')
+    +'</div>';
+
+  switch(id) {
+    // ── Block A — existing ─────────────────────────────────────────────────
+    case 'overview': area.innerHTML=bc+renderOverview(); _initOverviewMap(); break;
+    case 'onepager': area.innerHTML=bc+renderOnepager(); _attachOnepagerHandlers(); break;
+    case 'analysis': area.innerHTML=bc+(typeof renderAnalysis==='function'?renderAnalysis():'<div class="stub"><p>Analysis engine not loaded.</p></div>'); if(typeof _iaBindScenarioSliders==='function') setTimeout(_iaBindScenarioSliders,50); break;
+    case 'financials':
+      area.innerHTML='<div class="section-slide-shell">'+bc+(typeof renderFinancialsSection==='function'?renderFinancialsSection():renderInformation())+'</div>';
+      area.closest('.content').style.overflow='hidden';
+      // Expand handlers wired by the global re-attach block below (line 549)
+      break;
+    // Block A — wireframe sections
+    case 'deal_history': area.innerHTML=bc+renderDealHistory(); break;
+    case 'offer': area.innerHTML=bc+renderOfferNegotiation(); break;
+
+    // ── Block B — existing ─────────────────────────────────────────────────
+    case 'customers': area.innerHTML=bc+renderCustomersWithSuppliers(); break;
+    // Block B — wireframe sections
+    case 'business_model': area.innerHTML=bc+renderBusinessModel(); _attachDDEditableHandlers(); break;
+    case 'employees': area.innerHTML=bc+renderEmployees(); break;
+    case 'thesis': area.innerHTML=bc+renderThesis(); _attachDDEditableHandlers(); break;
+    case 'market': area.innerHTML=bc+renderMarket(); break;
+
+    // ── Block C — existing ─────────────────────────────────────────────────
+    case 'rfi': area.innerHTML=bc+renderRFI(); break;
+    case 'dd': area.innerHTML=bc+renderDDSection(); break;
+    case 'documents': area.innerHTML=bc+renderDocuments(); break;
+    case 'notes': area.innerHTML=bc+renderNotes(); break;
+    case 'flags': area.innerHTML=bc+renderFlags(); break;
+  }
+
+  // Re-attach expand handlers
+  document.querySelectorAll('.expandable').forEach(tr=>{
+    if(tr.dataset.guv) tr.addEventListener('click',()=>toggleExpandGuV(tr));
+    else tr.addEventListener('click',()=>toggleExpand(tr));
+  });
+}
+
+function stubSection(title,desc,milestone) {
+  return '<div class="stub"><h3>'+title+'</h3><p>'+desc+'</p><p style="margin-top:8px;font-size:11px;color:#94a3b8">Coming in '+milestone+'</p></div>';
+}
+
+
+// ─── Overview section (DR-M8) ────────────────────────────────────────────────
+
+const _STAGE_ORDER = ['meeting_concluded','valuation_rfi','indicative_offer','loi_signed','due_diligence','contract_negotiation','closed'];
+
+function renderOverview() {
+  const ov = DATA.overview || {};
+  const d = DATA.deal || {};
+  const _v = (v, suffix) => v != null ? v + (suffix||'') : null;
+  const _vk = (v) => v != null ? (v >= 1000 ? (v/1000).toFixed(1)+'M' : Math.round(v)+'K') : null;
+  const _stageLabel = s => s.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase()).replace(/\b(Loi|Rfi|Dd)\b/g, m => m.toUpperCase());
+  const hasAllex = !!(ov.legal_name || ov.street || ov.plz_ort);
+
+  let h = '<div class="overview-grid'+(hasAllex?'':' single-col')+'">';
+
+  // ── Left column: Company identity + Map ──
+  h += '<div>';
+
+  // Company name + badges (hero card)
+  h += '<div class="overview-card hero">';
+  h += '<div style="font-size:20px;font-weight:700;color:#1e293b;margin-bottom:4px">'+(ov.legal_name || d.company_name || d.code_name)+'</div>';
+  h += '<div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">';
+  h += '<span style="background:#1D7080;color:#fff;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600">'+d.code_name+'</span>';
+  h += '<span class="stage-badge stage-'+d.deal_stage+'" style="padding:2px 10px;border-radius:12px;font-size:11px;font-weight:600">'+_stageLabel(d.deal_stage||'')+'</span>';
+  h += '</div>';
+
+  // Description — render as bullet list if multiline
+  if(ov.description) {
+    const lines = ov.description.split('\n').map(l => l.replace(/^\s*[\u2022\u2023\u25E6\-\*]\s*/, '').trim()).filter(Boolean);
+    if(lines.length > 1) {
+      h += '<ul class="overview-bullets">';
+      lines.forEach(l => h += '<li>'+esc(l)+'</li>');
+      h += '</ul>';
+    } else {
+      h += '<div style="font-size:13px;color:#475569;margin-bottom:8px">'+esc(lines[0])+'</div>';
+    }
+  }
+  if(ov.services && !ov.description) h += '<div style="font-size:12px;color:#64748b;margin-bottom:12px"><strong>Services:</strong> '+esc(ov.services)+'</div>';
+
+  // Address (only if data exists)
+  if(ov.street || ov.plz_ort) {
+    h += '<div style="font-size:13px;color:#334155;margin-bottom:4px">';
+    if(ov.street) h += ov.street+'<br>';
+    if(ov.plz_ort) h += ov.plz_ort;
+    if(ov.region) h += ' <span style="color:#94a3b8">(' + ov.region + ')</span>';
+    h += '</div>';
+  }
+
+  // Legal entity (only if data exists)
+  if(ov.rechtsform || ov.hrb) {
+    h += '<div style="font-size:11px;color:#94a3b8;margin-top:4px">';
+    if(ov.rechtsform) h += ov.rechtsform;
+    if(ov.hrb) h += (ov.rechtsform ? ' | ' : '') + 'HRB ' + ov.hrb;
+    h += '</div>';
+  }
+  h += '</div>';
+
+  // Map — only render if we have location data
+  if(ov.plz_ort) {
+    h += '<div id="overview-map" class="overview-map" style="margin-top:12px"></div>';
+  }
+
+  // Stage timeline
+  h += '<div class="overview-card" style="margin-top:12px">';
+  h += '<h3>Deal Progress</h3>';
+  h += '<div class="stage-timeline">';
+  const currentIdx = _STAGE_ORDER.indexOf(d.deal_stage);
+  for(let i = 0; i < _STAGE_ORDER.length; i++) {
+    const s = _STAGE_ORDER[i];
+    let cls = 'stage-pill';
+    if(i < currentIdx) cls += ' passed';
+    else if(i === currentIdx) cls += ' active';
+    h += '<div class="'+cls+'">'+_stageLabel(s)+'</div>';
+  }
+  h += '</div>';
+  if(d.days_in_stage != null) h += '<div style="font-size:11px;color:#94a3b8;margin-top:6px">'+d.days_in_stage+' days in current stage</div>';
+  if(d.days_since_contact != null) {
+    const dsc = d.days_since_contact;
+    const dscColor = dsc > 30 ? '#ef4444' : dsc > 14 ? '#f59e0b' : '#94a3b8';
+    h += '<div style="font-size:11px;color:'+dscColor+'">Last contact: '+dsc+' days ago</div>';
+  }
+  h += '</div>';
+
+  h += '</div>'; // end left column
+
+  // ── Right column: Financials + Owner + Thesis ──
+  if(hasAllex) h += '<div>';
+  else h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">';
+
+  // Financial snapshot — timeline table
+  h += '<div class="overview-card">';
+  h += '<h3>Key Financials</h3>';
+  const tl = ov.financial_timeline || {};
+  const years = Object.keys(tl).sort();
+  if(years.length > 0) {
+    h += '<table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:8px">';
+    h += '<tr style="border-bottom:2px solid #e2e8f0"><th style="text-align:left;padding:4px 6px;color:#64748b;font-weight:600"></th>';
+    for(const yr of years) h += '<th style="text-align:right;padding:4px 6px;color:#64748b;font-weight:600">'+yr+'</th>';
+    h += '</tr>';
+    h += '<tr style="border-bottom:1px solid #f1f5f9"><td style="padding:4px 6px;font-weight:500">Revenue</td>';
+    for(const yr of years) { const v = _vk(tl[yr].revenue); h += '<td style="text-align:right;padding:4px 6px">'+(v ? '\u20ac'+v : '\u2014')+'</td>'; }
+    h += '</tr>';
+    h += '<tr><td style="padding:4px 6px;font-weight:500">Adj. EBITDA</td>';
+    let hasNegative = false;
+    for(const yr of years) {
+      const val = tl[yr].ebitda_adj;
+      if(val != null && val < 0) hasNegative = true;
+      const v = _vk(val);
+      h += '<td style="text-align:right;padding:4px 6px;'+(val != null && val < 0 ? 'color:#ef4444;font-weight:600' : '')+'">'+(v ? '\u20ac'+v : '\u2014')+'</td>';
+    }
+    h += '</tr>';
+    h += '</table>';
+    if(hasNegative) {
+      h += '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:6px;padding:8px 12px;margin-bottom:8px;display:flex;align-items:center;gap:8px">';
+      h += '<span style="font-size:18px">\u26a0\ufe0f</span>';
+      h += '<span style="font-size:12px;color:#991b1b;font-weight:600">RISK: Negative EBITDA detected</span>';
+      h += '</div>';
+    }
+  } else {
+    h += '<div style="color:#94a3b8;font-size:13px">No financial data available</div>';
+  }
+
+  // Operational KPIs — only show rows that have data
+  const kpis = [];
+  if(ov.ebitda_margin_pct != null) kpis.push({l:'EBITDA Margin', v:_v(ov.ebitda_margin_pct,'%')});
+  if(ov.employees != null) kpis.push({l:'Employees', v:ov.employees});
+  if(ov.revenue_cagr != null) kpis.push({l:'Revenue CAGR ('+ov.revenue_cagr_period+')', v:(ov.revenue_cagr*100).toFixed(1)+'%'});
+  if(ov.recurring_pct != null) kpis.push({l:'Recurring Revenue', v:_v(ov.recurring_pct,'%')});
+  if(ov.top3_share_pct != null) kpis.push({l:'Top 3 Customer Share', v:_v(ov.top3_share_pct,'%')});
+  if(!ov.revenue_k && ov.revenue_allex_k) kpis.push({l:'Revenue (ALLEX)', v:'\u20ac'+_vk(ov.revenue_allex_k), muted:true});
+  if(kpis.length > 0) {
+    h += '<div style="border-top:1px solid #e2e8f0;margin:10px 0 8px;padding-top:8px;font-size:11px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.3px">Operational KPIs</div>';
+    kpis.forEach(k => h += '<div class="overview-fact"><span class="label">'+k.l+'</span><span class="value'+(k.muted?' muted':'')+'">'+k.v+'</span></div>');
+  }
+  h += '</div>';
+
+  // Owner / Seller profile — only if any data exists
+  const ownerAge = ov.seller_age || ov.owner_age_allex;
+  const hasOwner = ov.owner_name || ownerAge || ov.seller_motivation;
+  if(hasOwner) {
+    h += '<div class="overview-card" style="margin-top:12px">';
+    h += '<h3>Owner / Seller</h3>';
+    if(ov.owner_name) h += '<div class="overview-fact"><span class="label">Name</span><span class="value">'+ov.owner_name+'</span></div>';
+    if(ownerAge) h += '<div class="overview-fact"><span class="label">Age</span><span class="value">'+ownerAge+'</span></div>';
+    if(ov.owner_share_pct) h += '<div class="overview-fact"><span class="label">Ownership</span><span class="value">'+ov.owner_share_pct+'%</span></div>';
+    if(ov.seller_motivation) h += '<div style="font-size:12px;color:#334155;margin-top:6px"><strong style="color:#64748b">Motivation:</strong> '+ov.seller_motivation+'</div>';
+    if(ov.seller_notes) h += '<div style="font-size:12px;color:#64748b;margin-top:6px;padding:6px 8px;background:#f8fafc;border-radius:4px">'+ov.seller_notes+'</div>';
+    h += '</div>';
+  }
+
+  // Managing Director contact
+  if(ov.gf_name || ov.gf_email || ov.gf_phone) {
+    h += '<div class="overview-card" style="margin-top:12px">';
+    h += '<h3>Contact</h3>';
+    if(ov.gf_name) h += '<div class="overview-fact"><span class="label">Managing Director</span><span class="value">'+ov.gf_name+'</span></div>';
+    if(ov.gf_email) h += '<div class="overview-fact"><span class="label">Email</span><span class="value"><a href="mailto:'+ov.gf_email+'" style="color:#0891B2">'+ov.gf_email+'</a></span></div>';
+    if(ov.gf_phone) h += '<div class="overview-fact"><span class="label">Phone</span><span class="value"><a href="tel:'+ov.gf_phone+'" style="color:#0891B2">'+ov.gf_phone+'</a></span></div>';
+    h += '</div>';
+  }
+
+  // Investment thesis — always show, prompt if empty
+  h += '<div class="overview-card" style="margin-top:12px">';
+  h += '<h3>Investment Thesis</h3>';
+  if(ov.investment_thesis) {
+    h += '<div class="overview-thesis">'+ov.investment_thesis.replace(/\n/g,'<br>')+'</div>';
+  } else {
+    h += '<div style="color:#94a3b8;font-size:12px;font-style:italic">No investment thesis documented yet.</div>';
+  }
+  h += '</div>';
+
+  h += '</div>'; // end right column
+  h += '</div>'; // end grid
+  return h;
+}
+
+let _overviewMap = null;
+function _initOverviewMap() {
+  const ov = DATA.overview || {};
+  const mapEl = document.getElementById('overview-map');
+  if(!mapEl) return;
+
+  const plzOrt = ov.plz_ort || '';
+  const plz = (plzOrt.match(/\d{5}/) || [''])[0];
+  if(!plz) {
+    mapEl.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8;font-size:13px">Location: '+(plzOrt||'not available')+'</div>';
+    mapEl.style.height = 'auto';
+    return;
+  }
+
+  // Init Leaflet map centered on Germany
+  if(typeof L === 'undefined') {
+    mapEl.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8;font-size:13px">Map requires internet connection</div>';
+    mapEl.style.height = 'auto';
+    return;
+  }
+  if(_overviewMap) { _overviewMap.remove(); _overviewMap = null; }
+  try {
+  _overviewMap = L.map('overview-map', {zoomControl:true, scrollWheelZoom:false}).setView([51.1657, 10.4515], 6);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'&copy; OpenStreetMap',
+    maxZoom:18
+  }).addTo(_overviewMap);
+  } catch(e) {
+    mapEl.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8;font-size:13px">Map requires internet connection</div>';
+    mapEl.style.height = 'auto';
+    return;
+  }
+
+  // Geocode via Nominatim
+  const query = encodeURIComponent(plz + ' ' + (ov.city || '') + ', Germany');
+  fetch('https://nominatim.openstreetmap.org/search?q='+query+'&format=json&limit=1', {
+    headers: {'User-Agent': 'DEALROOM/1.0 (localhost)'}
+  })
+  .then(r => r.json())
+  .then(data => {
+    if(data && data.length > 0) {
+      const lat = parseFloat(data[0].lat);
+      const lon = parseFloat(data[0].lon);
+      _overviewMap.setView([lat, lon], 11);
+
+      // Circle radius proportional to EBITDA; negative = risk flag
+      const ebitda = ov.ebitda_k || 0;
+      const isNegative = ebitda < 0;
+      const radius = isNegative ? 8 : Math.max(8, Math.sqrt(Math.abs(ebitda) / 10));
+      const fillColor = isNegative ? '#ef4444' : '#1D7080';
+      const companyName = ov.legal_name || DATA.deal.company_name || '';
+      const tooltip = companyName + (ebitda ? ' \u2014 EBITDA \u20ac' + Math.round(ebitda) + 'K' : '') + (isNegative ? ' \u26a0\ufe0f RISK' : '');
+
+      L.circleMarker([lat, lon], {
+        radius: radius,
+        fillColor: fillColor,
+        fillOpacity: 0.5,
+        color: fillColor,
+        weight: 2
+      }).addTo(_overviewMap).bindTooltip(tooltip, {permanent:false});
+    }
+  })
+  .catch(() => {
+    // Geocoding failed — show static text
+    mapEl.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8;font-size:13px">Location: '+plzOrt+'</div>';
+    mapEl.style.height = 'auto';
+    if(_overviewMap) { _overviewMap.remove(); _overviewMap = null; }
+  });
+}
+
+// ─── Information section ─────────────────────────────────────────────────────
+
+function renderInformation() {
+  // Initialize model context so Bewertung subtab works
+  _modelCtx = DATA.model_context || null;
+
+  const fin=DATA.financials||{};
+  const balance=fin.balance||{};
+
+  let h='<div class="subtabs">';
+  h+='<button class="subtab active" onclick="showSubtab(this,\'sub-guv\')">GuV</button>';
+  h+='<button class="subtab" onclick="showSubtab(this,\'sub-bilanz\')">Bilanz</button>';
+  h+='<button class="subtab" onclick="showSubtab(this,\'sub-bewertung\')">Bewertung</button>';
+  // BWA deferred: no stub shown, kept as future placeholder
+  h+='</div>';
+
+  h+='<div id="sub-guv" class="subcontent active">'+renderUnifiedGuV()+'</div>';
+  h+='<div id="sub-bilanz" class="subcontent">'+renderBilanz(balance)+'</div>';
+  h+='<div id="sub-bewertung" class="subcontent">'+renderBewertungTab()+'</div>';
+  return h;
+}
+
+function showSubtab(btn,id) {
+  btn.closest('.subtabs').querySelectorAll('.subtab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const parent=btn.closest('.subtabs').parentElement||document.getElementById('dealView');
+  parent.querySelectorAll('.subcontent').forEach(el=>el.classList.remove('active'));
+  const target=document.getElementById(id);
+  if(target)target.classList.add('active');
+}
+
+
+function esc(s){return s?s.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'):'';}
+
+// ─── Offer stub ──────────────────────────────────────────────────────────────
+
+function renderOfferStub() {
+  let h='<div class="subtabs">';
+  h+='<button class="subtab stubbed active">Current Offer</button>';
+  h+='<button class="subtab stubbed">Round History</button>';
+  h+='<button class="subtab stubbed">Gap Analysis</button>';
+  h+='</div>';
+  h+=stubSection('Offer Management','Offer rounds, seller counters, gap tracking','DR-M8 (Offer Generator)');
+  return h;
+}
+
+// ─── Documents ───────────────────────────────────────────────────────────────
+
+function renderDocuments() {
+  const docs=DATA.documents||[];
+  if(docs.length===0) return '<div class="empty">No documents registered.<br><code>python DEALROOM.py ingest-docs --deal '+DATA.deal.code_name+'</code></div>';
+
+  const groups={};
+  for(const d of docs){if(!groups[d.doc_type])groups[d.doc_type]=[];groups[d.doc_type].push(d)}
+
+  let h='';
+  for(const[type,items]of Object.entries(groups).sort()){
+    h+='<div class="doc-group"><h3>'+type.replace(/_/g,' ')+' ('+items.length+')</h3>';
+    for(const d of items){
+      const sub=d.doc_subtype?' ['+d.doc_subtype+']':'';
+      const yr=d.fiscal_year?' '+d.fiscal_year:'';
+      h+='<div class="doc-item"><span class="fname">'+esc(d.file_name)+'</span><span class="meta">'+sub+yr+'</span></div>';
+    }
+    h+='</div>';
+  }
+  return h;
+}
+
+// ─── Notes ───────────────────────────────────────────────────────────────────
+
+function renderNotes() {
+  const notes=DATA.notes||[];
+  if(notes.length===0) return '<div class="empty">No notes yet.<br><code>python DEALROOM.py note --deal '+DATA.deal.code_name+' --text "..."</code></div>';
+
+  let h='';
+  for(const n of notes){
+    const date=n.created_at?new Date(n.created_at).toLocaleString('de-DE'):'';
+    h+='<div class="note-item"><div class="note-meta">'+(n.author||'')+ ' &middot; '+date+'</div><div class="note-text">'+esc(n.note)+'</div></div>';
+  }
+  return h;
+}
+
+// ─── Risk Flags ──────────────────────────────────────────────────────────────
+
+function renderFlags() {
+  const flags=(DATA.financials||{}).risk_flags||[];
+  if(flags.length===0) return '<div class="empty">No risk flags.</div>';
+  let h='<div class="section-title">Auto-detected Risk Flags</div>';
+  for(const f of flags) h+='<div class="flag-item">'+esc(f)+'</div>';
+  return h;
+}
+
+__SECTIONS_JS__
+
+</script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+# Database files — contain real company data, never commit
+pipeline.db
+*.db
+
+# Data directories — real company data, source files
+data/input/
+data/staging/
+data/output/
+data/exports/
+data/knowledge_base.db
+
+# Sensitive documents
+*.docx
+*.xlsx
+*.csv
+*.pdf
+
+# Screenshots
+Screenshot*.png
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Environment — contains API keys
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Codex review workspace — local second-opinion reviews
+.codex/

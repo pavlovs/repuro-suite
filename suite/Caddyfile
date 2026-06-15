@@ -1,0 +1,67 @@
+{
+	admin off
+}
+
+:8080 {
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	@needsAuth not path /healthz
+	basic_auth @needsAuth {
+		roman {$AUTH_ROMAN_HASH}
+		florian {$AUTH_FLORIAN_HASH}
+	}
+
+	header {
+		X-Frame-Options DENY
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+	}
+
+	handle /api/whoami {
+		header Content-Type "application/json"
+		respond `{"user":"{http.auth.user.id}"}` 200
+	}
+
+	handle /favicon.ico {
+		respond 204
+	}
+
+	handle /shared.css {
+		header Cache-Control "no-cache, must-revalidate"
+		root * /app/suite/static
+		file_server
+	}
+
+	handle / {
+		header Cache-Control "no-cache, must-revalidate"
+		root * /app/suite/static
+		file_server
+	}
+
+	handle /allex {
+		redir /allex/ permanent
+	}
+	handle /deals {
+		redir /deals/ permanent
+	}
+	handle /cockpit {
+		redir /cockpit/ permanent
+	}
+
+	handle_path /allex/* {
+		reverse_proxy localhost:8081
+	}
+
+	handle_path /deals/* {
+		reverse_proxy localhost:8082
+	}
+
+	handle_path /cockpit/* {
+		reverse_proxy localhost:8083 {
+			header_up X-Remote-User {http.auth.user.id}
+		}
+	}
+}

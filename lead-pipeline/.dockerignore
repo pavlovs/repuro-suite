@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+*.db
+data/
+*.xlsx
+*.docx
+*.pdf
+Screenshot*.png
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+reviews/

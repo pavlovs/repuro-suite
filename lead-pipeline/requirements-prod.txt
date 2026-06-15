@@ -1,0 +1,13 @@
+# Core
+pandas>=2.1.0
+openpyxl>=3.1.0
+python-dotenv>=1.0.0
+
+# HTTP / scraping
+requests>=2.31.0
+
+# PDF generation
+fpdf2>=2.7.0
+
+# Utilities
+tenacity>=8.2.0

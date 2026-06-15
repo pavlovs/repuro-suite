@@ -1,0 +1,21 @@
+# Litestream — continuous SQLite replication to S3-compatible bucket
+# Env vars set via `fly secrets set`:
+#   LITESTREAM_REPLICA_URL  — s3://bucket/prefix (e.g. s3://repuro-backups/suite)
+#   LITESTREAM_ACCESS_KEY_ID
+#   LITESTREAM_SECRET_ACCESS_KEY
+
+dbs:
+  - path: /data/pipeline.db
+    replicas:
+      - type: s3
+        url: ${LITESTREAM_REPLICA_URL}/pipeline.db
+
+  - path: /data/dealroom.db
+    replicas:
+      - type: s3
+        url: ${LITESTREAM_REPLICA_URL}/dealroom.db
+
+  - path: /data/cockpit.db
+    replicas:
+      - type: s3
+        url: ${LITESTREAM_REPLICA_URL}/cockpit.db

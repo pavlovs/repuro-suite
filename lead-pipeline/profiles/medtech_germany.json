@@ -1,0 +1,330 @@
+{
+  "id": "medtech_germany",
+  "name": "German Ambulatory Medtech Distributors",
+  "description": "M&A targets: Medizintechnik/Sprechstundenbedarf distributors for German ambulatory care (GP, surgeon, OB-GYN). Service + distribution mix, 20-80 employees, private ownership.",
+  "geography": {
+    "country": "DE"
+  },
+  "discovery": {
+    "wlw_search_terms": [
+      "Sprechstundenbedarf",
+      "Medizintechnik",
+      "Praxisbedarf",
+      "Medizinischer Bedarf"
+    ],
+    "wlw_base_url": "https://www.wlw.de"
+  },
+  "supplementary_sources": [
+    {
+      "type": "excel_sheets",
+      "path": "data/input/260319_Repuro_Medtech_Targets_v3_claude.xlsx",
+      "ingest_sheets": [
+        "ORBIS_search",
+        "MASTER_Cleaning"
+      ],
+      "dedup_sheets": [
+        "Serienbriefe",
+        "Grande follow-up"
+      ],
+      "city_region_sheet": "Städte-Regionen-Matching"
+    }
+  ],
+  "filters": {
+    "ma_min": 5,
+    "ma_max": 100,
+    "nace_exclude": [
+      "4774"
+    ],
+    "name_exclude_keywords": [
+      "zahn",
+      "dental",
+      "dent",
+      "mund",
+      "kieferorthop",
+      "apotheke",
+      "pharma",
+      "krankenhaus",
+      "klinik",
+      "hospital"
+    ]
+  },
+  "classification": {
+    "target_description": "Distributes medical supplies/devices to ambulatory practices (GP, surgeon, OB-GYN, Dermatology) AND provides service (equipment maintenance, hygiene management, installation, Sprechstundenbedarf supply). SSB distribution is a strong positive signal — recurring revenue, high customer stickiness. Target: 20-80 employees, privately owned GmbH, not hospital-only, not dental-only.",
+    "class_definitions": {
+      "A": "Platform candidate: clear service + distribution mix, 20-80 employees, private ownership, regional or multi-regional footprint",
+      "B": "Add-on: fits criteria but smaller scale (5-20 MA) or weaker service component",
+      "C": "Unclear: vague or minimal website, ambiguous customer base, or insufficient data to classify",
+      "D": "No-fit: dental-only, pharmacy, hospital-only, pure OEM, confirmed subsidiary of large group, PE-backed, >100 employees, dissolved",
+      "E": "Special case: interesting but outside standard criteria — flag for manual review"
+    },
+    "examples": [
+      {
+        "domain": "4medic.de",
+        "full_name": "4medic GmbH",
+        "klass": "B",
+        "services_score": 42,
+        "service_flag": true,
+        "distributor_flag": true,
+        "ssb_flag": false,
+        "leistung_text": "Abrechnung, Diagnostik, EDV-Lösungen",
+        "reasoning": "Die Website bietet zahlreiche Services wie Gerätewartung, Reparatur, Praxisverwaltung, Abrechnung, IT-Sicherheit, Gerätemanagement und Laserwartung.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "abbas-medizintechnik.de",
+        "full_name": "Abbas Medizintechnik GmbH",
+        "klass": "B",
+        "services_score": 42,
+        "service_flag": true,
+        "distributor_flag": true,
+        "ssb_flag": false,
+        "leistung_text": "Abrechnung von Sprechmittelbedarf und Hilfmittelverordnungen, Analyse, Beratung",
+        "reasoning": "Die Firma bietet Reparatur, Wartung, Prüfungen, individuelle Service-Verträge, Schulungen, Hygieneberatungen, Gerätemanagement und Sicherheits- und messtechnische Kontrollen an.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "bau-medizintechnik.com",
+        "full_name": "BAU MEDIZINTECHNIK GmbH",
+        "klass": "A",
+        "services_score": 78,
+        "service_flag": true,
+        "distributor_flag": false,
+        "ssb_flag": false,
+        "leistung_text": "Blutdruckmessgeräte, Elектrische Kranken- und Pflegebetten, Elектrische Therapie",
+        "reasoning": "Die Webseite bietet eine Vielzahl von sicherheitstechnischen und messtechnischen Prüfungen für medizinische Geräte und elektrische Betriebsmittel an.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "beckelmann.de",
+        "full_name": "Dr. Wolf, Beckelmann und Partner GmbH",
+        "klass": "B",
+        "services_score": 42,
+        "service_flag": true,
+        "distributor_flag": true,
+        "ssb_flag": false,
+        "leistung_text": "Abrechnungsabteilung, Beratung, Beratung im Strahlenschutz",
+        "reasoning": "Die Firma bietet umfangreiche Dienstleistungen im Bereich der Radiologie und Medizintechnik an, einschließlich Wartung, Reparatur, Beratung und Schulungen.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "belamed.de",
+        "full_name": "BelaMed Medizin- & Datentechnik GmbH",
+        "klass": "B",
+        "services_score": 42,
+        "service_flag": true,
+        "distributor_flag": true,
+        "ssb_flag": false,
+        "leistung_text": "Anschaffung von Zubehör, Anschaffung von medizinischen Geräten, Beatmung",
+        "reasoning": "BelaMed bietet herstellerunabhängigen Service, Wartung und Reparatur für medizinische Geräte und Zubehör.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "bz-med.de",
+        "full_name": "Burchardt & Zimmermann Medizin-Technik OHG",
+        "klass": "D",
+        "services_score": 8,
+        "service_flag": true,
+        "distributor_flag": true,
+        "ssb_flag": false,
+        "leistung_text": "Beratung, Einrichtungen, Gerätemanagement",
+        "reasoning": "Die Firma bietet Wartung, Reparatur, Service und Prüfungen für Medizintechnik an.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "comservice-ffo.de",
+        "full_name": "ComService GmbH",
+        "klass": "A",
+        "services_score": 78,
+        "service_flag": true,
+        "distributor_flag": true,
+        "ssb_flag": false,
+        "leistung_text": "Abrechnung, BG-Abrechnung, Beratung",
+        "reasoning": "Die Firma bietet umfassende Serviceleistungen für Medizintechnik-Hersteller und Praxen an, einschließlich Wartung, Reparatur, Service und Prüfungen.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "gak-gmbh.eu",
+        "full_name": "GAK GmbH",
+        "klass": "D",
+        "services_score": 8,
+        "service_flag": true,
+        "distributor_flag": false,
+        "ssb_flag": false,
+        "leistung_text": "DIN 6868-150, DIN 6868-4, Dermatoskope",
+        "reasoning": "Die Firma bietet eine Vielzahl von Dienstleistungen im Bereich Medizintechnik an, wie Instandhaltung, Reparatur, Service, Prüfungen, STK, MTK, PACS, DIN 6868-150, DIN 6868-4, Kalibrierung, Gerätemanag",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "hmt-homecare.de",
+        "full_name": "HMT Service GmbH",
+        "klass": "D",
+        "services_score": 8,
+        "service_flag": true,
+        "distributor_flag": true,
+        "ssb_flag": false,
+        "leistung_text": "Abrechnung, Absauggeräte, Absaugung und Inhalation",
+        "reasoning": "Die Firma bietet umfangreiche Serviceleistungen für Medizinprodukte an, einschließlich Schulungen, Einweisungen und technischen Notdienst.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "hospital-engineering.com",
+        "full_name": "Hospital Engineering GmbH",
+        "klass": "A",
+        "services_score": 78,
+        "service_flag": true,
+        "distributor_flag": true,
+        "ssb_flag": false,
+        "leistung_text": "Ausschreibungsentwurf, Baudienstleistungen, Engineering",
+        "reasoning": "Die Firma bietet umfassende Dienstleistungen im Bereich Krankenhausplanung, -design, -equipment Management und Wartung.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "krewi.de",
+        "full_name": "KREWI MEDICAL PRODUKTE GMBH",
+        "klass": "D",
+        "services_score": 8,
+        "service_flag": true,
+        "distributor_flag": true,
+        "ssb_flag": false,
+        "leistung_text": "Buddy- & Toe Loops, Chrisofix Orthesen, Fixier-manschetten",
+        "reasoning": "Die Liste umfasst eine Vielzahl von medizinischen Produkten, die Wartung, Reparatur, Service, Prüfungen, Instandhaltung, Kalibrierung, Gerätemanagement und Patientenschutz bieten.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "kur-medizintechnik.de",
+        "full_name": "K & R Industrieservice GmbH",
+        "klass": "A",
+        "services_score": 78,
+        "service_flag": true,
+        "distributor_flag": false,
+        "ssb_flag": false,
+        "leistung_text": "DIN EN ISO 13485:2021 Zertifizierung, Download von technischen Dokumenten, Gerät",
+        "reasoning": "Die Firma bietet Wartung, Überprüfung, Reparatur und Schulungen für Medizinprodukte an, was eindeutig Dienstleistungen im Bereich Medizintechnik umfasst.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "nexus-chili.com",
+        "full_name": "NEXUS / CHILI GmbH",
+        "klass": "C",
+        "services_score": 22,
+        "service_flag": true,
+        "distributor_flag": false,
+        "ssb_flag": false,
+        "leistung_text": "Bildgebung, Bildmanagement, DICOM-Integration",
+        "reasoning": "Dienstleistungen wie Instandhaltung Wartung, Reparatur, Service und Prüfungen werden angeboten.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "pxlmd.com",
+        "full_name": "piXelmed Medizin- und Röntgentechnik GmbH",
+        "klass": "E",
+        "services_score": 38,
+        "service_flag": true,
+        "distributor_flag": false,
+        "ssb_flag": false,
+        "leistung_text": "Abnahmeprüfung, Austauschpakete, Bildbearbeitungssoftware",
+        "reasoning": "Die Firma bietet umfassende Serviceleistungen für Röntgenanlagen und Bildgebungsgeräte an, einschließlich Reparaturen, Wartungen, Konstanzprüfungen und Schulungen.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "boesl-med.de",
+        "full_name": "BÖSL Medizintechnik GmbH",
+        "klass": "E",
+        "services_score": 38,
+        "service_flag": true,
+        "distributor_flag": true,
+        "ssb_flag": false,
+        "leistung_text": "Akutes Weichteiltrauma, Ausgedehnte Thrombophlebitis, Beinmanschette",
+        "reasoning": "Die Firma bietet eine Vielzahl von therapeutischen Dienstleistungen zur Behandlung verschiedener medizinischer Zustände an.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "heine.com",
+        "full_name": "HEINE Optotechnik GmbH & Co. KG",
+        "klass": "E",
+        "services_score": 38,
+        "service_flag": true,
+        "distributor_flag": true,
+        "ssb_flag": false,
+        "leistung_text": "Bedienungsanleitung, Binokularlupen, Diagnostik Sets",
+        "reasoning": "Die Firma bietet Wartung, Reparatur, Service, Prüfungen, Zertifizierung, Garantiebedingungen, Gerätemanagement, Kalibrierung und Laserversorgung an, die alle Dienstleistungen im Bereich Medizintechnik",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "hospimed.org",
+        "full_name": "Hospimed Gesellschaft für Hospitaltechnik mbH",
+        "klass": "C",
+        "services_score": 22,
+        "service_flag": true,
+        "distributor_flag": true,
+        "ssb_flag": false,
+        "leistung_text": "Ablaufplanungen, Ausführungsplanungen, Bauleitung",
+        "reasoning": "Die Firma bietet umfassende Dienstleistungen im Bereich Planung, Umbau und Einrichtung von medizinischen Einrichtungen an.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "kawemed.com",
+        "full_name": "KIRCHNER & WILHELM GmbH + Co. KG",
+        "klass": "E",
+        "services_score": 38,
+        "service_flag": true,
+        "distributor_flag": false,
+        "ssb_flag": false,
+        "leistung_text": "Accessories, Blutdruck-Messgeräte, Consulting",
+        "reasoning": "Dienstleistungen wie Reparatur und Service werden angeboten, jedoch nicht im Handel.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "m-assist.de",
+        "full_name": "M Assist GmbH",
+        "klass": "C",
+        "services_score": 22,
+        "service_flag": true,
+        "distributor_flag": false,
+        "ssb_flag": false,
+        "leistung_text": "Abrechnungsorganisation, BI & Controlling, Beratung",
+        "reasoning": "Die M Assist GmbH bietet eine Vielzahl von Serviceleistungen an, die Wartung, Reparatur, Service, Prüfungen, Gerätemanagement und mehr umfassen.",
+        "scraped_text_excerpt": ""
+      },
+      {
+        "domain": "merzljak.de",
+        "full_name": "Merzljak Healthcare Marketing W/V GmbH",
+        "klass": "C",
+        "services_score": 22,
+        "service_flag": true,
+        "distributor_flag": false,
+        "ssb_flag": false,
+        "leistung_text": "Automatisierte Bestellabwicklung, Automatisierte E-Mail-Kampagnen, Automatisiert",
+        "reasoning": "Die Webseite bietet eine Vielzahl von Serviceleistungen wie Wartung, Reparatur, Service, Prüfungen, HubSpot Services, OXID eShop Support, Shop-Systeme, Gerätemanagement, Laserwartung.",
+        "scraped_text_excerpt": ""
+      }
+    ]
+  },
+  "ownership": {
+    "hard_disqualify_subsidiary_threshold_pct": 75.0,
+    "hard_disqualify_pe_backed": true
+  },
+  "export": {
+    "format": "serienbriefe",
+    "region_prepositions": {
+      "Bayern": "in",
+      "Nordrhein-Westfalen": "in",
+      "Baden-Württemberg": "in",
+      "Berlin": "in",
+      "Hamburg": "in",
+      "Bremen": "in",
+      "Sachsen": "in",
+      "Thüringen": "in",
+      "Hessen": "in",
+      "Niedersachsen": "in",
+      "Rheinland-Pfalz": "in",
+      "Saarland": "im",
+      "Schleswig-Holstein": "in",
+      "Mecklenburg-Vorpommern": "in",
+      "Brandenburg": "in",
+      "Sachsen-Anhalt": "in",
+      "Oberpfalz": "in der",
+      "Mittelrhein": "am"
+    }
+  }
+}

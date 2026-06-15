@@ -1,0 +1,16 @@
+{
+  "company_name": "Repuro GmbH",
+  "logo_path": "data/input/_header_logo.png",
+  "address_lines": [
+    "Repuro GmbH",
+    "Goethestraße 59",
+    "10625 Berlin",
+    "info@repuro.de",
+    "www.repuro.de"
+  ],
+  "signatures": [
+    {"name": "Florian Fischer", "title": "Geschäftsführer"},
+    {"name": "Roman Dobriakov", "title": "Geschäftsführer"}
+  ],
+  "city": "Berlin"
+}

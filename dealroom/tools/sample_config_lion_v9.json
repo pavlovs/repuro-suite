@@ -1,0 +1,42 @@
+{
+  "deal_folder": "C:\\Users\\X1\\Documents\\OneDrive - Kamu Kapital\\Dokumente - Kamu Kapital\\3_Deals\\3_Targets\\250724_Golmed (Lion)",
+  "model_subfolder": "2_Model",
+  "model_filename": "260508_Golmed_v9.xlsx",
+  "guv_sheet_name": "GuV-Konten",
+  "sources": [
+    {
+      "name": "fy2025",
+      "target_column": 8,
+      "susa_xlsx_path": "C:\\Users\\X1\\Documents\\OneDrive - Kamu Kapital\\Dokumente - Kamu Kapital\\3_Deals\\3_Targets\\250724_Golmed (Lion)\\1_Unternehmensinformationen\\16456_41030_2025_Summen und Salden (pro Monat).xlsx",
+      "xlsx_account_col": 0,
+      "xlsx_saldo_col": 5,
+      "xlsx_sh_col": 6
+    },
+    {
+      "name": "ytd2026_apr",
+      "target_column": 9,
+      "susa_json_path": "C:\\Users\\X1\\Documents\\CLAUDE_COWORK\\tools\\susa_lion_2026_apr.json",
+      "_comment": "JSON extracted from SUSA 4.26 PDF by Claude"
+    }
+  ],
+  "header_updates": [
+    [3, 11, "Delta 25"],
+    [3, 13, "04-25"],
+    [3, 14, "04-26"],
+    [3, 15, "04 % of 25"],
+    [3, 16, "Delta YTD26"]
+  ],
+  "crosschecks": {
+    "Gesamtleistung_2025": 7821903.47,
+    "Materialaufwand_2025": 4878829.97,
+    "Personalkosten_2025": 1576782.97,
+    "Betriebsergebnis_2025": 493423.86,
+    "Umsatzerloese_2026_YTD": 2791799.55,
+    "Materialaufwand_2026_YTD": 1749165.79,
+    "Personalkosten_2026_YTD": 612437.16,
+    "Betriebsergebnis_2026_YTD": 130868.78
+  },
+  "skip_accounts": ["2870"],
+  "ps1_output_path": "C:\\Users\\X1\\Documents\\CLAUDE_COWORK\\update_model.ps1",
+  "temp_dir": "C:\\Users\\X1\\Documents\\CLAUDE_COWORK"
+}

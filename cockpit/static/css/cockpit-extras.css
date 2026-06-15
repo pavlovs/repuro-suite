@@ -47,7 +47,7 @@
 /* agents lens */
 .agq-cols { display: grid; grid-template-columns: 1fr 1fr 1.3fr; gap: 14px; margin-top: 12px; }
 .agq-col { padding: 12px 14px; }
-.agq-col.verdict { border-top: 3px solid #EAB308; }
+.agq-col.verdict { border-top: 3px solid #EAB308; background: #fffdf5; }
 .agq-card { border: 1px solid #e5ecef; border-radius: 8px; padding: 10px 12px; margin-bottom: 9px; background: #fbfdfe; }
 .agq-top { display: flex; align-items: center; gap: 8px; font-size: 13px; }
 .agq-ac { font-size: 11.5px; color: #475569; margin-top: 5px; }

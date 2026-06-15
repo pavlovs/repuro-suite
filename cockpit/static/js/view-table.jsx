@@ -82,12 +82,12 @@ function TableView({ mutate, openTask, filters }) {
                 </button>
               )}
               {!flat && <span className="ws-count">{delivs.length} deliverables</span>}
-              <button className="btn ghost" style={{ marginLeft: "auto" }}
+              <button className="ws-band-target" style={{ marginLeft: "auto", border: "1px dashed var(--line)", color: "var(--muted)" }}
                 title="add a deliverable (milestone) to this workstream"
                 onClick={(e) => {
                   e.stopPropagation();
                   window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { type: "deliverable", ws: w.id } }));
-                }}><Icon name="plus" size={14} />New deliverable</button>
+                }}>+ deliverable</button>
             </div>
             {wsOpen[w.id] && (flat
               ? (delivs[0] ? TASKS.filter((t) => t.d === delivs[0].id && visible(t)).map((t) => <TRow key={t.id} t={t} />) : null)

@@ -327,20 +327,24 @@ function WeekView({ person, mutate, openTask, meetingMode }) {
   const [sharedOpen, setSharedOpen] = React.useState(false);
 
   const done = TASKS.filter((t) => (t.owners || []).includes(person) && t.status === "done");
+  const [doneOpen, setDoneOpen] = React.useState(false);
+
+  const todayN = pinned.length + overdue.length + today.length;
+  const dayLabel = todayDate.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 
   return (
     <div className="wk">
       <div className="wk-cols wk-cols-2">
         <div className="card wk-col">
-          <div className="wk-h">Today<span className="wk-n">{pinned.length + overdue.length + today.length + chase.length}</span></div>
+          <div className="wk-h">Today <span style={{fontWeight:400,fontSize:12,color:"var(--muted)",marginLeft:2}}>{dayLabel}</span><span className="wk-n">{todayN}</span></div>
           {overdue.length > 0 && <div className="wk-grp overdue"><Icon name="clock" size={11} /> Overdue</div>}
           {overdue.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
           {pinned.length > 0 && <div className="wk-grp"><Icon name="pin" size={11} /> Pinned</div>}
           {pinned.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
-          {(overdue.length > 0 || pinned.length > 0 || today.length > 0) && <div className="wk-grp">Recommended today</div>}
+          {today.length > 0 && (overdue.length > 0 || pinned.length > 0) && <div className="wk-grp">Up next</div>}
           {today.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
           {!pinned.length && !overdue.length && !today.length && <div className="empty">clear — nothing due today</div>}
-          {chase.length > 0 && <div className="wk-grp chase"><Icon name="clock" size={11} /> Chase — ball is with others</div>}
+          {chase.length > 0 && <div className="wk-grp chase"><Icon name="clock" size={11} /> Chase</div>}
           {chase.map((t) => (
             <div key={t.id} className="wkrow chase-row">
               <span className="rdot" data-level="grey" style={{ width: 9, height: 9 }} />
@@ -354,7 +358,7 @@ function WeekView({ person, mutate, openTask, meetingMode }) {
         </div>
 
         <div className="card wk-col wk-focus">
-          <div className="wk-h">This week's focus<span className="wk-n">{week.length}</span>
+          <div className="wk-h">This week<span className="wk-n">{week.length}</span>
             <button className="mini-btn" style={{marginLeft:"auto"}} onClick={() => {
               window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { type: "deliverable" } }));
             }}>+ deliverable</button>
@@ -418,8 +422,15 @@ function WeekView({ person, mutate, openTask, meetingMode }) {
               </React.Fragment>
             );
           })()}
-          {done.length > 0 && <><div className="wk-grp">Done recently</div>
-            {done.slice(0, 4).map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}</>}
+          {done.length > 0 && (
+            <React.Fragment>
+              <div className="wk-grp" style={{cursor:"pointer"}} onClick={() => setDoneOpen(!doneOpen)}>
+                <span className={"caret" + (doneOpen ? " open" : "")}><Icon name="chevron" size={10} /></span>
+                Done recently <span style={{fontWeight:600,color:"var(--muted)"}}>{done.length}</span>
+              </div>
+              {doneOpen && done.slice(0, 6).map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
+            </React.Fragment>
+          )}
         </div>
       </div>
 

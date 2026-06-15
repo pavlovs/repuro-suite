@@ -21,8 +21,7 @@ function AgentsView({ openTask }) {
   return (
     <div className="agq">
       <div className="wk-hint">
-        <span><Icon name="bolt" size={13} /> These tasks are worked by Claude (via <b>/cockpit-pull</b> in any session, or the agent loop).</span>
-        <span>Results land in <b>Needs your verdict</b> with evidence — approve or send back.</span>
+        <span><Icon name="bolt" size={13} /> Agent tasks — worked by Claude, reviewed by you.</span>
       </div>
       <div className="agq-cols">
         <div className="card agq-col">

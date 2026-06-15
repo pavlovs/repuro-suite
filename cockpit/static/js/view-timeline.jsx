@@ -3,7 +3,7 @@ function TimelineView({ openTask, mutate }) {
   const ZOOM_MIN = { compact: 100, comfortable: 160, wide: 260 };
   const [zoom, setZoom] = React.useState("comfortable");
   const [open, setOpen] = React.useState({});
-  const [filter, setFilter] = React.useState("all"); // all | dated | undated
+  const [filter, setFilter] = React.useState("dated"); // all | dated | undated
   const toggle = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
   const LABELW = 280, RH = 48, SUBH = 32;
   const scrollRef = React.useRef(null);

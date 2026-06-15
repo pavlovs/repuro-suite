@@ -46,22 +46,20 @@ function OverviewView({ person, onJump, openTask }) {
   const focus = live.filter((t) => (t.owners || []).includes(person) && (t.pinned || (t.due && daysUntil(t.due) <= 1) || chaseDue(t)))
     .sort((a, b) => (a.due || "9").localeCompare(b.due || "9"));
 
-  const hour = new Date().getHours();
-  const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const dateLine = todayDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+  const dateLine = todayDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })
     + " · week " + Math.ceil((((todayDate - new Date(todayDate.getFullYear(), 0, 1)) / 86400000) + new Date(todayDate.getFullYear(), 0, 1).getDay() + 1) / 7);
   const kpis = [
-    { k: "Deals in flight", v: deals.length, sub: "with open work · stages from dealroom", icon: "deal", tone: "brand", to: "table" },
-    { k: "Your tasks", v: myLive.length, sub: dueWeek.length + " due this week", icon: "board", tone: "ink", to: "table" },
-    { k: "Blocked", v: blocked.length, sub: "waiting on a prerequisite", icon: "relations", tone: "red", to: "relations" },
-    { k: "To chase", v: toChase.length, sub: waiting.length + " open with others", icon: "clock", tone: "purple", to: "week" },
+    { k: "Deals", v: deals.length, sub: "with open work", icon: "deal", tone: "brand", to: "table" },
+    { k: "Tasks", v: myLive.length, sub: dueWeek.length + " due this week", icon: "board", tone: "ink", to: "table" },
+    { k: "Blocked", v: blocked.length, sub: blocked.length ? "need unblocking" : "none", icon: "relations", tone: "red", to: "relations" },
+    { k: "Chase", v: toChase.length, sub: waiting.length + " with others", icon: "clock", tone: "purple", to: "week" },
   ];
 
   return (
     <div className="ov">
       <div className="ov-hero">
         <div>
-          <div className="ov-hello">{greet}, {PEOPLE[person].name}</div>
+          <div className="ov-hello">{PEOPLE[person].name}</div>
           <div className="ov-date">{dateLine}</div>
         </div>
       </div>
@@ -69,14 +67,31 @@ function OverviewView({ person, onJump, openTask }) {
       <div className="kpi-row">
         {kpis.map((c) => (
           <button key={c.k} className="kpi" data-tone={c.tone} onClick={() => onJump(c.to)}>
-            <div className="kpi-ico"><Icon name={c.icon} size={18} /></div>
+            <div className="kpi-ico"><Icon name={c.icon} size={15} /></div>
             <div className="kpi-v">{c.v}</div>
             <div className="kpi-k">{c.k}</div>
             <div className="kpi-sub">{c.sub}</div>
-            <span className="kpi-arrow"><Icon name="arrow" size={15} /></span>
+            <span className="kpi-arrow"><Icon name="arrow" size={14} /></span>
           </button>
         ))}
       </div>
+
+      {focus.length > 0 && (
+        <div className="card" style={{marginBottom:"var(--gap)"}}>
+          <div className="card-h"><h3>Focus today</h3><span className="card-h-sub">{focus.length} items</span></div>
+          <div className="ov-deliv-list">
+            {focus.slice(0, 5).map((t) => (
+              <div key={t.id} className="ov-deliv-row tc-click" onClick={() => openTask && openTask(t.id)}>
+                <ReadinessDot t={t} />
+                <span className="ov-deliv-name">{t.text}</span>
+                {dealOf(t) && <DealChip deal={dealOf(t)} small />}
+                {t.status === "waiting" ? <WaitingChip t={t} /> : <DueChip t={t} />}
+              </div>
+            ))}
+            {focus.length > 5 && <button className="ov-deliv-more" onClick={() => onJump("week")}>{focus.length - 5} more in My Week →</button>}
+          </div>
+        </div>
+      )}
 
       {(() => {
         const rk = { red: 0, amber: 1, green: 2 };

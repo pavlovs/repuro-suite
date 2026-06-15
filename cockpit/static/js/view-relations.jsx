@@ -130,6 +130,11 @@ function RelationsView({ openTask }) {
           <div className="rel-panel-eyebrow">{(wsOf(selTask) || {}).name}{dealOf(selTask) ? " · " + dealOf(selTask).codename : ""}</div>
           <div className="rel-panel-title">{selTask.text}</div>
           <div className="rel-panel-meta"><StatusPill status={selTask.status} /><OwnerStack owners={selTask.owners} size={20} />{selTask.due && <DueChip t={selTask} />}</div>
+          {selTask.status === "waiting" && selTask.waiting && (
+            <div style={{fontSize:12,color:"var(--purple)",background:"var(--purple-50)",borderRadius:8,padding:"6px 10px",margin:"6px 0"}}>
+              Waiting on {selTask.waiting.party}{selTask.waiting.chase ? " · chase " + fdate(selTask.waiting.chase) : ""}
+            </div>
+          )}
           <button className="rel-panel-open" onClick={() => openTask && openTask(sel)}>Open full detail <Icon name="arrow" size={13} /></button>
           <div className="rel-panel-sec">Must finish first ({deps[sel].length})</div>
           {deps[sel].length ? deps[sel].map((r) => { const p = byTask[r]; return (

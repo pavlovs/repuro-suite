@@ -37,17 +37,17 @@
 
   --radius: 12px;
   --radius-sm: 8px;
-  --shadow-card: 0 1px 2px rgba(16,40,48,.04), 0 1px 3px rgba(16,40,48,.06);
-  --shadow-pop: 0 10px 30px -8px rgba(16,40,48,.22), 0 2px 8px rgba(16,40,48,.10);
+  --shadow-card: 0 1px 2px rgba(16,40,48,.03), 0 0 0 1px rgba(16,40,48,.04);
+  --shadow-pop: 0 8px 24px -6px rgba(16,40,48,.18), 0 2px 6px rgba(16,40,48,.08);
   --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
   /* density defaults (cozy) */
-  --row-h: 40px;
-  --pad: 16px;
-  --gap: 14px;
+  --row-h: 42px;
+  --pad: 18px;
+  --gap: 16px;
   --fs: 13px;
   --fs-sm: 11.5px;
-  --card-pad: 14px;
+  --card-pad: 16px;
 }
 
 /* ---- density ---- */
@@ -132,7 +132,7 @@ button { font-family: inherit; cursor: pointer; }
 .person-switch button.on { background: #fff; color: var(--ink); box-shadow: var(--shadow-card); }
 
 .main { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; }
-.view { padding: var(--pad) 22px 60px; max-width: 1520px; margin: 0 auto; }
+.view { padding: var(--pad) 28px 60px; max-width: 1520px; margin: 0 auto; }
 .view-wide { max-width: none; }
 
 /* ============================ atoms ============================ */
@@ -159,9 +159,9 @@ button { font-family: inherit; cursor: pointer; }
 .owner-stack .avatar + .avatar { margin-left: -7px; }
 .owner-none { color: var(--faint); }
 
-.deal-chip { display: inline-flex; align-items: center; gap: 0; border-radius: 7px; overflow: hidden; font-weight: 700; box-shadow: inset 0 0 0 1px #bfeef8; }
-.deal-chip .deal-name { background: var(--cyan-light); color: #06414f; padding: 2px 8px; font-size: 11px; }
-.deal-chip .deal-stage { background: var(--cyan-50); color: #0a7d97; padding: 2px 8px; font-size: 10px; font-weight: 700; }
+.deal-chip { display: inline-flex; align-items: center; gap: 0; border-radius: 7px; overflow: hidden; font-weight: 700; box-shadow: none; }
+.deal-chip .deal-name { background: var(--cyan-50); color: #0a7d97; padding: 2px 8px; font-size: 11px; }
+.deal-chip .deal-stage { background: #f4fbfc; color: #0a7d97; padding: 2px 8px; font-size: 10px; font-weight: 700; }
 .deal-chip.sm .deal-stage { display: none; }
 
 .due-chip { font-size: 12px; font-weight: 700; color: var(--ink); white-space: nowrap; }
@@ -179,8 +179,8 @@ button { font-family: inherit; cursor: pointer; }
 .icon { display: block; }
 
 /* section heads */
-.sec-head { display: flex; align-items: baseline; gap: 10px; margin: 4px 0 12px; }
-.sec-head h2 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: .1px; }
+.sec-head { display: flex; align-items: baseline; gap: 10px; margin: 8px 0 14px; }
+.sec-head h2 { font-size: 14px; margin: 0; font-weight: 700; letter-spacing: .1px; }
 .sec-head .sub { font-size: 12px; color: var(--muted); }
 .sec-head .count { font-size: 11px; color: var(--muted); margin-left: auto; }
 

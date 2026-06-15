@@ -12,9 +12,9 @@ if [ -n "$COCKPIT_BASE_PATH" ]; then
     done
 fi
 
-# Ensure /data exists (Fly volume mount) and is owned by appuser
-mkdir -p /data
-chown -R appuser:appuser /data
+# Ensure /data (Fly volume) and app-local data dirs are writable by appuser
+mkdir -p /data /app/allex/data/output /app/dealroom/data
+chown -R appuser:appuser /data /app/allex/data /app/dealroom/data
 
 # If Litestream replica URL is configured, wrap supervisord for continuous backup
 if [ -n "$LITESTREAM_REPLICA_URL" ]; then

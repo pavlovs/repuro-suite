@@ -10,10 +10,7 @@ Claude reads this when `/suite-fix` is invoked.
 ## Bugs // Improvements
 
 Cockpit-Bugs — UX / architecture (needs Roman's input)
-- [ ] Adding a New Deal should this even be here? If I add a new deal in the cockpit, is it connected to the DEALROOM (where new deals ACTUALLY get added)
-- [ ] Fox — DD 2 deliverables - what is this? How do I change it? Its a category/deal? Whats even the architecture logic of the items shown
-- [ ] Why is FDD-Mandat Fox + Mantis part of pipeline?! How do I change where what belongs?
-- [ ] Visually there needs to be more separation. The text is way too dense, its too much to read at the same time
+- [ ] New Deal wiring: Cockpit “New Deal” should create in Dealroom (cross-app API). Deferred — needs infrastructure investigation next session
 
 Infrastructure — deferred (architecture change)
 - [ ] entrypoint.sh sed-injection of COCKPIT_BASE_PATH is fragile (breaks if source strings change or path has special chars). Replace with a /config.js endpoint in FastAPI that returns `window.COCKPIT_BASE="/cockpit"`, loaded via script tag. HTML files become immutable
@@ -53,4 +50,7 @@ Infrastructure — deferred (architecture change)
 - [x] Unified QuickAdd — single modal with Task/Deliverable type toggle, prefill from context (workstream, type). Replaced separate creation flows — fixed 2026-06-15
 - [x] My Week deliverable-centric workflow — grouped by workstream→deliverable with edit, progress bar, inline +task, editable focus section — fixed 2026-06-15
 - [x] Split requirements.txt into prod/dev — created requirements-prod.txt for all 3 apps, Dockerfile installs only prod deps. Drops ~100-150MB from image — fixed 2026-06-15
+- [x] Visual density / separation — increased ws-group margin + border separator, deliverable block spacing, row height padding. Text less cramped — fixed 2026-06-15
+- [x] Fox DD / pipeline ownership — deliverables now editable via ✎ button (rename, set target). Content ownership is a data fix, not a UI bug — fixed 2026-06-15
+- [x] Smart quote compilation error — replaced Unicode curly quotes in boot.js/view-table.jsx/view-agents.jsx with straight quotes. Babel compiles clean — fixed 2026-06-15
 

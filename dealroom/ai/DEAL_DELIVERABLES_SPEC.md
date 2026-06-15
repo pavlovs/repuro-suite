@@ -95,9 +95,11 @@ Maps deliverable type to golden template path. Always copy template, never creat
 | Deliverable | Template Path | Notes |
 |---|---|---|
 | Indicative Offer | `3_Deals/3_Targets/251125_KVG (Wolf)/3_Indikatives Angebot/260225_Indikatives Angebot KVG_vAktualisiert.docx` | 121 paragraphs, List Paragraph style for bullets |
-| Databook | `3_Deals/3_Targets/250611_HWV (Octopus)/5_DD/260116_Prel_DD/Octopus_Databook_v2.xlsx` | Multi-tab structure with INPUT/ANALYSIS separation |
-| Valuation Model | `[ROMAN: confirm — is there a blank model template, or always copy closest prior deal?]` | |
-| RFI | `[ROMAN: confirm — template location]` | |
+| Databook (legacy) | `dealroom/config/golden/databook/CAT_Databook_v6.xlsx` | Pre-CDD format, multi-tab with INPUT/ANALYSIS separation |
+| CDD Databook | `dealroom/config/golden/dd/CDD_Databook_Template.xlsx` | Evolved from Mantis v4. 16 tabs: Summary, Revenue/Customer/Cohort/Churn/Supplier/Personnel/P&L/Charts/Gaps analysis + 5 INPUT tabs. Skill: `/cdd` |
+| CDD RFI | `dealroom/config/golden/dd/CDD_RFI_Template.xlsx` | Fragenliste (Nr/Quelle/Frage/Prio/Antwort) + Kundendaten tab. Skill: `/cdd` |
+| Valuation Model | `dealroom/config/golden/model/` — select by entity/SKR type | See `/model` skill Phase 1 for template selection matrix |
+| RFI (Datenanfrage) | `dealroom/config/golden/rfi/Datenanfrage_Template.xlsx` | Initial DD data request — sent before CDD starts |
 
 ---
 

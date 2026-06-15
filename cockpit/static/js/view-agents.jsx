@@ -28,7 +28,7 @@ function AgentsView({ openTask }) {
         <div className="card agq-col">
           <div className="wk-h">Queued<span className="wk-n">{queued.length}</span></div>
           {queued.map((t) => <Card key={t.id} t={t} />)}
-          {!queued.length && <div className="empty">nothing queued — create a task with “Claude (agent)”</div>}
+          {!queued.length && <div className="empty">nothing queued — create a task with "Claude (agent)"</div>}
         </div>
         <div className="card agq-col">
           <div className="wk-h">Running<span className="wk-n">{running.length}</span></div>

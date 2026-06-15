@@ -368,7 +368,7 @@
       return window.byTask[created.id] || null;
     },
     async deleteTask(t) {
-      if (!confirm("Delete “" + t.text + "”? Dependents lose this gate. No undo.")) return;
+      if (!confirm('Delete "' + t.text + '"? Dependents lose this gate. No undo.')) return;
       var r = await authedFetch("/api/task/" + t.id, { method: "DELETE" });
       if (!r.ok) { showToast("Delete failed: " + (await r.text()).slice(0, 200), "err"); return; }
       await refreshFromServer();

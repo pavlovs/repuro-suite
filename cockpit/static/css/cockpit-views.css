@@ -167,6 +167,7 @@
 .mtg-party { font-size: 10.5px; color: var(--muted); font-style: italic; white-space: nowrap; margin-left: auto; }
 .mtg-deliv.at-risk { background: var(--rose-50); }
 .mtg-deliv.at-risk .mtg-prog-fill { background: var(--rose); }
+.wk-deliv-head.at-risk { background: var(--rose-50); border-radius: 6px; padding: 4px 8px; }
 .mtg-due.warn { color: var(--rose); font-weight: 700; }
 .mtg-sub { display: flex; align-items: baseline; gap: 8px; padding: 3px 12px 3px 28px; font-size: 11.5px; color: var(--ink-2); cursor: pointer; }
 .mtg-sub:hover { color: var(--ink); background: var(--surface-2); }
@@ -207,18 +208,36 @@
 .mtg-attn-section { border-color: #fecdd3; }
 .mtg-attn-section .mtg-sec-h { border-bottom: 1px solid var(--line-2); }
 
+/* meeting mode — larger fonts for screen sharing / across-the-table readability */
+.mtg .wk-deliv-name { font-size: 14.5px; cursor: pointer; }
+.mtg .wk-deliv-name:hover { color: var(--brand); }
+.mtg .wkrow-main { font-size: 14px; }
+.mtg .wkrow { padding: 11px var(--card-pad); gap: 10px; }
+.mtg .chk { width: 22px; height: 22px; border-radius: 7px; }
+.mtg .wk-grp { font-size: 11px; }
+.mtg .wk-grp.mtg-ws { font-size: 10.5px; }
+.mtg .wk-h { font-size: 15px; }
+.mtg .mtg-sec-label { font-size: 13px; }
+.mtg .deliv-due { font-size: 13px; }
+.mtg .due-chip { font-size: 12.5px; }
+.mtg .wk-deliv-block { padding: 10px 12px; }
+.mtg .deliv-edit { font-size: 14px; opacity: 0; transition: opacity .15s; cursor: pointer; background: none; border: none; padding: 2px 4px; }
+.mtg .wk-deliv-head:hover .deliv-edit { opacity: 1; }
+.mtg .mtg-add-btn { font-size: 16px; font-weight: 700; color: var(--brand); }
+
 @media (max-width: 1000px) { .wk-cols { grid-template-columns: 1fr; } .mtg-done-cols { grid-template-columns: 1fr; } }
 
 /* ============================ TABLE ============================ */
 .tbl-filters { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
-.ws-group { margin-bottom: 16px; }
-.ws-band { display: flex; align-items: center; gap: 10px; padding: 8px 6px; }
+.ws-group { margin-bottom: 24px; border-bottom: 1px solid var(--line-2); padding-bottom: 8px; }
+.ws-group:last-child { border-bottom: none; }
+.ws-band { display: flex; align-items: center; gap: 10px; padding: 10px 6px; }
 .ws-ico { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: #fff; flex: none; }
 .ws-ico.sm { width: 18px; height: 18px; border-radius: 5px; }
 .ws-name { font-size: 15px; font-weight: 700; }
 .ws-count { font-size: 11.5px; color: var(--muted); }
-.deliv { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--ws); border-radius: var(--radius); margin-bottom: 8px; box-shadow: var(--shadow-card); overflow: hidden; }
-.deliv-h { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; background: #f8fafb; }
+.deliv { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--ws); border-radius: var(--radius); margin-bottom: 10px; box-shadow: var(--shadow-card); overflow: hidden; }
+.deliv-h { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; background: #f8fafb; }
 .deliv-h:hover { background: var(--surface-2); }
 .caret { color: var(--faint); display: grid; place-items: center; transition: transform .15s; }
 .caret.open { transform: rotate(90deg); }
@@ -229,7 +248,7 @@
 .deliv-due { font-size: 12px; font-weight: 700; color: var(--ink-2); min-width: 52px; text-align: right; white-space: nowrap; }
 .deliv-due.soon { color: #92670a; } .deliv-due.over { color: var(--rose); }
 .deliv-body { border-top: 1px solid var(--line-2); }
-.trow { display: grid; grid-template-columns: 30px minmax(240px, 1fr) 130px 84px 62px 38px; gap: 10px; align-items: center; padding: 0 14px; min-height: var(--row-h); border-top: 1px solid var(--line-2); }
+.trow { display: grid; grid-template-columns: 30px minmax(240px, 1fr) 130px 84px 62px 38px; gap: 10px; align-items: center; padding: 2px 14px; min-height: calc(var(--row-h) + 4px); border-top: 1px solid var(--line-2); }
 .trow:first-child { border-top: none; }
 .trow:hover { background: var(--surface-2); }
 .trow.thead { min-height: 30px; font-size: 10px; text-transform: uppercase; letter-spacing: .6px; color: var(--muted); font-weight: 800; }

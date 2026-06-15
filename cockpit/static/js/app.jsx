@@ -32,7 +32,7 @@ const NAV = [
 
 /* Workstreams tab: one dataset, two layouts (table / board), shared filters */
 function WorkstreamsTab({ mutate, openTask, person, onNewDeal }) {
-  const [layout, setLayout] = React.useState("table");
+  const [layout, setLayout] = React.useState("deliverables");
   const [grouping, setGrouping] = React.useState("status");
   const [filters, setFilters] = React.useState({ person: "", readiness: "", showDone: false });
 
@@ -40,6 +40,7 @@ function WorkstreamsTab({ mutate, openTask, person, onNewDeal }) {
     <div>
       <div className="ws-toolbar">
         <div className="seg layout-seg">
+          <button className={layout === "deliverables" ? "on" : ""} onClick={() => setLayout("deliverables")}><Icon name="deal" size={14} />Deliverables</button>
           <button className={layout === "table" ? "on" : ""} onClick={() => setLayout("table")}><Icon name="table" size={14} />Table</button>
           <button className={layout === "board" ? "on" : ""} onClick={() => setLayout("board")}><Icon name="board" size={14} />Board</button>
         </div>
@@ -54,23 +55,27 @@ function WorkstreamsTab({ mutate, openTask, person, onNewDeal }) {
         <button className="btn ghost" onClick={onNewDeal}><Icon name="deal" size={14} />New deal (playbook)</button>
       </div>
 
-      <div className="tbl-filters">
-        <div className="seg">
-          {[["", "Everyone"], ["RD", "Roman"], ["FF", "Flo"]].map(([v, l]) => (
-            <button key={v} className={filters.person === v ? "on" : ""} onClick={() => setFilters({ ...filters, person: v })}>{l}</button>
-          ))}
+      {layout !== "deliverables" && (
+        <div className="tbl-filters">
+          <div className="seg">
+            {[["", "Everyone"], ["RD", "Roman"], ["FF", "Flo"]].map(([v, l]) => (
+              <button key={v} className={filters.person === v ? "on" : ""} onClick={() => setFilters({ ...filters, person: v })}>{l}</button>
+            ))}
+          </div>
+          <div className="seg">
+            {[["", "Any readiness"], ["red", "Blocked"], ["amber", "Prereqs running"], ["green", "Ready"]].map(([v, l]) => (
+              <button key={v} className={filters.readiness === v ? "on" : ""} onClick={() => setFilters({ ...filters, readiness: v })}>
+                {v && <span className="rdot" data-level={v} style={{ width: 8, height: 8, marginRight: 5 }} />}{l}
+              </button>
+            ))}
+          </div>
+          {layout === "table" && <label className="chk-lbl"><input type="checkbox" checked={filters.showDone} onChange={(e) => setFilters({ ...filters, showDone: e.target.checked })} /> show done</label>}
         </div>
-        <div className="seg">
-          {[["", "Any readiness"], ["red", "Blocked"], ["amber", "Prereqs running"], ["green", "Ready"]].map(([v, l]) => (
-            <button key={v} className={filters.readiness === v ? "on" : ""} onClick={() => setFilters({ ...filters, readiness: v })}>
-              {v && <span className="rdot" data-level={v} style={{ width: 8, height: 8, marginRight: 5 }} />}{l}
-            </button>
-          ))}
-        </div>
-        {layout === "table" && <label className="chk-lbl"><input type="checkbox" checked={filters.showDone} onChange={(e) => setFilters({ ...filters, showDone: e.target.checked })} /> show done</label>}
-      </div>
+      )}
 
-      {layout === "table"
+      {layout === "deliverables"
+        ? <DeliverableView mutate={mutate} openTask={openTask} />
+        : layout === "table"
         ? <TableView mutate={mutate} openTask={openTask} filters={filters} />
         : <BoardView grouping={grouping} mutate={mutate} openTask={openTask} filters={filters} />}
     </div>

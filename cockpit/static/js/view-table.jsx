@@ -82,12 +82,12 @@ function TableView({ mutate, openTask, filters }) {
                 </button>
               )}
               {!flat && <span className="ws-count">{delivs.length} deliverables</span>}
-              <button className=”btn ghost” style={{ marginLeft: “auto” }}
-                title=”add a deliverable (milestone) to this workstream”
+              <button className="btn ghost" style={{ marginLeft: "auto" }}
+                title="add a deliverable (milestone) to this workstream"
                 onClick={(e) => {
                   e.stopPropagation();
-                  window.dispatchEvent(new CustomEvent(“cockpit:quickadd”, { detail: { type: “deliverable”, ws: w.id } }));
-                }}><Icon name=”plus” size={14} />New deliverable</button>
+                  window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { type: "deliverable", ws: w.id } }));
+                }}><Icon name="plus" size={14} />New deliverable</button>
             </div>
             {wsOpen[w.id] && (flat
               ? (delivs[0] ? TASKS.filter((t) => t.d === delivs[0].id && visible(t)).map((t) => <TRow key={t.id} t={t} />) : null)
@@ -136,3 +136,86 @@ function TableView({ mutate, openTask, filters }) {
   );
 }
 window.TableView = TableView;
+
+function DeliverableView({ mutate, openTask }) {
+  const [expanded, setExpanded] = React.useState({});
+  const toggle = (id) => setExpanded((o) => ({ ...o, [id]: !o[id] }));
+
+  function personGroups(person) {
+    const out = [];
+    for (const ws of WORKSTREAMS) {
+      const matching = [];
+      for (const d of DELIVERABLES.filter((d) => d.ws === ws.id)) {
+        const allTasks = TASKS.filter((t) => t.d === d.id);
+        const personTasks = allTasks.filter((t) => (t.owners || []).includes(person));
+        if (!personTasks.length) continue;
+        const openTasks = personTasks.filter((t) => t.status !== "done");
+        const s = delivStats(d);
+        matching.push({ d, personTasks, openTasks, s });
+      }
+      if (matching.length) out.push({ ws, delivs: matching });
+    }
+    return out;
+  }
+
+  const rdGroups = personGroups("RD");
+  const ffGroups = personGroups("FF");
+
+  const PersonCol = ({ id, groups }) => {
+    const totalDelivs = groups.reduce((n, g) => n + g.delivs.length, 0);
+    return (
+      <div className="card wk-col">
+        <div className="wk-h"><Avatar id={id} size={18} /> {PEOPLE[id].name}<span className="wk-n">{totalDelivs}</span></div>
+        {groups.map(({ ws, delivs }) => (
+          <React.Fragment key={ws.id}>
+            <div className="wk-grp wk-ws-grp" style={{ color: ws.color }}>
+              <span className="ws-ico" style={{ background: ws.color, width: 16, height: 16, borderRadius: 4, display: "inline-flex", alignItems: "center", justifyContent: "center", marginRight: 6 }}>
+                <Icon name={ws.icon} size={10} />
+              </span>
+              {ws.name}
+            </div>
+            {delivs.map(({ d, personTasks, openTasks, s }) => {
+              const pct = s.total ? Math.round(s.done / s.total * 100) : 0;
+              const du = d.target ? daysUntil(d.target) : null;
+              const isOpen = expanded[d.id + "-" + id];
+              return (
+                <div key={d.id} className="wk-deliv-block">
+                  <div className="wk-deliv-head" style={{ cursor: "pointer" }} onClick={() => toggle(d.id + "-" + id)}>
+                    <span className={"caret" + (isOpen ? " open" : "")}><Icon name="chevron" size={12} /></span>
+                    <span className="wk-deliv-name">{d.name}</span>
+                    {d.deal && <DealChip deal={d.deal} small />}
+                    <span className="wk-deliv-prog">
+                      <span className="prog-bar" style={{ width: 60 }}><span style={{ width: pct + "%", background: ws.color }} /></span>
+                      <span style={{ fontSize: 11, color: "#64748b" }}>{s.done}/{s.total}</span>
+                    </span>
+                    {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")} style={{ fontSize: 11 }}>{fdate(d.target)}</span>}
+                    <button className="deliv-edit" title="rename / set target date" style={{marginLeft:4}}
+                      onClick={(e) => { e.stopPropagation(); editDeliv(d); }}>✎</button>
+                  </div>
+                  {isOpen && (
+                    <div style={{ marginTop: 4 }}>
+                      {personTasks.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} showWs={false} />)}
+                      <button className="btn ghost" style={{ fontSize: 11, padding: "2px 8px", marginTop: 2 }}
+                        onClick={() => window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } }))}>
+                        <Icon name="plus" size={11} /> add task
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </React.Fragment>
+        ))}
+        {!groups.length && <div className="empty">no deliverables</div>}
+      </div>
+    );
+  };
+
+  return (
+    <div className="wk-cols wk-cols-2" style={{ marginTop: 12 }}>
+      <PersonCol id="RD" groups={rdGroups} />
+      <PersonCol id="FF" groups={ffGroups} />
+    </div>
+  );
+}
+window.DeliverableView = DeliverableView;

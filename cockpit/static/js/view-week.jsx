@@ -91,6 +91,14 @@ function MeetingView({ mutate, openTask }) {
 
   const rd = personFocus("RD"), ff = personFocus("FF");
 
+  async function mtgEditDeliv(d) {
+    const name = await showModal("Deliverable name:", [{value: d.name}]);
+    if (name === null) return;
+    const target = await showModal("Target date (empty = none):", [{type: "date", value: d.target || ""}]);
+    if (target === null) return;
+    api.saveDeliv(d, { name: name.trim() || d.name, target_date: target.trim() || null });
+  }
+
   // Week number
   const weekNum = Math.ceil((((todayDate - new Date(todayDate.getFullYear(), 0, 1)) / 86400000) + new Date(todayDate.getFullYear(), 0, 1).getDay() + 1) / 7);
 
@@ -130,80 +138,86 @@ function MeetingView({ mutate, openTask }) {
         </div>
       )}
 
-      {/* Section 1: Completed since last meeting */}
-      {recentDone.length > 0 && (
-        <div className="mtg-section card">
-          <div className="mtg-sec-h">
-            <Icon name="check" size={14} />
-            <span>Completed since last meeting</span>
-            <span className="wk-n">{recentDone.length}</span>
-          </div>
-          <div className="mtg-done-cols">
-            {[["RD", rdDone], ["FF", ffDone]].map(([p, items]) => items.length > 0 && (
-              <div key={p} className="mtg-done-col">
-                <div className="mtg-done-person"><Avatar id={p} size={16} /> {PEOPLE[p].name}</div>
-                {items.map((t) => (
-                  <div key={t.id} className="mtg-done-row tc-click" onClick={() => openTask && openTask(t.id)}>
-                    <Icon name="check" size={11} />
-                    <span className="mtg-done-txt">{t.text}</span>
-                    {dealOf(t) && <span className="mtg-deal sm">{dealOf(t).codename}</span>}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Section 1: This week's focus per person — editable */}
+      <div className="mtg-sec-label"><Icon name="week" size={14} /> This week's focus</div>
+      <div className="wk-cols wk-cols-2">
+        {[["RD", rd], ["FF", ff]].map(([p, data]) => {
+          const groups = groupByWs(data.delivs);
+          const taskCount = data.delivs.reduce((n, d) => n + d.myTasks.length, 0) + data.standalone.length;
+          return (
+            <div key={p} className="card wk-col">
+              <div className="wk-h"><Avatar id={p} size={18} /> {PEOPLE[p].name}<span className="wk-n">{taskCount}</span></div>
+              {groups.map(([wsName, wsDelivs]) => (
+                <React.Fragment key={wsName}>
+                  <div className="wk-grp mtg-ws">{wsName}</div>
+                  {wsDelivs.map((d) => {
+                    const pct = d.total ? Math.round(d.done / d.total * 100) : 0;
+                    const daysLeft = d.target ? daysUntil(d.target) : null;
+                    const urgent = daysLeft !== null && daysLeft <= 14 && pct < 50;
+                    return (
+                      <div key={d.id} className="wk-deliv-block">
+                        <div className={"wk-deliv-head" + (urgent ? " at-risk" : "")}>
+                          {d.deal && <DealChip deal={d.deal} small />}
+                          <span className="wk-deliv-name tc-click" onClick={() => mtgEditDeliv(d)}>{shortName(d)}</span>
+                          <button className="deliv-edit" title="edit deliverable" onClick={() => mtgEditDeliv(d)}>✎</button>
+                          <button className="deliv-edit mtg-add-btn" title="add task to this deliverable"
+                            onClick={() => window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } }))}>+</button>
+                          <span className="wk-deliv-prog">
+                            <span className="prog-bar" style={{width:60}}><span style={{ width: pct + "%", background: d.wsObj ? d.wsObj.color : "#94a3b8" }} /></span>
+                            <span style={{fontSize:11,color:"#64748b"}}>{d.done}/{d.total}</span>
+                          </span>
+                          {d.target && <span className={"deliv-due" + (daysLeft < 0 ? " over" : daysLeft <= 7 ? " soon" : "")}>{fdate(d.target)}</span>}
+                        </div>
+                        {d.myTasks.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} showWs={false} />)}
+                      </div>
+                    );
+                  })}
+                </React.Fragment>
+              ))}
+              {data.standalone.length > 0 && (
+                <React.Fragment>
+                  <div className="wk-grp mtg-ws">Other</div>
+                  {data.standalone.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
+                </React.Fragment>
+              )}
+              {!taskCount && <div className="empty">clear</div>}
+            </div>
+          );
+        })}
+      </div>
 
-      {/* Section 2: Needs attention — blockers, overdue, cross-person deps */}
+      {/* Section 2: Blockers & decisions */}
       {attentionN > 0 && (
         <div className="mtg-section mtg-attn-section card">
           <div className="mtg-sec-h attn">
             <Icon name="relations" size={14} />
-            <span>Needs discussion</span>
+            <span>Blockers & decisions</span>
             <span className="wk-n">{attentionN}</span>
           </div>
           {blocked.length > 0 && (
             <React.Fragment>
-              <div className="wk-grp overdue"><Icon name="relations" size={11} /> Blocked</div>
-              {blocked.map((t) => (
-                <div key={t.id} className="wkrow tc-click" onClick={() => openTask && openTask(t.id)}>
-                  <span className="rdot" data-level="red" style={{ width: 9, height: 9 }} />
-                  <div className="wkrow-txt">
-                    <span className="wkrow-main">{t.text}</span>
-                    <span className="wkrow-sub">needs: {blockingPrereqs(t).map((p) => p.text).join(", ")}</span>
-                  </div>
-                  <OwnerStack owners={t.owners} size={16} />
-                </div>
-              ))}
+              <div className="wk-grp overdue"><Icon name="relations" size={11} /> Blocked — prerequisite not done</div>
+              {blocked.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
             </React.Fragment>
           )}
           {overdue.length > 0 && (
             <React.Fragment>
               <div className="wk-grp overdue"><Icon name="clock" size={11} /> Overdue</div>
-              {overdue.map((t) => (
-                <div key={t.id} className="wkrow tc-click" onClick={() => openTask && openTask(t.id)}>
-                  <span className="rdot" data-level="amber" style={{ width: 9, height: 9 }} />
-                  <div className="wkrow-txt">
-                    <span className="wkrow-main">{t.text}</span>
-                    <span className="wkrow-sub">{Math.abs(daysUntil(t.due))}d overdue</span>
-                  </div>
-                  <OwnerStack owners={t.owners} size={16} />
-                </div>
-              ))}
+              {overdue.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
             </React.Fragment>
           )}
           {waiting.length > 0 && (
             <React.Fragment>
-              <div className="wk-grp chase"><Icon name="clock" size={11} /> Chase overdue</div>
+              <div className="wk-grp chase"><Icon name="clock" size={11} /> Chase — ball with others</div>
               {waiting.map((t) => (
-                <div key={t.id} className="wkrow chase-row tc-click" onClick={() => openTask && openTask(t.id)}>
+                <div key={t.id} className="wkrow chase-row">
+                  <button className="chk" data-on={false} onClick={() => api.save(t, { status: "open" })} title="mark resolved" />
                   <span className="rdot" data-level="grey" style={{ width: 9, height: 9 }} />
-                  <div className="wkrow-txt">
-                    <span className="wkrow-main">{t.text}</span>
-                    <span className="wkrow-sub">with {t.waiting.party}</span>
-                  </div>
-                  <OwnerStack owners={t.owners} size={16} />
+                  <div className="wkrow-txt tc-click" onClick={() => openTask && openTask(t.id)}><span className="wkrow-main">{t.text}</span><span className="wkrow-sub">with {t.waiting.party}</span></div>
+                  <button className="mini-btn" onClick={async () => {
+                    const next = await showModal("Chased. Next chase date:", [{type: "date", value: addDays(t.waiting.chase || TODAY, 3)}]);
+                    if (next) api.save(t, { waiting: { ...t.waiting, chase: next } });
+                  }}>chased →</button>
                 </div>
               ))}
             </React.Fragment>
@@ -212,9 +226,9 @@ function MeetingView({ mutate, openTask }) {
             <React.Fragment>
               <div className="wk-grp"><Icon name="relations" size={11} /> Cross-person dependencies</div>
               {deps.map(({ t, pre }, i) => (
-                <div key={i} className="dep-row tc-click" onClick={() => openTask && openTask(t.id)}>
-                  <span className="rdot" data-level={readiness(t)} style={{ width: 9, height: 9 }} />
-                  <div className="dep-txt">
+                <div key={i} className="wkrow tc-click" onClick={() => openTask && openTask(t.id)}>
+                  <ReadinessDot t={t} />
+                  <div className="wkrow-txt">
                     <span className="wkrow-main">{t.text}</span>
                     <span className="dep-need"><OwnerStack owners={t.owners} size={14} /> waiting on <b>{pre.text}</b> <OwnerStack owners={pre.owners} size={14} /></span>
                   </div>
@@ -225,71 +239,42 @@ function MeetingView({ mutate, openTask }) {
           {together.length > 0 && (
             <React.Fragment>
               <div className="wk-grp"><Icon name="board" size={11} /> Do together</div>
-              {together.map((t) => (
-                <div key={t.id} className="wkrow tc-click" onClick={() => openTask && openTask(t.id)}>
-                  <ReadinessDot t={t} />
-                  <div className="wkrow-txt"><span className="wkrow-main">{t.text}</span><span className="wkrow-sub">{(wsOf(t) || {}).name}</span></div>
-                  <OwnerStack owners={t.owners} size={16} />
-                </div>
-              ))}
+              {together.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
             </React.Fragment>
           )}
         </div>
       )}
 
-      {/* Section 3: This week's focus per person */}
-      <div className="mtg-sec-label"><Icon name="week" size={14} /> This week's focus</div>
-      <div className="wk-cols wk-cols-2">
-        {[["RD", rd], ["FF", ff]].map(([p, data]) => {
-          const groups = groupByWs(data.delivs);
-          const count = data.delivs.length + data.standalone.length;
-          return (
-            <div key={p} className="card wk-col">
-              <div className="wk-h"><Avatar id={p} size={18} /> {PEOPLE[p].name}<span className="wk-n">{count}</span></div>
-              {groups.map(([wsName, wsDelivs]) => (
-                <React.Fragment key={wsName}>
-                  <div className="wk-grp mtg-ws">{wsName}</div>
-                  {wsDelivs.map((d) => {
-                    const pct = d.total ? Math.round(d.done / d.total * 100) : 0;
-                    const daysLeft = d.target ? daysUntil(d.target) : null;
-                    const urgent = daysLeft !== null && daysLeft <= 14 && pct < 50;
-                    return (
-                      <React.Fragment key={d.id}>
-                        <div className={"mtg-deliv" + (urgent ? " at-risk" : "")}>
-                          {d.deal && <span className="mtg-deal">{d.deal.codename}</span>}
-                          <span className="mtg-dname">{shortName(d)}</span>
-                          <span className="mtg-prog" title={d.done + " of " + d.total + " done"}>
-                            <span className="mtg-prog-bar"><span className="mtg-prog-fill" style={{ width: pct + "%" }} /></span>
-                            <span className="mtg-prog-n">{d.done}/{d.total}</span>
-                          </span>
-                          {d.target && <span className={"mtg-due" + (urgent ? " warn" : "")}>{fdateShort(d.target)}</span>}
-                        </div>
-                        {d.myTasks.map((t) => (
-                          <div key={t.id} className="mtg-sub tc-click" onClick={() => openTask && openTask(t.id)}>
-                            <span className="mtg-sub-dot" />
-                            <span className="mtg-sub-txt">{t.text}</span>
-                          </div>
-                        ))}
-                      </React.Fragment>
-                    );
-                  })}
-                </React.Fragment>
-              ))}
-              {data.standalone.length > 0 && (
-                <React.Fragment>
-                  <div className="wk-grp mtg-ws">Other</div>
-                  {data.standalone.map((t) => (
-                    <div key={t.id} className="mtg-deliv tc-click" onClick={() => openTask && openTask(t.id)}>
-                      <span className="mtg-dname">{t.text}</span>
+      {/* Section 3: Completed since last meeting */}
+      {recentDone.length > 0 && (
+        <div className="mtg-section card">
+          <div className="mtg-sec-h" style={{cursor:"pointer"}} onClick={() => {
+            const el = document.getElementById("mtg-done-body");
+            if (el) el.style.display = el.style.display === "none" ? "" : "none";
+          }}>
+            <Icon name="check" size={14} />
+            <span>Completed since last meeting</span>
+            <span className="wk-n">{recentDone.length}</span>
+            <span style={{marginLeft:"auto",fontSize:11,color:"var(--muted)"}}>click to expand</span>
+          </div>
+          <div id="mtg-done-body" style={{display:"none"}}>
+            <div className="mtg-done-cols">
+              {[["RD", rdDone], ["FF", ffDone]].map(([p, items]) => items.length > 0 && (
+                <div key={p} className="mtg-done-col">
+                  <div className="mtg-done-person"><Avatar id={p} size={16} /> {PEOPLE[p].name}</div>
+                  {items.map((t) => (
+                    <div key={t.id} className="mtg-done-row tc-click" onClick={() => openTask && openTask(t.id)}>
+                      <Icon name="check" size={11} />
+                      <span className="mtg-done-txt">{t.text}</span>
+                      {dealOf(t) && <span className="mtg-deal sm">{dealOf(t).codename}</span>}
                     </div>
                   ))}
-                </React.Fragment>
-              )}
-              {!count && <div className="empty">clear</div>}
+                </div>
+              ))}
             </div>
-          );
-        })}
-      </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

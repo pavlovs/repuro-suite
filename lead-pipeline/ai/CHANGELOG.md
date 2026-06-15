@@ -4,6 +4,21 @@ Format: one entry per prod deploy. Group changes by feature, not individual item
 
 ---
 
+## v2.1.7 — 2026-06-15
+
+### Cockpit
+- **Meeting view rewrite** — reordered sections (Focus → Blockers & decisions → Completed), all deliverables and tasks editable inline via WeekRow, hover ✎ edit and + task buttons, completed section collapsed by default, larger fonts for meeting readability
+- **Deliverables layout** — new default Workstreams tab with RD/FF two-column split, progress bars per deliverable, expandable task lists, inline editing
+
+### Infrastructure
+- **Suite DB path env vars** — explicit `PIPELINE_DB_PATH`, `DEALROOM_DB_PATH`, `COCKPIT_DB` environment variables in supervisord.conf so Fly volume mount works correctly
+- **Entrypoint permissions** — create + chown app-local data dirs (`allex/data/output`, `dealroom/data`) in addition to `/data` volume
+
+### Fixed
+- **Smart-quote compilation errors** — Unicode curly quotes in boot.js/view-agents.jsx replaced with straight quotes; Babel compiles clean
+
+---
+
 ## v2.1.5 — 2026-06-15
 
 ### Changed

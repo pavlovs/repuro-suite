@@ -1,3 +1,4 @@
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -557,3 +558,83 @@ def test_sync_auto_creates_mna_workstreams(client):
     mna = next(s for s in state["spaces"] if s["name"] == "M&A")
     ws_names = {w["name"] for w in mna["workstreams"]}
     assert {"Octopus", "Fox", "Cat"} <= ws_names
+
+
+# ---- migration v3→v4 -------------------------------------------------------
+def test_migration_v3_to_v4(tmp_path):
+    """Simulate a v3 DB and verify migration to v4 creates spaces + moves deal ws."""
+    from src import db as dbmod
+
+    path = tmp_path / "mig.db"
+    conn = sqlite3.connect(str(path))
+    conn.execute("PRAGMA foreign_keys=ON")
+    v3_ddl = """
+    CREATE TABLE users (id TEXT PRIMARY KEY, name TEXT NOT NULL, initials TEXT,
+      token_hash TEXT, role TEXT NOT NULL CHECK(role IN ('human','agent')));
+    CREATE TABLE deal_mirror (codename TEXT PRIMARY KEY, stage TEXT, note TEXT,
+      owner_mode TEXT NOT NULL DEFAULT 'legacy', synced_at TEXT);
+    CREATE TABLE workstreams (id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL UNIQUE, color TEXT, sort_order INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'active', deal_codename TEXT,
+      version INTEGER NOT NULL DEFAULT 1);
+    CREATE TABLE deliverables (id INTEGER PRIMARY KEY AUTOINCREMENT,
+      workstream_id INTEGER NOT NULL REFERENCES workstreams(id),
+      name TEXT NOT NULL, target_date TEXT,
+      status TEXT NOT NULL DEFAULT 'open', sort_order INTEGER NOT NULL DEFAULT 0,
+      comment TEXT, staging INTEGER NOT NULL DEFAULT 0, source TEXT,
+      version INTEGER NOT NULL DEFAULT 1);
+    CREATE TABLE tasks (id INTEGER PRIMARY KEY AUTOINCREMENT,
+      deliverable_id INTEGER REFERENCES deliverables(id),
+      kind TEXT NOT NULL DEFAULT 'workplan', text TEXT NOT NULL, detail TEXT,
+      deadline TEXT, responsible TEXT, priority TEXT, status TEXT NOT NULL DEFAULT 'open',
+      waiting_on_party TEXT, waiting_on_type TEXT, next_chase_date TEXT,
+      expected_back_by TEXT, last_touched_at TEXT,
+      execution TEXT NOT NULL DEFAULT 'me', runner TEXT, acceptance_criteria TEXT,
+      claimed_by TEXT, claim_expires_at TEXT, evidence TEXT,
+      prereqs TEXT NOT NULL DEFAULT '[]', tags TEXT NOT NULL DEFAULT '[]',
+      links TEXT NOT NULL DEFAULT '[]', deal TEXT, pinned_today INTEGER NOT NULL DEFAULT 0,
+      staging INTEGER NOT NULL DEFAULT 0, sort_order INTEGER NOT NULL DEFAULT 0,
+      source TEXT, input_from TEXT, input_question TEXT,
+      version INTEGER NOT NULL DEFAULT 1, created_by TEXT,
+      created_at TEXT NOT NULL, updated_at TEXT NOT NULL, done_at TEXT);
+    CREATE TABLE audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT,
+      at TEXT NOT NULL, actor TEXT NOT NULL, action TEXT NOT NULL, entity TEXT NOT NULL,
+      before TEXT, after TEXT);
+    CREATE TABLE idempotency (task_id INTEGER NOT NULL, key TEXT NOT NULL,
+      response TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (task_id, key));
+    """
+    conn.executescript(v3_ddl)
+    conn.execute("PRAGMA user_version = 3")
+    conn.execute(
+        "INSERT INTO workstreams (name, deal_codename) VALUES (?,?)",
+        ("Fox DD", "Fox"),
+    )
+    conn.execute("INSERT INTO workstreams (name) VALUES (?)", ("Admin",))
+    conn.execute(
+        "INSERT INTO deliverables (workstream_id, name, created_at, updated_at) "
+        "VALUES (1, 'LDD', '', '')"
+    ) if False else conn.execute(
+        "INSERT INTO deliverables (workstream_id, name) VALUES (1, 'LDD')"
+    )
+    conn.commit()
+    conn.close()
+
+    conn = sqlite3.connect(str(path), check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys=ON")
+    dbmod.migrate_db(conn, 3)
+
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == 4
+    spaces = {r["slug"]: r["id"] for r in conn.execute("SELECT slug, id FROM spaces")}
+    assert "repuro" in spaces and "mna" in spaces
+    fox = conn.execute(
+        "SELECT space_id FROM workstreams WHERE name='Fox DD'"
+    ).fetchone()
+    assert fox["space_id"] == spaces["mna"]
+    admin = conn.execute(
+        "SELECT space_id FROM workstreams WHERE name='Admin'"
+    ).fetchone()
+    assert admin["space_id"] == spaces["repuro"]
+    deal_col = conn.execute("SELECT deal FROM deliverables WHERE name='LDD'").fetchone()
+    assert deal_col["deal"] == "Fox"
+    conn.close()

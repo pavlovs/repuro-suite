@@ -194,7 +194,7 @@ MIGRATIONS = {
         "ALTER TABLE tasks ADD COLUMN input_question TEXT",
     ],
     4: [
-        """CREATE TABLE spaces (
+        """CREATE TABLE IF NOT EXISTS spaces (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL UNIQUE,
           slug TEXT NOT NULL UNIQUE,
@@ -207,25 +207,34 @@ MIGRATIONS = {
             CHECK(status IN ('active','parked','done')),
           version INTEGER NOT NULL DEFAULT 1
         )""",
-        "INSERT INTO spaces (name, slug, color, icon, sort_order, sort_mode) "
+        "INSERT OR IGNORE INTO spaces (name, slug, color, icon, sort_order, sort_mode) "
         "VALUES ('Repuro', 'repuro', '#0891B2', 'building', 0, 'manual')",
-        "INSERT INTO spaces (name, slug, color, icon, sort_order, sort_mode) "
+        "INSERT OR IGNORE INTO spaces (name, slug, color, icon, sort_order, sort_mode) "
         "VALUES ('M&A', 'mna', '#7C3AED', 'handshake', 1, 'deal_stage')",
-        "ALTER TABLE workstreams ADD COLUMN space_id INTEGER NOT NULL DEFAULT 1 "
-        "REFERENCES spaces(id)",
+        lambda c: _add_column_if_missing(
+            c, "workstreams", "space_id", "INTEGER NOT NULL DEFAULT 1"
+        ),
         "UPDATE workstreams SET space_id = (SELECT id FROM spaces WHERE slug = 'mna') "
         "WHERE deal_codename IS NOT NULL",
         "UPDATE workstreams SET space_id = (SELECT id FROM spaces WHERE slug = 'mna') "
         "WHERE lower(name) = 'pipeline'",
-        "DROP INDEX IF EXISTS sqlite_autoindex_workstreams_1",
-        "CREATE UNIQUE INDEX uq_workstreams_space_name ON workstreams(space_id, name)",
-        "ALTER TABLE deliverables ADD COLUMN deal TEXT",
+        # sqlite_autoindex_workstreams_1 (global UNIQUE on name) can't be dropped —
+        # it's tied to the table definition. Harmless: stricter than space-scoped.
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_workstreams_space_name "
+        "ON workstreams(space_id, name)",
+        lambda c: _add_column_if_missing(c, "deliverables", "deal", "TEXT"),
         "UPDATE deliverables SET deal = ("
         "  SELECT w.deal_codename FROM workstreams w "
         "  WHERE w.id = deliverables.workstream_id AND w.deal_codename IS NOT NULL"
-        ")",
+        ") WHERE deal IS NULL",
     ],
 }
+
+
+def _add_column_if_missing(conn, table, column, typedef):
+    cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})").fetchall()}
+    if column not in cols:
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {typedef}")
 
 
 def init_db(conn):
@@ -241,8 +250,11 @@ def migrate_db(conn, from_version):
     for version in sorted(MIGRATIONS):
         if current < version:
             stmts = MIGRATIONS[version]
-            for stmt in stmts:
-                conn.execute(stmt)
+            for step in stmts:
+                if callable(step):
+                    step(conn)
+                else:
+                    conn.execute(step)
             conn.execute(f"PRAGMA user_version = {version}")
             conn.commit()
             current = version

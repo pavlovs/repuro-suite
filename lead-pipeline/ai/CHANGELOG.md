@@ -4,6 +4,23 @@ Format: one entry per prod deploy. Group changes by feature, not individual item
 
 ---
 
+## v2.1.8 — 2026-06-16
+
+### Cockpit — suite-fix session (30+ issues)
+- **Cockpit/My Week merge** — Cockpit landing shows hero + WeekView (Due Today, Tomorrow, Deliverables Due 10 Days, Agent Queue); KPI cards removed. "My Week" renamed to "Weekly Meeting" and renders MeetingView (agenda-structured meeting prep)
+- **Activity log** — ActivityPanel slide-out with grouped-by-date entries, TaskHistory in task drawer, /api/activity endpoint
+- **UX overhaul** — hash-based URL routing, HTML5 drag-and-drop on WeekView + Workstreams, shared FilterBar component, collapsible filters, blocked task nesting, Agent view redesign with larger cards
+- **Input Required From** — input_from/input_question columns, quick-add toggle, task-drawer editing, overview Blockers section
+- **Cleanup** — dead meetingMode toggle removed, Relations view unloaded, stale suite files deleted
+
+### Dealroom
+- Removed LIVE badge, CLI references, DEALRoom casing fixed, fetch() interceptor replaced with relative URLs
+
+### ALLEX
+- Removed LIVE badge, fetch() interceptor replaced with relative URLs
+
+---
+
 ## v2.1.7 — 2026-06-15
 
 ### Cockpit

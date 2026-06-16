@@ -25,9 +25,20 @@ def ws_id(n: int) -> str:
     return f"w-{n}"
 
 
+def space_id(n: int) -> str:
+    return f"s-{n}"
+
+
+def space_num(ref: str) -> int:
+    prefix, num = parse_ref(ref)
+    if prefix != "s":
+        raise ValueError(f"expected s-<n>, got {ref!r}")
+    return num
+
+
 def parse_ref(ref: str):
     """'t-41' -> ('t', 41). Raises ValueError on anything else."""
     prefix, _, num = ref.partition("-")
-    if prefix not in ("t", "d", "w") or not num.isdigit():
+    if prefix not in ("t", "d", "w", "s") or not num.isdigit():
         raise ValueError(f"bad ref: {ref!r}")
     return prefix, int(num)

@@ -164,34 +164,42 @@
     var stageOf = {};
     (state.deals || []).forEach(function (d) { stageOf[d.codename] = d.stage; });
 
+    var SPACES = (state.spaces || []).map(function (s) {
+      return { id: s.id, name: s.name, slug: s.slug, sortMode: s.sort_mode };
+    });
     var WORKSTREAMS = [], DELIVERABLES = [], TASKS = [], EXT = {};
-    var live = state.workstreams.filter(function (w) { return w.status !== "parked"; });
-    live.forEach(function (w, i) {
-      var style = WS_STYLE[i % WS_STYLE.length];
-      var name = w.name.toLowerCase();
-      WORKSTREAMS.push({
-        id: w.id, name: w.name, version: w.version,
-        color: name.indexOf("fundrais") >= 0 ? "#0891B2" : style.color,
-        icon: name.indexOf("fundrais") >= 0 ? "raise"
-          : (name.indexOf("admin") >= 0 || name.indexOf("general") >= 0 || name.indexOf("ops") >= 0) ? "ops" : "deal",
-      });
-      w.deliverables.forEach(function (d) {
-        if (d.staging) return; // curation debt stays out of this UI (md export keeps it)
-        var liveTasks = d.tasks.filter(function (t) { return !t.staging; });
-        var dealCode = (w.deal && w.deal.codename) ||
-          (liveTasks.map(function (t) { return t.deal; }).filter(Boolean)[0] || null);
-        DELIVERABLES.push({
-          id: d.id, ws: w.id, name: d.name, target: d.target_date || null, version: d.version,
-          deal: dealCode ? { codename: dealCode, stage: (w.deal && w.deal.stage) || stageOf[dealCode] || "?" } : null,
+    var wsIdx = 0;
+    (state.spaces || []).forEach(function (space) {
+      var live = space.workstreams.filter(function (w) { return w.status !== "parked"; });
+      live.forEach(function (w) {
+        var style = WS_STYLE[wsIdx % WS_STYLE.length];
+        wsIdx++;
+        var name = w.name.toLowerCase();
+        WORKSTREAMS.push({
+          id: w.id, name: w.name, space: w.space_id, version: w.version,
+          deal: w.deal_codename || null, dealStage: w.deal_stage || null,
+          visibility: w.visibility || null, sortOrder: w.sort_order || 0,
+          color: w.color || (name.indexOf("fundrais") >= 0 ? "#0891B2" : style.color),
+          icon: name.indexOf("fundrais") >= 0 ? "raise"
+            : (name.indexOf("admin") >= 0 || name.indexOf("general") >= 0 || name.indexOf("ops") >= 0) ? "ops" : "deal",
         });
-        liveTasks.forEach(function (t) { TASKS.push(mapTask(t, d.id)); });
+        w.deliverables.forEach(function (d) {
+          if (d.staging) return;
+          var liveTasks = d.tasks.filter(function (t) { return !t.staging; });
+          var dealCode = d.deal || w.deal_codename ||
+            (liveTasks.map(function (t) { return t.deal; }).filter(Boolean)[0] || null);
+          DELIVERABLES.push({
+            id: d.id, ws: w.id, name: d.name, target: d.target_date || null, version: d.version,
+            deal: dealCode ? { codename: dealCode, stage: w.deal_stage || stageOf[dealCode] || "?" } : null,
+          });
+          liveTasks.forEach(function (t) { TASKS.push(mapTask(t, d.id)); });
+        });
       });
     });
     (state.standalone_tasks || []).forEach(function (t) {
       if (!t.staging) TASKS.push(mapTask(t, null));
     });
-    // expand d- prereq refs into that deliverable's open task ids (a deliverable
-    // gate = all of its tasks; the prototype graph only knows task refs)
+    // expand d- prereq refs into that deliverable's open task ids
     var tasksByDeliv = {};
     TASKS.forEach(function (t) { (tasksByDeliv[t.d] = tasksByDeliv[t.d] || []).push(t); });
     TASKS.forEach(function (t) {
@@ -203,18 +211,20 @@
       });
       t.prereqs = out;
     });
-    // external parties for avatar chips
     TASKS.forEach(function (t) {
       if (t.waiting && t.waiting.party) EXT[t.waiting.party] = { kind: t.waiting.type || "counterparty" };
     });
 
     var STAGE_LABEL = {
       indicative_offer: "Indicative offer", loi_signed: "LOI signed", valuation_rfi: "Valuation / RFI",
-      dd: "Due diligence", on_hold: "On hold", dead: "Dead", "?": "—",
+      dd: "Due diligence", spa: "SPA", signing: "Signing", nda: "NDA",
+      initial_contact: "Initial contact", screening: "Screening",
+      on_hold: "On hold", dead: "Dead", "?": "—",
     };
     return {
       TODAY: state.meta.today, PEOPLE: PEOPLE, EXT: EXT,
-      WORKSTREAMS: WORKSTREAMS, DELIVERABLES: DELIVERABLES, TASKS: TASKS, STAGE_LABEL: STAGE_LABEL,
+      SPACES: SPACES, WORKSTREAMS: WORKSTREAMS, DELIVERABLES: DELIVERABLES,
+      TASKS: TASKS, STAGE_LABEL: STAGE_LABEL,
     };
   }
 
@@ -314,6 +324,7 @@
     syncArray(window.TASKS, fresh.TASKS, window.byTask);
     syncArray(window.DELIVERABLES, fresh.DELIVERABLES, window.byDeliv);
     syncArray(window.WORKSTREAMS, fresh.WORKSTREAMS, window.byWs);
+    if (window.SPACES && fresh.SPACES) syncArray(window.SPACES, fresh.SPACES, {});
     Object.assign(window.EXT, fresh.EXT);
     Object.keys(window.DEPENDENTS).forEach(function (k) { delete window.DEPENDENTS[k]; });
     window.TASKS.forEach(function (t) { window.DEPENDENTS[t.id] = []; });

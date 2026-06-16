@@ -9,7 +9,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -84,15 +84,34 @@ CREATE TABLE deal_mirror (
   owner_mode TEXT NOT NULL DEFAULT 'legacy' CHECK(owner_mode IN ('legacy','cockpit-owned')),
   synced_at TEXT
 );
-CREATE TABLE workstreams (
+CREATE TABLE spaces (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL UNIQUE,
+  slug TEXT NOT NULL UNIQUE,
+  color TEXT,
+  icon TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  sort_mode TEXT NOT NULL DEFAULT 'manual'
+    CHECK(sort_mode IN ('manual','deal_stage')),
+  status TEXT NOT NULL DEFAULT 'active'
+    CHECK(status IN ('active','parked','done')),
+  version INTEGER NOT NULL DEFAULT 1
+);
+INSERT INTO spaces (name, slug, color, icon, sort_order, sort_mode)
+  VALUES ('Repuro', 'repuro', '#0891B2', 'building', 0, 'manual');
+INSERT INTO spaces (name, slug, color, icon, sort_order, sort_mode)
+  VALUES ('M&A', 'mna', '#7C3AED', 'handshake', 1, 'deal_stage');
+CREATE TABLE workstreams (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  space_id INTEGER NOT NULL DEFAULT 1 REFERENCES spaces(id),
   color TEXT,
   sort_order INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','parked','done')),
   deal_codename TEXT,
   version INTEGER NOT NULL DEFAULT 1
 );
+CREATE UNIQUE INDEX uq_workstreams_space_name ON workstreams(space_id, name);
 CREATE TABLE deliverables (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   workstream_id INTEGER NOT NULL REFERENCES workstreams(id),
@@ -103,6 +122,7 @@ CREATE TABLE deliverables (
   comment TEXT,
   staging INTEGER NOT NULL DEFAULT 0,
   source TEXT,
+  deal TEXT,
   version INTEGER NOT NULL DEFAULT 1
 );
 CREATE TABLE tasks (
@@ -172,6 +192,38 @@ MIGRATIONS = {
     3: [
         "ALTER TABLE tasks ADD COLUMN input_from TEXT CHECK(input_from IS NULL OR input_from IN ('RD','FF'))",
         "ALTER TABLE tasks ADD COLUMN input_question TEXT",
+    ],
+    4: [
+        """CREATE TABLE spaces (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          slug TEXT NOT NULL UNIQUE,
+          color TEXT,
+          icon TEXT,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          sort_mode TEXT NOT NULL DEFAULT 'manual'
+            CHECK(sort_mode IN ('manual','deal_stage')),
+          status TEXT NOT NULL DEFAULT 'active'
+            CHECK(status IN ('active','parked','done')),
+          version INTEGER NOT NULL DEFAULT 1
+        )""",
+        "INSERT INTO spaces (name, slug, color, icon, sort_order, sort_mode) "
+        "VALUES ('Repuro', 'repuro', '#0891B2', 'building', 0, 'manual')",
+        "INSERT INTO spaces (name, slug, color, icon, sort_order, sort_mode) "
+        "VALUES ('M&A', 'mna', '#7C3AED', 'handshake', 1, 'deal_stage')",
+        "ALTER TABLE workstreams ADD COLUMN space_id INTEGER NOT NULL DEFAULT 1 "
+        "REFERENCES spaces(id)",
+        "UPDATE workstreams SET space_id = (SELECT id FROM spaces WHERE slug = 'mna') "
+        "WHERE deal_codename IS NOT NULL",
+        "UPDATE workstreams SET space_id = (SELECT id FROM spaces WHERE slug = 'mna') "
+        "WHERE lower(name) = 'pipeline'",
+        "DROP INDEX IF EXISTS sqlite_autoindex_workstreams_1",
+        "CREATE UNIQUE INDEX uq_workstreams_space_name ON workstreams(space_id, name)",
+        "ALTER TABLE deliverables ADD COLUMN deal TEXT",
+        "UPDATE deliverables SET deal = ("
+        "  SELECT w.deal_codename FROM workstreams w "
+        "  WHERE w.id = deliverables.workstream_id AND w.deal_codename IS NOT NULL"
+        ")",
     ],
 }
 

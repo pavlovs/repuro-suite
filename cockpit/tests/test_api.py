@@ -6,8 +6,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from tests.conftest import AGENT_TOKEN, auth
 
 
-def make_ws(client, name="Octopus", **kw):
-    r = client.post("/api/workstream", json={"name": name, **kw}, headers=auth())
+def make_ws(client, name="Octopus", space_id="s-1", **kw):
+    r = client.post(
+        "/api/workstream",
+        json={"name": name, "space_id": space_id, **kw},
+        headers=auth(),
+    )
     assert r.status_code == 201, r.text
     return r.json()["id"]
 
@@ -123,7 +127,8 @@ def test_readiness_in_state(client):
     state = client.get("/api/state", headers=auth()).json()
     tasks = {
         t["id"]: t
-        for w in state["workstreams"]
+        for sp in state["spaces"]
+        for w in sp["workstreams"]
         for dd in w["deliverables"]
         for t in dd["tasks"]
     }
@@ -250,11 +255,11 @@ def test_expired_lease_reaped(client):
 
 # ---- export / import -------------------------------------------------------
 def test_export_scopes_and_agent_restriction(client):
-    ws = make_ws(client, deal_codename="Fox")
+    ws = make_ws(client, name="Fox Legal", deal_codename="Fox", space_id="s-2")
     d = make_deliv(client, ws)
     make_task(client, text="Fox task", deliverable_id=d, responsible="RD", deal="Fox")
     md = client.get("/api/export.md?scope=all", headers=auth()).text
-    assert "## Octopus" in md and "Fox task" in md and "deal: Fox (loi_signed)" in md
+    assert "### Fox Legal" in md and "Fox task" in md and "deal: Fox (loi_signed)" in md
 
     assert (
         client.get("/api/export.md?scope=all", headers=auth(AGENT_TOKEN)).status_code
@@ -265,7 +270,7 @@ def test_export_scopes_and_agent_restriction(client):
 
 
 def test_import_dry_run_and_apply(client):
-    ws = make_ws(client)
+    ws = make_ws(client, name="Fundraising")
     make_deliv(client, ws)
     t = make_task(client, text="existing")
     push = (
@@ -273,7 +278,7 @@ def test_import_dry_run_and_apply(client):
         "## task-update\n"
         f"- id: {t['id']} | version: 1 | status: in_progress | evidence: started\n"
         "## new-task\n"
-        "- workstream: Octopus | deliverable: Legal DD | text: Review docs"
+        "- workstream: Fundraising | deliverable: Legal DD | text: Review docs"
         " | deadline: 2026-06-20 | priority: high | kind: workplan\n"
     )
     r = client.post(
@@ -322,10 +327,10 @@ def test_import_rejects_unknown_block_and_enum(client):
         headers={**auth(), "Content-Type": "text/markdown"},
     )
     assert r.status_code == 422
-    make_ws(client)
+    make_ws(client, name="Admin")
     r = client.post(
         "/api/import",
-        content="## new-task\n- workstream: Octopus | text: x | priority: urgent\n",
+        content="## new-task\n- workstream: Admin | text: x | priority: urgent\n",
         headers={**auth(), "Content-Type": "text/markdown"},
     )
     assert r.status_code == 422
@@ -382,7 +387,7 @@ def test_agent_queue_export_includes_deliverable_tasks(client):  # PM R2
 
 
 def test_deal_scope_keeps_workstream_linked_tasks(client):  # PM R3
-    ws = make_ws(client, name="Fox WS", deal_codename="Fox")
+    ws = make_ws(client, name="Fox WS", deal_codename="Fox", space_id="s-2")
     d = make_deliv(client, ws)
     make_task(client, text="blank-deal task", deliverable_id=d)  # task.deal is NULL
     md = client.get("/api/export.md?scope=deal:Fox", headers=auth()).text
@@ -502,9 +507,53 @@ def test_delete_task_prunes_dangling_prereqs(client):
     assert client.delete("/api/task/t-99", headers=auth()).status_code == 404
 
 
+# ---- spaces ---------------------------------------------------------------
+def test_state_has_spaces_structure(client):
+    ws = make_ws(client, name="Admin")
+    make_task(client, text="admin task", deliverable_id=make_deliv(client, ws))
+    state = client.get("/api/state", headers=auth()).json()
+    assert "spaces" in state
+    space_names = [s["name"] for s in state["spaces"]]
+    assert "Repuro" in space_names and "M&A" in space_names
+    repuro = next(s for s in state["spaces"] if s["name"] == "Repuro")
+    assert any(w["name"] == "Admin" for w in repuro["workstreams"])
+
+
+def test_workstream_requires_space_id(client):
+    r = client.post("/api/workstream", json={"name": "NoSpace"}, headers=auth())
+    assert r.status_code == 422
+
+
+def test_reorder_blocked_in_deal_stage_space(client):
+    ws = make_ws(client, name="Lion", deal_codename="Lion", space_id="s-2")
+    r = client.patch(
+        "/api/workstreams/reorder",
+        json={"order": [ws]},
+        headers=auth(),
+    )
+    assert r.status_code == 422
+
+
+def test_deliverable_inherits_deal_from_workstream(client):
+    ws = make_ws(client, name="Fox DD", deal_codename="Fox", space_id="s-2")
+    d = make_deliv(client, ws, name="Financial DD")
+    state = client.get("/api/state", headers=auth()).json()
+    mna = next(s for s in state["spaces"] if s["name"] == "M&A")
+    fox_ws = next(w for w in mna["workstreams"] if w["name"] == "Fox DD")
+    dd = next(d for d in fox_ws["deliverables"] if d["name"] == "Financial DD")
+    assert dd["deal"] == "Fox"
+
+
 # ---- sync endpoint ---------------------------------------------------------
 def test_sync_endpoint(client):
     r = client.post("/api/sync/dealroom", headers=auth())
     assert r.status_code == 200 and r.json()["ok"] and r.json()["count"] == 3
     state = client.get("/api/state", headers=auth()).json()
     assert len(state["deals"]) == 3
+
+
+def test_sync_auto_creates_mna_workstreams(client):
+    state = client.get("/api/state", headers=auth()).json()
+    mna = next(s for s in state["spaces"] if s["name"] == "M&A")
+    ws_names = {w["name"] for w in mna["workstreams"]}
+    assert {"Octopus", "Fox", "Cat"} <= ws_names

@@ -131,9 +131,25 @@ def _reap_expired_claims(conn):
             conn.commit()
 
 
+def _mirror_status(deal_codename, mirror):
+    if not deal_codename:
+        return None
+    deal = mirror.get(deal_codename)
+    if not deal or not deal["synced_at"]:
+        return "missing"
+    try:
+        synced = datetime.fromisoformat(deal["synced_at"].replace("Z", "+00:00"))
+        if (datetime.now(timezone.utc) - synced).total_seconds() > 86400:
+            return "stale"
+    except (ValueError, TypeError):
+        return "stale"
+    return "ok"
+
+
 def assemble_state(conn):
     _reap_expired_claims(conn)
     today = _today()
+    space_rows = conn.execute("SELECT * FROM spaces ORDER BY sort_order").fetchall()
     ws_rows = conn.execute(
         "SELECT * FROM workstreams ORDER BY sort_order, id"
     ).fetchall()
@@ -156,8 +172,6 @@ def assemble_state(conn):
             else ("done" if r["status"] in ("done", "dropped") else "open")
         )
         if st == "open":
-            # a deliverable-gate clears when all its live tasks are done, even
-            # if nobody flipped the deliverable's own status (found via e2e)
             live = [
                 t for t in t_rows if t["deliverable_id"] == r["id"] and not t["staging"]
             ]
@@ -166,7 +180,6 @@ def assemble_state(conn):
         deliv_status[models.deliv_id(r["id"])] = st
     status_of = {**task_status, **deliv_status}.get
 
-    # refs that are prereqs of any live task due within 14 days
     due_soon_prereqs = set()
     horizon = today + timedelta(days=14)
     for r in t_rows:
@@ -228,8 +241,6 @@ def assemble_state(conn):
         children = [
             tasks_json[t["id"]] for t in t_rows if t["deliverable_id"] == r["id"]
         ]
-        # manual sort_order first; within tied sort_order (default 0) fall back to
-        # effective deadline asc (spec §5.1), undated last, id tiebreak
         children.sort(
             key=lambda c: (
                 c.get("sort_order", 0),
@@ -251,6 +262,7 @@ def assemble_state(conn):
             "workstream_id": models.ws_id(r["workstream_id"]),
             "name": r["name"],
             "target_date": r["target_date"],
+            "deal": r["deal"],
             "status": r["status"],
             "comment": r["comment"],
             "staging": bool(r["staging"]),
@@ -266,35 +278,80 @@ def assemble_state(conn):
             },
         }
 
-    workstreams_json = []
+    # Build workstreams grouped by space
+    ws_by_space = {}
     for r in ws_rows:
         deal = mirror.get(r["deal_codename"]) if r["deal_codename"] else None
-        workstreams_json.append(
+        deal_stage = deal["stage"] if deal else None
+        ws_json = {
+            "id": models.ws_id(r["id"]),
+            "name": r["name"],
+            "space_id": models.space_id(r["space_id"]),
+            "status": r["status"],
+            "color": r["color"],
+            "sort_order": r["sort_order"],
+            "deal_codename": r["deal_codename"],
+            "deal_stage": deal_stage,
+            "deal_mirror_status": _mirror_status(r["deal_codename"], mirror),
+            "version": r["version"],
+            "deal": (
+                {
+                    "codename": deal["codename"],
+                    "stage": deal["stage"],
+                    "note": deal["note"],
+                    "owner_mode": deal["owner_mode"],
+                }
+                if deal
+                else None
+            ),
+            "deliverables": [
+                deliverables_json[d["id"]]
+                for d in d_rows
+                if d["workstream_id"] == r["id"]
+            ],
+        }
+        ws_by_space.setdefault(r["space_id"], []).append(ws_json)
+
+    spaces_json = []
+    for s in space_rows:
+        ws_list = ws_by_space.get(s["id"], [])
+        if s["sort_mode"] == "deal_stage":
+            ws_list.sort(
+                key=lambda w: (
+                    1 if not w["deal_codename"] else 0,
+                    -compute.stage_weight(w["deal_stage"]),
+                    w["sort_order"],
+                )
+            )
+            for w in ws_list:
+                w["visibility"] = compute.deal_visibility(
+                    w["deal_codename"], w["deal_stage"]
+                )
+        else:
+            for w in ws_list:
+                w["visibility"] = None
+
+        spaces_json.append(
             {
-                "id": models.ws_id(r["id"]),
-                "name": r["name"],
-                "status": r["status"],
-                "color": r["color"],
-                "version": r["version"],
-                "deal": (
-                    {
-                        "codename": deal["codename"],
-                        "stage": deal["stage"],
-                        "note": deal["note"],
-                        "owner_mode": deal["owner_mode"],
-                    }
-                    if deal
-                    else None
-                ),
-                "deliverables": [
-                    deliverables_json[d["id"]]
-                    for d in d_rows
-                    if d["workstream_id"] == r["id"]
-                ],
+                "id": models.space_id(s["id"]),
+                "name": s["name"],
+                "slug": s["slug"],
+                "color": s["color"],
+                "icon": s["icon"],
+                "sort_order": s["sort_order"],
+                "sort_mode": s["sort_mode"],
+                "status": s["status"],
+                "version": s["version"],
+                "workstreams": ws_list,
             }
         )
 
     return {
+        "spaces": spaces_json,
+        "standalone_tasks": [
+            tasks_json[r["id"]] for r in t_rows if not r["deliverable_id"]
+        ],
+        "deals": [{k: r[k] for k in r.keys()} for r in mirror.values()],
         "meta": {
             "today": today.isoformat(),
             "mirror_synced_at": dealroom_sync.last_synced_at(conn),
@@ -305,11 +362,6 @@ def assemble_state(conn):
                 "staging_tasks": sum(1 for r in t_rows if r["staging"]),
             },
         },
-        "workstreams": workstreams_json,
-        "standalone_tasks": [
-            tasks_json[r["id"]] for r in t_rows if not r["deliverable_id"]
-        ],
-        "deals": [{k: r[k] for k in r.keys()} for r in mirror.values()],
     }
 
 
@@ -529,11 +581,12 @@ def assemble_task(conn, num):
     for t in st["standalone_tasks"]:
         if t["id"] == wanted:
             return t
-    for ws in st["workstreams"]:
-        for d in ws["deliverables"]:
-            for t in d["tasks"]:
-                if t["id"] == wanted:
-                    return t
+    for space in st["spaces"]:
+        for ws in space["workstreams"]:
+            for d in ws["deliverables"]:
+                for t in d["tasks"]:
+                    if t["id"] == wanted:
+                        return t
     raise HTTPException(404, f"{wanted} not found")
 
 
@@ -561,15 +614,23 @@ def create_workstream(payload: dict = Body(...), p=Depends(principal)):
     conn = db.get_conn()
     if not payload.get("name"):
         raise HTTPException(422, "name is required")
+    if not payload.get("space_id"):
+        raise HTTPException(422, "space_id is required")
+    prefix, snum = _safe_ref(payload["space_id"])
+    if prefix != "s":
+        raise HTTPException(422, "space_id must be s-<n>")
+    if not conn.execute("SELECT 1 FROM spaces WHERE id=?", (snum,)).fetchone():
+        raise HTTPException(422, "space not found")
     if payload.get("status") and payload["status"] not in models.WS_STATUSES:
         raise HTTPException(422, "invalid status")
     with db.WRITE_LOCK:
         try:
             cur = conn.execute(
-                "INSERT INTO workstreams (name, color, sort_order, status, deal_codename) "
-                "VALUES (?,?,?,?,?)",
+                "INSERT INTO workstreams (name, space_id, color, sort_order, status, deal_codename) "
+                "VALUES (?,?,?,?,?,?)",
                 (
                     payload["name"],
+                    snum,
                     payload.get("color"),
                     payload.get("sort_order", 0),
                     payload.get("status", "active"),
@@ -577,7 +638,9 @@ def create_workstream(payload: dict = Body(...), p=Depends(principal)):
                 ),
             )
         except Exception:
-            raise HTTPException(422, f"workstream {payload['name']!r} already exists")
+            raise HTTPException(
+                422, f"workstream {payload['name']!r} already exists in this space"
+            )
         db.audit(
             conn,
             p["id"],
@@ -591,13 +654,21 @@ def create_workstream(payload: dict = Body(...), p=Depends(principal)):
 
 @app.patch("/api/workstream/{wid}")
 def patch_workstream(wid: str, payload: dict = Body(...), p=Depends(principal)):
+    conn = db.get_conn()
+    if "space_id" in payload:
+        prefix, snum = _safe_ref(payload["space_id"])
+        if prefix != "s":
+            raise HTTPException(422, "space_id must be s-<n>")
+        if not conn.execute("SELECT 1 FROM spaces WHERE id=?", (snum,)).fetchone():
+            raise HTTPException(422, "space not found")
+        payload["space_id"] = snum
     return _patch_simple(
         wid,
         "w",
         "workstreams",
         payload,
         p,
-        {"name", "color", "sort_order", "status", "deal_codename"},
+        {"name", "color", "sort_order", "status", "deal_codename", "space_id"},
         {"status": models.WS_STATUSES},
     )
 
@@ -608,18 +679,19 @@ def create_deliverable(payload: dict = Body(...), p=Depends(principal)):
     if not payload.get("name") or not payload.get("workstream_id"):
         raise HTTPException(422, "name and workstream_id are required")
     prefix, wnum = _safe_ref(payload["workstream_id"])
-    if (
-        prefix != "w"
-        or not conn.execute("SELECT 1 FROM workstreams WHERE id=?", (wnum,)).fetchone()
-    ):
+    if prefix != "w":
+        raise HTTPException(422, "workstream_id must be w-<n>")
+    ws_row = conn.execute("SELECT * FROM workstreams WHERE id=?", (wnum,)).fetchone()
+    if not ws_row:
         raise HTTPException(422, "workstream not found")
     if payload.get("status") and payload["status"] not in models.DELIV_STATUSES:
         raise HTTPException(422, "invalid status")
     _validate_date(payload, "target_date")
+    deal = payload.get("deal") or ws_row["deal_codename"]
     with db.WRITE_LOCK:
         cur = conn.execute(
             "INSERT INTO deliverables (workstream_id, name, target_date, status, sort_order,"
-            " comment, staging, source) VALUES (?,?,?,?,?,?,?,?)",
+            " comment, staging, source, deal) VALUES (?,?,?,?,?,?,?,?,?)",
             (
                 wnum,
                 payload["name"],
@@ -629,6 +701,7 @@ def create_deliverable(payload: dict = Body(...), p=Depends(principal)):
                 payload.get("comment"),
                 int(bool(payload.get("staging", 0))),
                 payload.get("source"),
+                deal,
             ),
         )
         db.audit(
@@ -880,6 +953,41 @@ def reorder_tasks(payload: dict = Body(...), p=Depends(human_only)):
     return {"reordered": len(task_ids)}
 
 
+@app.patch("/api/workstreams/reorder")
+def reorder_workstreams(payload: dict = Body(...), p=Depends(human_only)):
+    ws_ids = payload.get("workstream_ids")
+    if not ws_ids or not isinstance(ws_ids, list):
+        raise HTTPException(422, "workstream_ids list is required")
+    conn = db.get_conn()
+    with db.WRITE_LOCK:
+        for idx, wid_str in enumerate(ws_ids):
+            prefix, num = _safe_ref(wid_str)
+            if prefix != "w":
+                raise HTTPException(422, f"expected w-<n>, got {wid_str!r}")
+            row = conn.execute(
+                "SELECT w.id, s.sort_mode FROM workstreams w "
+                "JOIN spaces s ON s.id = w.space_id WHERE w.id=?",
+                (num,),
+            ).fetchone()
+            if not row:
+                raise HTTPException(404, f"{wid_str} not found")
+            if row["sort_mode"] != "manual":
+                raise HTTPException(422, "M&A projects are auto-sorted by deal stage")
+            conn.execute(
+                "UPDATE workstreams SET sort_order=?, version=version+1 WHERE id=?",
+                (idx, num),
+            )
+        db.audit(
+            conn,
+            p["id"],
+            "workstreams_reorder",
+            "bulk",
+            after={"workstream_ids": ws_ids},
+        )
+        conn.commit()
+    return {"reordered": len(ws_ids)}
+
+
 @app.post("/api/task/{tid}/approve")
 def approve(tid: str, p=Depends(human_only)):
     conn = db.get_conn()
@@ -932,6 +1040,10 @@ def export_md(scope: str = Query(default="all"), p=Depends(principal)):
     return mdio.render_export(st, scope)
 
 
+def _all_ws(st):
+    return [w for s in st["spaces"] for w in s["workstreams"]]
+
+
 def _filter_scope(st, scope):
     if scope == "all":
         return st
@@ -939,7 +1051,8 @@ def _filter_scope(st, scope):
         # ALL agent-executable tasks — deliverable-linked ones included (PM R2)
         agent_tasks = [
             t
-            for w in st["workstreams"]
+            for s in st["spaces"]
+            for w in s["workstreams"]
             for d in w["deliverables"]
             for t in d["tasks"]
             if t["execution"] in models.AGENT_EXECUTIONS
@@ -949,56 +1062,57 @@ def _filter_scope(st, scope):
             for t in st["standalone_tasks"]
             if t["execution"] in models.AGENT_EXECUTIONS
         ]
-        st["workstreams"] = []
+        for s in st["spaces"]:
+            s["workstreams"] = []
         st["standalone_tasks"] = agent_tasks
         return st
     kind, _, value = scope.partition(":")
     if kind == "person":
 
         def keep(t):
-            # whole-token match on the free-text responsible field — substring
-            # matching made "Board" match person:RD (PM CLARIFY 1)
             tokens = re.split(r"[,;/\s]+", (t["responsible"] or ""))
             return value.lower() in (tok.lower() for tok in tokens if tok)
     elif kind == "workstream":
-        st["workstreams"] = [
-            w for w in st["workstreams"] if w["id"] == value or w["name"] == value
-        ]
+        for s in st["spaces"]:
+            s["workstreams"] = [
+                w for w in s["workstreams"] if w["id"] == value or w["name"] == value
+            ]
         st["standalone_tasks"] = []
         return st
     elif kind == "deal":
         ws_matched = {
             w["id"]
-            for w in st["workstreams"]
+            for w in _all_ws(st)
             if ((w["deal"] or {}).get("codename") or "").lower() == value.lower()
         }
 
         def keep(t):
             return (t["deal"] or "").lower() == value.lower()
 
-        st["workstreams"] = [
-            w
-            for w in st["workstreams"]
-            if w["id"] in ws_matched
-            or any(keep(t) for d in w["deliverables"] for t in d["tasks"])
-        ]
-        # a deal-linked workstream exports ALL its tasks even when task.deal
-        # is blank (PM R3); task-level filtering applies only elsewhere
-        for w in st["workstreams"]:
-            if w["id"] not in ws_matched:
-                for d in w["deliverables"]:
-                    d["tasks"] = [t for t in d["tasks"] if keep(t)]
-                w["deliverables"] = [d for d in w["deliverables"] if d["tasks"]]
+        for s in st["spaces"]:
+            s["workstreams"] = [
+                w
+                for w in s["workstreams"]
+                if w["id"] in ws_matched
+                or any(keep(t) for d in w["deliverables"] for t in d["tasks"])
+            ]
+            # PM R3: deal-linked workstream exports ALL its tasks
+            for w in s["workstreams"]:
+                if w["id"] not in ws_matched:
+                    for d in w["deliverables"]:
+                        d["tasks"] = [t for t in d["tasks"] if keep(t)]
+                    w["deliverables"] = [d for d in w["deliverables"] if d["tasks"]]
         st["standalone_tasks"] = [t for t in st["standalone_tasks"] if keep(t)]
         return st
     else:
         raise HTTPException(422, f"unknown scope {scope!r}")
     # person scope: task-level filter everywhere
-    for w in st["workstreams"]:
-        for d in w["deliverables"]:
-            d["tasks"] = [t for t in d["tasks"] if keep(t)]
-        w["deliverables"] = [d for d in w["deliverables"] if d["tasks"]]
-    st["workstreams"] = [w for w in st["workstreams"] if w["deliverables"]]
+    for s in st["spaces"]:
+        for w in s["workstreams"]:
+            for d in w["deliverables"]:
+                d["tasks"] = [t for t in d["tasks"] if keep(t)]
+            w["deliverables"] = [d for d in w["deliverables"] if d["tasks"]]
+        s["workstreams"] = [w for w in s["workstreams"] if w["deliverables"]]
     st["standalone_tasks"] = [t for t in st["standalone_tasks"] if keep(t)]
     return st
 
@@ -1015,9 +1129,21 @@ def import_md(
     # resolve against DB (still fail-closed)
     resolved_creates = []
     for c in creates:
-        ws = conn.execute(
-            "SELECT id FROM workstreams WHERE name=?", (c["workstream"],)
-        ).fetchall()
+        if c.get("space"):
+            space_row = conn.execute(
+                "SELECT id FROM spaces WHERE name=?", (c["space"],)
+            ).fetchone()
+            if not space_row:
+                errors.append(f"line {c['_line']}: space {c['space']!r} not found")
+                continue
+            ws = conn.execute(
+                "SELECT id FROM workstreams WHERE name=? AND space_id=?",
+                (c["workstream"], space_row["id"]),
+            ).fetchall()
+        else:
+            ws = conn.execute(
+                "SELECT id FROM workstreams WHERE name=?", (c["workstream"],)
+            ).fetchall()
         if len(ws) != 1:
             errors.append(
                 f"line {c['_line']}: workstream {c['workstream']!r} "
@@ -1040,7 +1166,7 @@ def import_md(
         fields = {
             k: v
             for k, v in c.items()
-            if k not in ("_line", "workstream", "deliverable")
+            if k not in ("_line", "space", "workstream", "deliverable")
         }
         fields["deliverable_id"] = deliverable_id
         try:

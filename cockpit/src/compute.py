@@ -11,6 +11,36 @@ from datetime import date, timedelta
 GREEN, AMBER, RED = "green", "amber", "red"
 _RED_STATUSES = {"open", "blocked", "waiting"}  # a hard prereq in these = cannot start
 
+STAGE_WEIGHTS = {
+    "signing": 100,
+    "spa": 90,
+    "dd": 80,
+    "loi_signed": 70,
+    "indicative_offer": 60,
+    "valuation_rfi": 50,
+    "nda": 40,
+    "initial_contact": 30,
+    "screening": 20,
+    "on_hold": 10,
+    "dead": 5,
+}
+_LOI_PLUS = {"loi_signed", "dd", "spa", "signing"}
+_HIDDEN_STAGES = {"on_hold", "dead"}
+
+
+def stage_weight(stage):
+    return STAGE_WEIGHTS.get(stage, 0)
+
+
+def deal_visibility(deal_codename, stage):
+    if not deal_codename:
+        return "expanded"
+    if stage in _LOI_PLUS:
+        return "expanded"
+    if stage in _HIDDEN_STAGES:
+        return "hidden"
+    return "collapsed"
+
 
 def _d(iso):
     return date.fromisoformat(iso) if iso else None

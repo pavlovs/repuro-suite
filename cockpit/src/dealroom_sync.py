@@ -56,6 +56,24 @@ def sync_deal_mirror(conn):
                      stage=excluded.stage, note=excluded.note, synced_at=excluded.synced_at""",
                 (code_name, stage, note, now),
             )
+        # Auto-create M&A projects for deals without a matching workstream (§4.6)
+        mna = conn.execute("SELECT id FROM spaces WHERE slug='mna'").fetchone()
+        if mna:
+            existing = {
+                r[0].lower()
+                for r in conn.execute(
+                    "SELECT deal_codename FROM workstreams WHERE deal_codename IS NOT NULL"
+                ).fetchall()
+            }
+            for code_name, stage, note in rows:
+                if not code_name or code_name.lower() in existing:
+                    continue
+                conn.execute(
+                    "INSERT INTO workstreams (name, space_id, deal_codename, status) "
+                    "VALUES (?,?,?,?)",
+                    (code_name, mna["id"], code_name, "active"),
+                )
+                existing.add(code_name.lower())
         conn.commit()
     return {"ok": True, "count": len(rows), "error": None, "synced_at": now}
 

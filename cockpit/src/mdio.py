@@ -26,6 +26,7 @@ UPDATE_KEYS = {
     "deal",
 }
 NEW_KEYS = {
+    "space",
     "workstream",
     "deliverable",
     "text",
@@ -176,21 +177,25 @@ def render_export(state, scope):
             f" | {risks} | {prereqs} | v{t['version']}"
         )
 
-    for ws in state["workstreams"]:
-        deal = (
-            f" | deal: {ws['deal']['codename']} ({ws['deal']['stage']})"
-            if ws.get("deal")
-            else ""
-        )
-        out.append(f"\n## {ws['name']} ({ws['id']}){deal}")
-        for d in ws["deliverables"]:
-            out.append(
-                f"\n### {d['name']} ({d['id']}) | target: {d['target_date'] or '-'}"
-                f" | {d['computed']['readiness']}"
-                + (" | staging" if d["staging"] else "")
+    for space in state["spaces"]:
+        if not space["workstreams"]:
+            continue
+        out.append(f"\n## {space['name']}")
+        for ws in space["workstreams"]:
+            deal = (
+                f" | deal: {ws['deal']['codename']} ({ws['deal']['stage']})"
+                if ws.get("deal")
+                else ""
             )
-            for t in d["tasks"]:
-                out.append(task_line(t))
+            out.append(f"\n### {ws['name']} ({ws['id']}){deal}")
+            for d in ws["deliverables"]:
+                out.append(
+                    f"\n#### {d['name']} ({d['id']}) | target: {d['target_date'] or '-'}"
+                    f" | {d['computed']['readiness']}"
+                    + (" | staging" if d["staging"] else "")
+                )
+                for t in d["tasks"]:
+                    out.append(task_line(t))
     if state["standalone_tasks"]:
         out.append("\n## (standalone)")
         for t in state["standalone_tasks"]:

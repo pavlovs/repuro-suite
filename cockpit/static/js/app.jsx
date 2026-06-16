@@ -149,7 +149,7 @@ function App() {
         <div className="suite-nav" style={{padding:'0 14px 6px'}}>
           <a href="/">Suite</a>
           <a href="/allex/">ALLEX</a>
-          <a href="/deals/">DEALRoom</a>
+          <a href="/deals/">Dealroom</a>
         </div>
         <nav className="side-nav"><NavList /></nav>
         <div className="side-foot">

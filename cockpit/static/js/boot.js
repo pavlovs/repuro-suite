@@ -119,7 +119,7 @@
       ov.innerHTML =
         '<div style="background:#fff;border-radius:10px;padding:28px 30px;width:380px">' +
         '<div style="font-size:17px;font-weight:bold;color:#0891B2;margin-bottom:4px">Repuro Cockpit</div>' +
-        '<div style="font-size:12px;color:#64748b;margin-bottom:14px">' + (message || "Paste your access token (in cockpit/.env)") + "</div>" +
+        '<div style="font-size:12px;color:#64748b;margin-bottom:14px">' + (message || "Enter your access token") + "</div>" +
         '<input id="login-token" type="password" style="width:100%;padding:9px;border:1px solid #cfd9de;border-radius:6px;font-size:14px" placeholder="token">' +
         '<button id="login-go" style="margin-top:12px;width:100%;padding:9px;background:#0891B2;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer">Enter</button></div>';
       function go() {

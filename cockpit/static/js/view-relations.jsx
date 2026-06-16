@@ -4,6 +4,7 @@
 function RelationsView({ openTask }) {
   const [sel, setSel] = React.useState(null);
   const [wsFilter, setWsFilter] = React.useState("");
+  const [focusMode, setFocusMode] = React.useState("attention");
 
   const { nodes, edges, width, height, ancestors, descendants, deps, dependents } = React.useMemo(() => {
     // connected = has prereqs OR is a prereq of something
@@ -11,6 +12,24 @@ function RelationsView({ openTask }) {
     TASKS.forEach((t) => (t.prereqs || []).forEach((r) => isPre.add(r)));
     let conn = TASKS.filter((t) => (t.prereqs && t.prereqs.length) || isPre.has(t.id));
     if (wsFilter) conn = conn.filter((t) => (wsOf(t) || {}).id === wsFilter);
+    if (focusMode === "attention") {
+      const seed = new Set();
+      conn.forEach((t) => {
+        const r = readiness(t);
+        if (r === "red" || r === "amber" || t.status === "waiting") seed.add(t.id);
+      });
+      // Expand to direct prereqs and direct dependents of seed items only
+      const attentionIds = new Set(seed);
+      conn.forEach((t) => {
+        if (seed.has(t.id)) (t.prereqs || []).forEach((r) => attentionIds.add(r));
+      });
+      conn.forEach((t) => {
+        (t.prereqs || []).forEach((r) => {
+          if (seed.has(r)) attentionIds.add(t.id);
+        });
+      });
+      conn = conn.filter((t) => attentionIds.has(t.id));
+    }
     const connIds = new Set(conn.map((t) => t.id));
 
     const deps = {};       // id -> [prereq ids]
@@ -37,7 +56,9 @@ function RelationsView({ openTask }) {
 
     const pos = {};
     Object.entries(cols).forEach(([d, arr]) => arr.forEach((t, i) => { pos[t.id] = { x: PADX + d * COL, y: PADY + i * VGAP, w: W, h: H }; }));
-    const maxRows = Math.max(...Object.values(cols).map((a) => a.length));
+    const colVals = Object.values(cols);
+    if (!colVals.length) return { nodes: [], edges: [], width: 0, height: 0, ancestors: {}, descendants: {}, deps: {}, dependents: {} };
+    const maxRows = Math.max(...colVals.map((a) => a.length));
     const nodes = conn.map((t) => ({ t, ...pos[t.id] }));
     const edges = [];
     conn.forEach((t) => deps[t.id].forEach((r) => edges.push({ from: r, to: t.id })));
@@ -54,7 +75,7 @@ function RelationsView({ openTask }) {
     const width = PADX * 2 + (Math.max(...Object.keys(cols).map(Number)) + 1) * COL;
     const height = PADY * 2 + maxRows * VGAP;
     return { nodes, edges, width, height, ancestors, descendants, deps, dependents };
-  }, [wsFilter]);
+  }, [wsFilter, focusMode]);
 
   const chain = sel ? new Set([sel, ...ancestors[sel], ...descendants[sel]]) : null;
   const inChain = (id) => !chain || chain.has(id);
@@ -70,6 +91,10 @@ function RelationsView({ openTask }) {
           <span><span className="rdot" data-level="green" style={{ width: 9, height: 9 }} /> ready</span>
           <span><span className="rdot" data-level="amber" style={{ width: 9, height: 9 }} /> prereqs running</span>
           <span><span className="rdot" data-level="red" style={{ width: 9, height: 9 }} /> blocked</span>
+        </div>
+        <div className="seg">
+          <button className={focusMode === "attention" ? "on" : ""} onClick={() => { setFocusMode("attention"); setSel(null); }}>Needs attention</button>
+          <button className={focusMode === "all" ? "on" : ""} onClick={() => { setFocusMode("all"); setSel(null); }}>All</button>
         </div>
         <div className="seg">
           {[["", "All workstreams"], ...WORKSTREAMS.map((w) => [w.id, w.name])].map(([v, l]) => (
@@ -123,6 +148,12 @@ function RelationsView({ openTask }) {
           })}
         </div>
       </div>
+
+      {!nodes.length && focusMode === "attention" && (
+        <div className="card" style={{padding:"20px 24px",fontSize:13,color:"#475569",marginTop:12}}>
+          Nothing blocked or waiting. <button className="ov-deliv-more" onClick={() => { setFocusMode("all"); setSel(null); }}>Show full graph →</button>
+        </div>
+      )}
 
       {selTask && (
         <div className="rel-panel">

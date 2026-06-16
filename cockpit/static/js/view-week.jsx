@@ -281,7 +281,7 @@ function MeetingView({ mutate, openTask }) {
 window.MeetingView = MeetingView;
 
 function WeekRow({ t, mutate, openTask, showWs = true }) {
-  const ws = wsOf(t), dl = delivOf(t);
+  const ws = wsOf(t);
   return (
     <div className={"wkrow" + (t.status === "done" ? " done" : "")}>
       <button className="chk" data-on={t.status === "done"} onClick={() => api.save(t, { status: t.status === "done" ? "open" : "done", ...(t.status !== "done" ? { pinned: false } : {}) })} title="mark done">
@@ -290,7 +290,7 @@ function WeekRow({ t, mutate, openTask, showWs = true }) {
       {t.status === "waiting" ? <span className="rdot" data-level="grey" style={{ width: 9, height: 9 }} /> : <ReadinessDot t={t} />}
       <div className="wkrow-txt tc-click" onClick={() => openTask && openTask(t.id)}>
         <span className="wkrow-main">{t.text}</span>
-        {showWs && <span className="wkrow-sub">{ws ? ws.name : ""}{dl ? " › " + dl.name : ""}{dealOf(t) ? " · " + dealOf(t).codename : ""}</span>}
+        {showWs && ws && <span className="wkrow-sub">{ws.name}</span>}
       </div>
       {t.status === "waiting" ? <WaitingChip t={t} /> : <DueChip t={t} />}
     </div>
@@ -325,6 +325,7 @@ function WeekView({ person, mutate, openTask, meetingMode }) {
   const together = live.filter((t) => t.execution === "together");
   const sharedN = deps.length + together.length;
   const [sharedOpen, setSharedOpen] = React.useState(false);
+  const [weekOpen, setWeekOpen] = React.useState({});
 
   const done = TASKS.filter((t) => (t.owners || []).includes(person) && t.status === "done");
   const [doneOpen, setDoneOpen] = React.useState(false);
@@ -390,12 +391,15 @@ function WeekView({ person, mutate, openTask, meetingMode }) {
                     {wsDelivs.map((d) => {
                       const pct = d.total ? Math.round(d.done / d.total * 100) : 0;
                       const du = d.target ? daysUntil(d.target) : null;
+                      const needsAttention = d.myTasks.some((t) => (t.due && daysUntil(t.due) < 0) || readiness(t) === "red");
+                      const isOpen = weekOpen[d.id] !== undefined ? weekOpen[d.id] : needsAttention;
                       return (
                         <div key={d.id} className="wk-deliv-block">
-                          <div className="wk-deliv-head">
+                          <div className="wk-deliv-head" style={{cursor:"pointer"}} onClick={() => setWeekOpen((o) => ({...o, [d.id]: !isOpen}))}>
+                            <span className={"caret" + (isOpen ? " open" : "")}><Icon name="chevron" size={12} /></span>
                             <span className="wk-deliv-name">{d.name}</span>
                             <button className="deliv-edit" title="rename / set target"
-                              onClick={() => editDeliv(d)}>✎</button>
+                              onClick={(e) => { e.stopPropagation(); editDeliv(d); }}>✎</button>
                             {d.deal && <DealChip deal={d.deal} small />}
                             <span className="wk-deliv-prog">
                               <span className="prog-bar" style={{width:60}}><span style={{ width: pct + "%", background: d.wsObj ? d.wsObj.color : "#94a3b8" }} /></span>
@@ -403,10 +407,12 @@ function WeekView({ person, mutate, openTask, meetingMode }) {
                             </span>
                             {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")} style={{fontSize:11}}>{fdate(d.target)}</span>}
                           </div>
-                          {d.myTasks.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} showWs={false} />)}
-                          <button className="wk-add-task" onClick={() => {
-                            window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } }));
-                          }}>+ add task</button>
+                          {isOpen && d.myTasks.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} showWs={false} />)}
+                          {isOpen && (
+                            <button className="wk-add-task" onClick={() => {
+                              window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } }));
+                            }}>+ add task</button>
+                          )}
                         </div>
                       );
                     })}

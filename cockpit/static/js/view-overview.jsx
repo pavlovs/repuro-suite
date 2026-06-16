@@ -116,7 +116,7 @@ function OverviewView({ person, onJump, openTask }) {
               <span className="card-h-sub">{attn.length} need attention{quiet ? " · " + quiet + " on track" : ""}</span>
             </div>
             <div className="ov-deliv-list">
-              {attn.map((d) => (
+              {attn.slice(0, 5).map((d) => (
                 <div key={d.id} className="ov-deliv-row tc-click" onClick={() => onJump("table")}>
                   <span className="rdot" data-level={d.s.readiness} style={{ width: 9, height: 9 }} />
                   <span className="ov-deliv-name">{d.name}</span>
@@ -130,6 +130,7 @@ function OverviewView({ person, onJump, openTask }) {
                 </div>
               ))}
               {!attn.length && <div className="empty">all deliverables on track</div>}
+              {attn.length > 5 && <button className="ov-deliv-more" onClick={() => onJump("table")}>{attn.length - 5} more need attention →</button>}
               {quiet > 0 && <button className="ov-deliv-more" onClick={() => onJump("table")}>{quiet} more on track in Workstreams →</button>}
             </div>
           </div>

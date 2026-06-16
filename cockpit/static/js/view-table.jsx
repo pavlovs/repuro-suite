@@ -22,7 +22,15 @@ async function editDeliv(d) {
 }
 
 function TableView({ mutate, openTask, filters }) {
-  const [open, setOpen] = React.useState(() => Object.fromEntries(DELIVERABLES.map((d) => [d.id, true])));
+  const [open, setOpen] = React.useState(() => {
+    const init = {};
+    DELIVERABLES.forEach((d) => {
+      const tasks = TASKS.filter((t) => t.d === d.id && t.status !== "done");
+      const needsAttention = tasks.some((t) => readiness(t) === "red" || (t.due && daysUntil(t.due) < 0));
+      init[d.id] = needsAttention;
+    });
+    return init;
+  });
   const [wsOpen, setWsOpen] = React.useState(() => Object.fromEntries(WORKSTREAMS.map((w) => [w.id, true])));
   const toggle = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
   const toggleWs = (id) => setWsOpen((o) => ({ ...o, [id]: !o[id] }));
@@ -177,7 +185,8 @@ function DeliverableView({ mutate, openTask }) {
             {delivs.map(({ d, personTasks, openTasks, s }) => {
               const pct = s.total ? Math.round(s.done / s.total * 100) : 0;
               const du = d.target ? daysUntil(d.target) : null;
-              const isOpen = expanded[d.id + "-" + id];
+              const needsAttention = openTasks.some((t) => readiness(t) === "red" || (t.due && daysUntil(t.due) < 0));
+              const isOpen = expanded[d.id + "-" + id] !== undefined ? expanded[d.id + "-" + id] : needsAttention;
               return (
                 <div key={d.id} className="wk-deliv-block">
                   <div className="wk-deliv-head" style={{ cursor: "pointer" }} onClick={() => toggle(d.id + "-" + id)}>

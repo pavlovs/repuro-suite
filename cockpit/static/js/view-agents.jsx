@@ -5,6 +5,7 @@ function AgentsView({ openTask }) {
   const running = agents.filter((t) => t.status === "in_progress" && t.claimed_by);
   const review = agents.filter((t) => t.status === "in_review");
   const recent = agents.filter((t) => t.status === "done").slice(-5).reverse();
+  const [showRecent, setShowRecent] = React.useState(false);
 
   const Card = ({ t, children }) => (
     <div className="agq-card">
@@ -24,20 +25,22 @@ function AgentsView({ openTask }) {
         <span><Icon name="bolt" size={13} /> Agent tasks — worked by Claude, reviewed by you.</span>
       </div>
       <div className="agq-cols">
-        <div className="card agq-col">
-          <div className="wk-h">Queued<span className="wk-n">{queued.length}</span></div>
-          {queued.map((t) => <Card key={t.id} t={t} />)}
-          {!queued.length && <div className="empty">nothing queued — create a task with "Claude (agent)"</div>}
-        </div>
-        <div className="card agq-col">
-          <div className="wk-h">Running<span className="wk-n">{running.length}</span></div>
-          {running.map((t) => (
-            <Card key={t.id} t={t}>
-              <div className="agq-meta">claimed by {t.claimed_by} · lease until {(t.claim_expires_at || "?").replace("T", " ").slice(0, 16)}</div>
-            </Card>
-          ))}
-          {!running.length && <div className="empty">nothing running</div>}
-        </div>
+        {queued.length > 0 && (
+          <div className="card agq-col">
+            <div className="wk-h">Queued<span className="wk-n">{queued.length}</span></div>
+            {queued.map((t) => <Card key={t.id} t={t} />)}
+          </div>
+        )}
+        {running.length > 0 && (
+          <div className="card agq-col">
+            <div className="wk-h">Running<span className="wk-n">{running.length}</span></div>
+            {running.map((t) => (
+              <Card key={t.id} t={t}>
+                <div className="agq-meta">claimed by {t.claimed_by} · lease until {(t.claim_expires_at || "?").replace("T", " ").slice(0, 16)}</div>
+              </Card>
+            ))}
+          </div>
+        )}
         <div className="card agq-col verdict">
           <div className="wk-h">Needs your verdict<span className="wk-n">{review.length}</span></div>
           {review.map((t) => (
@@ -54,10 +57,20 @@ function AgentsView({ openTask }) {
             </Card>
           ))}
           {!review.length && <div className="empty">nothing awaiting you</div>}
-          {recent.length > 0 && <><div className="wk-grp">Recently approved</div>
-            {recent.map((t) => <div key={t.id} className="agq-done tc-click" onClick={() => openTask(t.id)}><Icon name="check" size={12} /> {t.text}</div>)}</>}
+          {recent.length > 0 && (
+            <div className="wk-grp" style={{cursor:"pointer"}} onClick={() => setShowRecent(!showRecent)}>
+              <span className={"caret" + (showRecent ? " open" : "")}><Icon name="chevron" size={10} /></span>
+              Recently approved <span style={{fontWeight:600,color:"var(--muted)"}}>{recent.length}</span>
+            </div>
+          )}
+          {showRecent && recent.map((t) => <div key={t.id} className="agq-done tc-click" onClick={() => openTask(t.id)}><Icon name="check" size={12} /> {t.text}</div>)}
         </div>
       </div>
+      {!queued.length && !running.length && !review.length && (
+        <div className="card" style={{padding:"20px 24px",fontSize:13,color:"#475569",marginTop:12,textAlign:"center"}}>
+          No agent tasks active. Create a task with execution type "Claude (agent)" to queue work.
+        </div>
+      )}
     </div>
   );
 }

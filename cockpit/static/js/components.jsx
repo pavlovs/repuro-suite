@@ -66,8 +66,8 @@ function Dot({ level, size = 9, title }) {
 
 function ReadinessDot({ t }) {
   const r = readiness(t);
-  const label = { green: "Ready — all prerequisites done", amber: "Prerequisites still running", red: "Blocked — needs: " + blockingPrereqs(t).map((p) => p.text).join(", ") }[r];
-  return <Dot level={r} title={label} />;
+  if (r !== "red") return null;
+  return <span className="blocked-label" title={"Needs: " + blockingPrereqs(t).map((p) => p.text).join(", ")}>blocked</span>;
 }
 
 function StatusPill({ status }) {
@@ -120,11 +120,30 @@ function WaitingChip({ t }) {
   const noDate = !t.waiting.chase;
   const overdue = !noDate && daysUntil(t.waiting.chase) <= 0;
   return (
-    <span className={"wait-chip" + (overdue || noDate ? " due" : "")} title={"Ball with " + t.waiting.party + (noDate ? " · no chase date set" : " · chase " + fdate(t.waiting.chase))}>
-      <Icon name="clock" size={11} />
-      {t.waiting.party}
-      <span className="wait-chase">{noDate ? "set chase date" : overdue ? "chase now" : "chase " + fdate(t.waiting.chase)}</span>
+    <span className={"wait-flat" + (overdue || noDate ? " due" : "")} title={"Ball with " + t.waiting.party + (noDate ? " · no chase date set" : " · chase " + fdate(t.waiting.chase))}>
+      {t.waiting.party}{noDate ? "" : " · " + fdate(t.waiting.chase)}
     </span>
+  );
+}
+
+/* ---------------- FilterBar — shared collapsible filter UI ---------------- */
+// Usage: <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={n}>
+//          <div className="seg">...</div>
+//        </FilterBar>
+function FilterBar({ filtersOpen, setFiltersOpen, activeCount, children }) {
+  return (
+    <div className="filter-bar">
+      <button
+        className={"filter-bar-toggle" + (activeCount > 0 ? " active" : "")}
+        onClick={() => setFiltersOpen(f => !f)}
+      >
+        <Icon name="filter" size={13} />
+        Filter
+        {activeCount > 0 && <span className="filter-bar-badge">{activeCount}</span>}
+        <span className="filter-bar-chevron">{filtersOpen ? "▾" : "▸"}</span>
+      </button>
+      {filtersOpen && <div className="filter-bar-body">{children}</div>}
+    </div>
   );
 }
 
@@ -165,4 +184,5 @@ Object.assign(window, {
   daysUntil, addDays, fdate, fdateShort, readiness, blockingPrereqs, risks, recommendation, chaseDue,
   delivOf, wsOf, dealOf, STATUS_LABEL, STATUS_ORDER, DEPENDENTS,
   Dot, ReadinessDot, StatusPill, PriorityFlag, Avatar, OwnerStack, DealChip, DueChip, WaitingChip, Icon,
+  FilterBar,
 });

@@ -23,18 +23,22 @@ function RepuroMark({ size = 30 }) {
 
 const NAV = [
   { id: "overview", label: "Cockpit", icon: "cockpit", crumb: "Intelligence overview" },
-  { id: "week", label: "My Week", icon: "week", crumb: "Daily & weekly focus" },
+  { id: "week", label: "Weekly Meeting", icon: "week", crumb: "Weekly meeting focus" },
   { id: "table", label: "Workstreams", icon: "table", crumb: "All work — table or board" },
-  { id: "relations", label: "Relations", icon: "relations", crumb: "Dependency map" },
   { id: "timeline", label: "Timeline", icon: "timeline", crumb: "Milestones & windows" },
   { id: "agents", label: "Agents", icon: "bolt", crumb: "Claude works · you approve" },
 ];
 
 /* Workstreams tab: one dataset, two layouts (table / board), shared filters */
-function WorkstreamsTab({ mutate, openTask, person, onNewDeal }) {
-  const [layout, setLayout] = React.useState("deliverables");
-  const [grouping, setGrouping] = React.useState("status");
-  const [filters, setFilters] = React.useState({ person: "", readiness: "", showDone: false });
+function WorkstreamsTab({ mutate, openTask, person }) {
+  const [layout, setLayout] = React.useState("table");
+  const [grouping, setGrouping] = React.useState("workstream");
+  const [filters, setFilters] = React.useState({ person: "", readiness: "", priority: "", showDone: false });
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+
+  const activeFilterCount = [filters.person, filters.readiness].filter(f => f !== "").length
+    + (layout === "table" && filters.priority !== "" ? 1 : 0)
+    + (layout === "table" && filters.showDone ? 1 : 0);
 
   return (
     <div>
@@ -52,11 +56,10 @@ function WorkstreamsTab({ mutate, openTask, person, onNewDeal }) {
           </div>
         )}
         <div className="ws-toolbar-sp" />
-        <button className="btn ghost" onClick={onNewDeal}><Icon name="deal" size={14} />New deal (playbook)</button>
       </div>
 
       {layout !== "deliverables" && (
-        <div className="tbl-filters">
+        <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={activeFilterCount}>
           <div className="seg">
             {[["", "Everyone"], ["RD", "Roman"], ["FF", "Flo"]].map(([v, l]) => (
               <button key={v} className={filters.person === v ? "on" : ""} onClick={() => setFilters({ ...filters, person: v })}>{l}</button>
@@ -69,8 +72,15 @@ function WorkstreamsTab({ mutate, openTask, person, onNewDeal }) {
               </button>
             ))}
           </div>
+          {layout === "table" && (
+            <div className="seg">
+              {[["", "Any priority"], ["high", "High"], ["med", "Medium"]].map(([v, l]) => (
+                <button key={v} className={filters.priority === v ? "on" : ""} onClick={() => setFilters({ ...filters, priority: v })}>{l}</button>
+              ))}
+            </div>
+          )}
           {layout === "table" && <label className="chk-lbl"><input type="checkbox" checked={filters.showDone} onChange={(e) => setFilters({ ...filters, showDone: e.target.checked })} /> show done</label>}
-        </div>
+        </FilterBar>
       )}
 
       {layout === "deliverables"
@@ -82,19 +92,35 @@ function WorkstreamsTab({ mutate, openTask, person, onNewDeal }) {
   );
 }
 
+/* Hash-based routing: tab id ↔ URL hash */
+const TAB_TO_HASH = { overview: "#cockpit", week: "#week", table: "#workstreams", timeline: "#timeline", agents: "#agents" };
+const HASH_TO_TAB = { "#cockpit": "overview", "#week": "week", "#workstreams": "table", "#timeline": "timeline", "#agents": "agents" };
+const VALID_TABS = new Set(Object.keys(TAB_TO_HASH));
+function tabFromHash() {
+  const tab = HASH_TO_TAB[window.location.hash];
+  if (!tab) { history.replaceState(null, "", TAB_TO_HASH.overview); return "overview"; }
+  return tab;
+}
+
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
-  const [tab, setTab] = React.useState("overview");
+  const [tab, setTabState] = React.useState(tabFromHash);
   const [person, setPerson] = React.useState(sessionStorage.getItem("cockpit_person") || "RD");
   const [drawer, setDrawer] = React.useState(null);
   const [palette, setPalette] = React.useState(false);
   const [quickAdd, setQuickAdd] = React.useState(false);
+  const [activityOpen, setActivityOpen] = React.useState(false);
   const [quickAddPrefill, setQuickAddPrefill] = React.useState(null);
-  const [newDeal, setNewDeal] = React.useState(false);
-  const [meetingMode, setMeeting] = React.useState(false);
   const [, setRev] = React.useState(0);
   const mutate = React.useCallback((fn) => { fn && fn(); setRev((r) => r + 1); }, []);
   const openTask = React.useCallback((id) => setDrawer(id), []);
+
+  /* Navigate to a tab: update state + URL hash */
+  const setTab = React.useCallback((id) => {
+    setTabState(id);
+    const hash = TAB_TO_HASH[id];
+    if (hash && window.location.hash !== hash) window.location.hash = hash;
+  }, []);
 
   // the write-through layer (boot.js api.*) re-renders after every successful save
   React.useEffect(() => {
@@ -105,26 +131,27 @@ function App() {
     };
     const onQuickAdd = (e) => { setQuickAddPrefill(e.detail || null); setQuickAdd(true); };
     const onJumpEvt = (e) => setTab(e.detail || "table");
+    const onHashChange = () => setTabState(tabFromHash());
     window.addEventListener("keydown", onKey);
     window.addEventListener("cockpit:quickadd", onQuickAdd);
     window.addEventListener("cockpit:jump", onJumpEvt);
+    window.addEventListener("hashchange", onHashChange);
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("cockpit:quickadd", onQuickAdd);
       window.removeEventListener("cockpit:jump", onJumpEvt);
+      window.removeEventListener("hashchange", onHashChange);
     };
-  }, []);
+  }, [setTab]);
   const pickPerson = (p) => { sessionStorage.setItem("cockpit_person", p); setPerson(p); };
 
   const live = TASKS.filter((x) => x.status !== "done");
-  const blockedN = live.filter((x) => readiness(x) === "red").length;
   const chaseN = live.filter((x) => chaseDue(x)).length;
   const verdictN = TASKS.filter((x) => x.execution === "agent" && x.status === "in_review").length;
-  const badge = { relations: blockedN, week: chaseN, agents: verdictN };
+  const badge = { week: chaseN, agents: verdictN };
 
   const cur = NAV.find((n) => n.id === tab) || NAV[0];
-  const showPerson = tab === "overview" || tab === "week";
-  const mtgActive = meetingMode && tab === "week";
+  const showPerson = tab === "overview";
 
   const NavList = ({ inTop }) => (
     <>
@@ -170,43 +197,38 @@ function App() {
           </div>
           <div className="tb-spacer" />
           <button className="search as-btn" onClick={() => setPalette(true)} title="Search (Ctrl/⌘ K)">
-            <Icon name="search" size={15} /><span className="search-ph">Search tasks, deals…</span><span className="pal-kbd">⌘K</span>
+            <Icon name="search" size={15} /><span className="search-ph">Search tasks, deals…</span><span className="pal-kbd">{navigator.platform.indexOf("Mac") >= 0 ? "⌘" : "Ctrl+"}K</span>
           </button>
           {showPerson && (
             <div className="person-switch">
               {["RD", "FF"].map((p) => (
-                <button key={p} className={!mtgActive && person === p ? "on" : ""} onClick={() => { pickPerson(p); setMeeting(false); }}>
+                <button key={p} className={person === p ? "on" : ""} onClick={() => pickPerson(p)}>
                   <Avatar id={p} size={18} />{PEOPLE[p].name}
                 </button>
               ))}
-              {tab === "week" && (
-                <button className={mtgActive ? "on" : ""} onClick={() => setMeeting(!meetingMode)}>
-                  <Icon name="week" size={15} />Weekly Meeting
-                </button>
-              )}
             </div>
           )}
+          <button className="tb-undo" onClick={() => setActivityOpen(true)} title="Activity log">Activity</button>
           <button className="tb-undo" disabled={!api.undoDepth()} onClick={() => api.undo()}
             title={api.undoDepth() ? "undo last change (" + api.undoDepth() + ")" : "nothing to undo"}>↶ Undo</button>
           <button className="btn primary" onClick={() => setQuickAdd(true)} title="Ctrl/⌘ Enter"><Icon name="plus" size={15} />New</button>
         </header>
 
         <main className="main">
-          <div className={"view" + (tab === "relations" || tab === "timeline" || tab === "table" ? " view-wide" : "")}>
-            {tab === "overview" && <OverviewView person={person} onJump={setTab} openTask={openTask} />}
-            {tab === "week" && <WeekView person={person} mutate={mutate} openTask={openTask} meetingMode={mtgActive} />}
-            {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} person={person} onNewDeal={() => setNewDeal(true)} />}
-            {tab === "relations" && <RelationsView openTask={openTask} />}
+          <div className={"view" + (tab === "timeline" || tab === "table" ? " view-wide" : "")}>
+            {tab === "overview" && <OverviewView person={person} onJump={setTab} openTask={openTask} mutate={mutate} />}
+            {tab === "week" && <MeetingView mutate={mutate} openTask={openTask} />}
+            {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} person={person} />}
             {tab === "timeline" && <TimelineView openTask={openTask} />}
-            {tab === "agents" && <AgentsView openTask={openTask} />}
+            {tab === "agents" && <AgentsView openTask={openTask} person={person} />}
           </div>
         </main>
       </div>
 
       <TaskDrawer task={drawer ? byTask[drawer] : null} onClose={() => setDrawer(null)} mutate={mutate} openTask={openTask} />
+      <ActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} />
       <Palette open={palette} onClose={() => setPalette(false)} openTask={(id) => { setPalette(false); openTask(id); }} onJump={(v) => { setPalette(false); setTab(v); }} />
       <QuickAdd open={quickAdd} onClose={(id) => { setQuickAdd(false); setQuickAddPrefill(null); if (id) openTask(id); }} prefill={quickAddPrefill} />
-      <NewDeal open={newDeal} onClose={() => setNewDeal(false)} />
 
       <TweaksPanel>
         <TweakSection label="Direction" />

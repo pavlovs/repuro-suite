@@ -11,7 +11,6 @@ function TaskCard({ t, draggable, onDragStart, dragging, openTask }) {
       <div className="tcard-top">
         <span className="tcard-tags">
           <PriorityFlag p={t.priority} />
-          <ReadinessDot t={t} />
           {t.execution === "agent" && <span className="agent-tag" title="agent task"><Icon name="bolt" size={10} /></span>}
         </span>
         {deal && <DealChip deal={deal} small />}

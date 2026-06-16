@@ -1,4 +1,4 @@
-/* ===== ⌘K command palette + live search — jump to any task or deal ===== */
+/* ===== {navigator.platform.indexOf("Mac") >= 0 ? "⌘" : "Ctrl+"}K command palette + live search — jump to any task or deal ===== */
 function Palette({ open, onClose, openTask, onJump }) {
   const [q, setQ] = React.useState("");
   React.useEffect(() => { if (open) setQ(""); }, [open]);
@@ -13,8 +13,8 @@ function Palette({ open, onClose, openTask, onJump }) {
   const dealHits = needle ? DELIVERABLES.filter((d) =>
     d.deal ? (hit(d.deal.codename) || hit(d.name)) : hit(d.name)
   ).slice(0, 5) : [];
-  const views = [["overview", "Cockpit"], ["week", "My Week"], ["table", "Workstreams"],
-    ["relations", "Relations"], ["timeline", "Timeline"], ["agents", "Agents"]]
+  const views = [["overview", "Cockpit"], ["week", "Weekly Meeting"], ["table", "Workstreams"],
+    ["timeline", "Timeline"], ["agents", "Agents"]]
     .filter(([, l]) => !needle || hit(l));
 
   const pick = (fn) => { fn(); onClose(); };
@@ -30,15 +30,15 @@ function Palette({ open, onClose, openTask, onJump }) {
               if (e.key === "Escape") onClose();
               if (e.key === "Enter" && taskHits.length) pick(() => openTask(taskHits[0].id));
             }} />
-          <span className="pal-kbd">⌘K</span>
+          <span className="pal-kbd">{navigator.platform.indexOf("Mac") >= 0 ? "⌘" : "Ctrl+"}K</span>
         </div>
         {needle && (
           <div className="pal-results">
             {taskHits.length > 0 && <div className="pal-grp">Tasks</div>}
             {taskHits.map((t) => (
               <button key={t.id} className="pal-row" onClick={() => pick(() => openTask(t.id))}>
-                <ReadinessDot t={t} />
                 <span className="pal-txt">{t.text}</span>
+                <ReadinessDot t={t} />
                 <span className="pal-sub">{(wsOf(t) || {}).name}{t.dealCode ? " · " + t.dealCode : ""}</span>
                 <StatusPill status={t.status} />
               </button>

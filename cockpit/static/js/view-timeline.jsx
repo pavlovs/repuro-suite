@@ -4,7 +4,10 @@ function TimelineView({ openTask, mutate }) {
   const [zoom, setZoom] = React.useState("comfortable");
   const [open, setOpen] = React.useState({});
   const [filter, setFilter] = React.useState("dated"); // all | dated | undated
+  const [filtersOpen, setFiltersOpen] = React.useState(true);
   const toggle = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
+
+  const activeFilterCount = filter !== "all" ? 1 : 0;
   const LABELW = 280, RH = 48, SUBH = 32;
   const scrollRef = React.useRef(null);
   const [containerW, setContainerW] = React.useState(0);
@@ -63,20 +66,22 @@ function TimelineView({ openTask, mutate }) {
   return (
     <div>
       <div className="gantt-bar-top">
-        <div className="seg">
-          <span className="seg-lbl">zoom</span>
-          {[["compact", "Compact"], ["comfortable", "Comfortable"], ["wide", "Wide"]].map(([v, l]) => (
-            <button key={v} className={zoom === v ? "on" : ""} onClick={() => setZoom(v)}>{l}</button>
-          ))}
-        </div>
-        <div className="seg">
-          <span className="seg-lbl">show</span>
-          <button className={filter === "all" ? "on" : ""} onClick={() => setFilter("all")}>All</button>
-          <button className={filter === "dated" ? "on" : ""} onClick={() => setFilter("dated")}>Dated</button>
-          <button className={filter === "undated" ? "on" : ""} onClick={() => setFilter("undated")}>
-            Undated{undatedCount > 0 && <span className="tl-filter-n">{undatedCount}</span>}
-          </button>
-        </div>
+        <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={activeFilterCount}>
+          <div className="seg">
+            <span className="seg-lbl">zoom</span>
+            {[["compact", "Compact"], ["comfortable", "Comfortable"], ["wide", "Wide"]].map(([v, l]) => (
+              <button key={v} className={zoom === v ? "on" : ""} onClick={() => setZoom(v)}>{l}</button>
+            ))}
+          </div>
+          <div className="seg">
+            <span className="seg-lbl">show</span>
+            <button className={filter === "all" ? "on" : ""} onClick={() => setFilter("all")}>All</button>
+            <button className={filter === "dated" ? "on" : ""} onClick={() => setFilter("dated")}>Dated</button>
+            <button className={filter === "undated" ? "on" : ""} onClick={() => setFilter("undated")}>
+              Undated{undatedCount > 0 && <span className="tl-filter-n">{undatedCount}</span>}
+            </button>
+          </div>
+        </FilterBar>
       </div>
 
       <div className="gantt card">

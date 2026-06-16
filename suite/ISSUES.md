@@ -9,8 +9,7 @@ Claude reads this when `/suite-fix` is invoked.
 ---
 ## Bugs // Improvements
 
-Cockpit-Bugs — UX / architecture (needs Roman's input)
-- [ ] New Deal wiring: Cockpit “New Deal” should create in Dealroom (cross-app API). Deferred — needs infrastructure investigation next session
+- [ ] New Deal wiring: Cockpit "New Deal" should create in Dealroom (cross-app API). Deferred — needs infrastructure investigation next session
 
 Infrastructure — deferred (architecture change)
 - [ ] entrypoint.sh sed-injection of COCKPIT_BASE_PATH is fragile (breaks if source strings change or path has special chars). Replace with a /config.js endpoint in FastAPI that returns `window.COCKPIT_BASE="/cockpit"`, loaded via script tag. HTML files become immutable
@@ -19,38 +18,90 @@ Infrastructure — deferred (architecture change)
 ## Feature Requests
 > These are NOT auto-implemented. `/suite-fix` presents each one with a recommendation and waits for Roman's go/no-go.
 
-- [ ] Make the suite function, feel and work like a shipped and developed suite. Right now it feels and looks half-baked. Top bar naigation in Dealroom shows LIVE DE (which are unncessary and old). There is blue green yellow, there is the date in the different font on top. ON ALLEX the logo is on the bottom and only by chance i found that clicking the logo gets me back (Cockpit and dealroom are nested somewhere else). Cockpit looks different again. Dealroom looks weird. Let the agent go section by section independently and not try to fix everything at once (reset context after every fix). NOTE: On dev only, the live version is currently getting
-- [ ] Integration of calender with most important meetings of the week (ignoring daily standup in the morning) for Flo and Roman
-- [ ] Migrate ALLEX and DEALROOM HTTP layer to FastAPI — both use stdlib http.server with manual URL parsing, JSON serialization, auth (~300 lines of boilerplate each). FastAPI gives typed parsing, automatic 422 on bad input, OpenAPI docs. Split dashboard.py into data/routes/html during migration. Effort: L (2-3 days per app)
-- [ ] Replace fetch() interceptor with relative URLs — both ALLEX and DEALROOM monkey-patch window.fetch to prepend BASE_PATH. Use relative URLs instead (fetch('api/data') not fetch('/api/data')). Browser resolves against current page URL which already includes the sub-path. Eliminates monkey-patch entirely. Effort: S (needs thorough testing)
+- [ ] Tasks belong to a "DEAL" workstream should be mapped accordingly, this needs to connect to DEALROOM and be specced properly. E. G. FOX, MANTIS, LION etc. should properly map to the entities in DEALROOM
+- [ ] Workstreams and item architecture of items (Workstreams, Deliverables, Tasks) should be reworked. Workstreams should rather be "Teams". Categories: Fundraising / M&A (deals infrastructure from DEALROOM there with deliverables on each deal and then tasks on each deliverable) / Repuro. Actually the top layer should be something like REPURO HOLDING (with Fundraising, operations, Admin as the subcategories) and M&A (with respective deals and Pipeline as the categories and the deliverables + tasks underneath)
+- [ ] Agents: "- **Start a session:** Open Claude Code in the `CLAUDE_REPURO` workspace and run `/agent-loop`. Claude picks up queued tasks in order, executes them, and reports results." --> Flo or other uses will not have this skill. Should we provide a build a custom github repo or something similar with cockpit skills required to use it.
+- [ ] DEFER — Integration of calender with most important meetings of the week (ignoring daily standup in the morning) for Flo and Roman
+- [ ] DEFER — Migrate ALLEX and DEALROOM HTTP layer to FastAPI — both use stdlib http.server with manual URL parsing, JSON serialization, auth (~300 lines of boilerplate each). FastAPI gives typed parsing, automatic 422 on bad input, OpenAPI docs. Split dashboard.py into data/routes/html during migration. Effort: L (2-3 days per app)
 
 ---
 ## Resolved
 
-- [x] Workstreams collapse/expand all — added wsOpen state, toggleAll button in header, chevron + click on ws-band, conditional body render — fixed 2026-06-15
-- [x] "Open Dealroom" in Cockpit links to suite dealroom — set `window.DEALROOM_URL='/deals/'` in config script — fixed 2026-06-15
-- [x] Cockpit prompt()/alert() replaced — built toast (`showToast`) + modal (`showModal`) system in boot.js + cockpit-extras.css; replaced all 9 alert() in boot.js, 4 in quick-add, prompt() in task-drawer/view-board/view-agents/view-table/view-week with async showModal — fixed 2026-06-15
-- [x] Cockpit cold start blank screen — added CSS-only spinner inside #root div, React.render replaces it on boot — fixed 2026-06-15
-- [x] Cockpit CDN → local vendor — downloaded React 18.3.1, ReactDOM 18.3.1, Babel 7.29.0 to /cockpit/static/vendor/, updated script tags — fixed 2026-06-15
-- [x] Suite nav "return to Suite" — added `<a href="/">Suite</a>` home link to ALLEX, Dealroom, and Cockpit nav bars — fixed 2026-06-15
-- [x] Landing page hardcoded name — added `/api/whoami` Caddy endpoint returning auth username as JSON, JS maps to display name/initials — fixed 2026-06-15
-- [x] Health check — added `/healthz` unauthenticated handler in Caddyfile + `[[http_service.checks]]` in fly.toml — fixed 2026-06-15
-- [x] Container runs as root — added appuser in Dockerfile, chown /data in entrypoint.sh, user=appuser in supervisord — fixed 2026-06-15
-- [x] Supervisord start order — set priorities (allex=100, dealroom=200, cockpit=300, caddy=999), startsecs, startretries — fixed 2026-06-15
-- [x] SQLite WAL conditional — both cockpit and dealroom db.py check FLY_APP_NAME, use WAL on Fly.io, DELETE locally — fixed 2026-06-15
-- [x] busy_timeout — added 5000ms to dealroom and cockpit get_conn() — fixed 2026-06-15
-- [x] Dealroom read-only ATTACH — uses URI mode=ro on Linux (os.name != "nt") — fixed 2026-06-15
-- [x] Dealroom migration singleton — singleton connection + PRAGMA user_version to skip applied migrations — fixed 2026-06-15
-- [x] Dealroom _read_json_body — returns None on parse failure, all 6 callers return 400 JSON error — fixed 2026-06-15
-- [x] ALLEX alert() → showToast() — replaced all 11 alert() calls with showToast — fixed 2026-06-15
-- [x] Error response consistency — added `_json_error()` helper to ALLEX, replaced all send_error calls; Dealroom's 2 remaining bare send_response calls converted to _json_response; no more str(exc) leaked to client — fixed 2026-06-15
-- [x] Remove Cockpit classic.html — deleted classic.html, removed route from api.py, removed test assertion — fixed 2026-06-15
-- [x] Consolidate CSS color tokens — canonical --rs-brand tokens in shared.css, cockpit.css aliases via var() fallback — fixed 2026-06-15
-- [x] Litestream backup for 3 SQLite DBs — installed in Dockerfile, litestream.yml for 3 DBs, entrypoint.sh wraps supervisord when LITESTREAM_REPLICA_URL set. Needs bucket secrets on Fly to activate — fixed 2026-06-15
-- [x] Unified QuickAdd — single modal with Task/Deliverable type toggle, prefill from context (workstream, type). Replaced separate creation flows — fixed 2026-06-15
-- [x] My Week deliverable-centric workflow — grouped by workstream→deliverable with edit, progress bar, inline +task, editable focus section — fixed 2026-06-15
-- [x] Split requirements.txt into prod/dev — created requirements-prod.txt for all 3 apps, Dockerfile installs only prod deps. Drops ~100-150MB from image — fixed 2026-06-15
-- [x] Visual density / separation — increased ws-group margin + border separator, deliverable block spacing, row height padding. Text less cramped — fixed 2026-06-15
-- [x] Fox DD / pipeline ownership — deliverables now editable via ✎ button (rename, set target). Content ownership is a data fix, not a UI bug — fixed 2026-06-15
-- [x] Smart quote compilation error — replaced Unicode curly quotes in boot.js/view-table.jsx/view-agents.jsx with straight quotes. Babel compiles clean — fixed 2026-06-15
-
+- [x] Cockpit/My Week merge — OverviewView embeds WeekView (hero + Due Today/Tomorrow/Deliverables/AgentQueue); KPI cards removed; "My Week" renamed to "Weekly Meeting" (renders MeetingView directly); dead meetingMode toggle cleaned up — fixed 2026-06-16
+- [x] Version history + activity log — GET /api/activity endpoint, ActivityPanel slide-out in app header, TaskHistory section in task drawer — fixed 2026-06-16
+- [x] Nested "blocked by" font style — prereq-name changed from 11.5px italic to 12px normal, slightly greyed out (#94a3b8) — fixed 2026-06-16
+- [x] Remove "New deal (playbook)" button from Workstreams — removed button + onNewDeal prop + NewDeal state/render from app.jsx — fixed 2026-06-16
+- [x] "Shared Blockers" / Relations view removed — nav entry, hash routing, badge, view rendering all cleaned up; Blockers card on Cockpit covers the use case — fixed 2026-06-16
+- [x] Deliverable's relation to Workstreams is not editable yet — added workstream dropdown to editDeliv() modal, PATCH endpoint accepts workstream_id — fixed 2026-06-16
+- [x] Adding a deliverable in Workstreams did not work — fixed deliverable creation flow, validated POST /api/deliverable endpoint + quick-add dispatch — fixed 2026-06-16
+- [x] Blocked tasks grouped/nested in workstreams — "↳ blocked by: [task]" rows nested underneath in workstreams table — fixed 2026-06-16
+- [x] Filter placement standardized + collapsible — shared FilterBar component in components.jsx, migrated workstreams + timeline — fixed 2026-06-16
+- [x] URL routing per view — hash routing (#cockpit, #week, #workstreams, #timeline, #agents), browser back/forward works — fixed 2026-06-16
+- [x] Agent task suggestions in My Week — AgentQueue component shows top 2 ready agent tasks sorted by priority+due — fixed 2026-06-16
+- [x] Input Required From feature — input_from/input_question columns, quick-add toggle, task-drawer editing, overview Blockers section, WeekRow badge — fixed 2026-06-16
+- [x] Replace fetch() interceptor with relative URLs — removed monkey-patch from both dashboard.py files, converted 28+ fetch calls — fixed 2026-06-16
+- [x] Move all the resolved bugs down — reorganized ISSUES.md — fixed 2026-06-16
+- [x] Drag and drop in My Week — DragList component with HTML5 native drag, sort_order column + /api/tasks/reorder endpoint — fixed 2026-06-16
+- [x] My Week: Tomorrow next to Due Today — 2-column top layout — fixed 2026-06-16
+- [x] "This week" renamed to "Deliverables Due next 10 Days" — full-width below Due Today/Tomorrow — fixed 2026-06-16
+- [x] Drag & drop in Workstreams — added to TRow in table view — fixed 2026-06-16
+- [x] Search bar ⌘K → Ctrl+K on Windows — fixed 2026-06-16
+- [x] Focus today checkmark — added done toggle on overview focus items — fixed 2026-06-16
+- [x] Red dot → "blocked" text label — ReadinessDot changed, removed from board view, moved after text in palette — fixed 2026-06-16
+- [x] Task editing unified with deliverable editing — ✎ pencil button on task rows — fixed 2026-06-16
+- [x] Deliverable due date column alignment — CSS margin-right on .wk-deliv-head .deliv-due — fixed 2026-06-16
+- [x] Incomplete issue removed (Roman confirmed) — 2026-06-16
+- [x] Slow checkmark in My Week — optimisticDone state with async rollback — fixed 2026-06-16
+- [x] Overdue section removed — rolls into Due Today with red badge — fixed 2026-06-16
+- [x] Filters collapsible in Workstreams + Timeline — Filter toggle with active count badge — fixed 2026-06-16
+- [x] 0/3 counter removed from deliverables — fixed 2026-06-16
+- [x] Agents view bigger cards + RC/FC handover — grid layout 480px min, HANDOVER_INITIALS map — fixed 2026-06-16
+- [x] Agents how-to panel + queue position — collapsible instructions, position badges — fixed 2026-06-16
+- [x] Login with Florian defaults to Florian's tasks — fixed 2026-06-16
+- [x] Workstream name editable — ✎ button on ws-band — fixed 2026-06-16
+- [x] Workstreams default to Table view — fixed 2026-06-16
+- [x] All headers increased — fixed 2026-06-16
+- [x] Workstream view defaults to "workstream" grouping — fixed 2026-06-16
+- [x] Workstream counter removed — fixed 2026-06-16
+- [x] Badge clutter reduced — TRow stripped to dot + text + owner + due — fixed 2026-06-16
+- [x] Due date warning on deliverable creation — fixed 2026-06-16
+- [x] Relations moved to bottom of nav — fixed 2026-06-16
+- [x] Timeline filters sticky — fixed 2026-06-16
+- [x] Agent View redesigned — independent cards with state badges — fixed 2026-06-16
+- [x] Deliverable editing combined — single modal — fixed 2026-06-16
+- [x] Deliverable task counter removed — fixed 2026-06-16
+- [x] Status column removed from table view — fixed 2026-06-16
+- [x] Priority filter added — fixed 2026-06-16
+- [x] Workstreams collapse/expand all — fixed 2026-06-15
+- [x] "Open Dealroom" links to suite dealroom — fixed 2026-06-15
+- [x] Cockpit prompt()/alert() replaced with toast + modal — fixed 2026-06-15
+- [x] Cockpit cold start blank screen — CSS spinner — fixed 2026-06-15
+- [x] Cockpit CDN → local vendor — fixed 2026-06-15
+- [x] Suite nav "return to Suite" — fixed 2026-06-15
+- [x] Landing page hardcoded name — /api/whoami — fixed 2026-06-15
+- [x] Health check — /healthz — fixed 2026-06-15
+- [x] Container runs as root — appuser — fixed 2026-06-15
+- [x] Supervisord start order — priorities — fixed 2026-06-15
+- [x] SQLite WAL conditional — fixed 2026-06-15
+- [x] busy_timeout 5000ms — fixed 2026-06-15
+- [x] Dealroom read-only ATTACH — fixed 2026-06-15
+- [x] Dealroom migration singleton — fixed 2026-06-15
+- [x] Dealroom _read_json_body — fixed 2026-06-15
+- [x] ALLEX alert() → showToast() — fixed 2026-06-15
+- [x] Error response consistency — fixed 2026-06-15
+- [x] Remove Cockpit classic.html — fixed 2026-06-15
+- [x] Consolidate CSS color tokens — fixed 2026-06-15
+- [x] Litestream backup for 3 SQLite DBs — fixed 2026-06-15
+- [x] Unified QuickAdd — fixed 2026-06-15
+- [x] My Week deliverable-centric workflow — fixed 2026-06-15
+- [x] Split requirements.txt into prod/dev — fixed 2026-06-15
+- [x] Visual density / separation — fixed 2026-06-15
+- [x] Fox DD / pipeline ownership — fixed 2026-06-15
+- [x] Smart quote compilation error — fixed 2026-06-15
+- [x] Removed LIVE badge + DE language toggle from Dealroom — fixed 2026-06-15
+- [x] Removed LIVE badge from ALLEX — fixed 2026-06-15
+- [x] Removed CLI command references from Dealroom empty states — fixed 2026-06-15
+- [x] Fixed "DEALRoom" → "Dealroom" casing — fixed 2026-06-15
+- [x] Cleaned dev-facing cockpit login message — fixed 2026-06-15
+- [x] Removed legacy suite files — fixed 2026-06-15
+- [x] Fixed Florian name inconsistency — fixed 2026-06-15

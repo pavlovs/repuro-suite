@@ -1347,11 +1347,10 @@ input, select, textarea { font: inherit; color: inherit; }
     <div class="suite-nav" style="padding:8px 14px 0">
       <a href="/"><svg class="suite-nav-icon" viewBox="0 0 24 24"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg>Suite</a>
       <a href="/cockpit/">Cockpit</a>
-      <a href="/deals/">DEALRoom</a>
+      <a href="/deals/">Dealroom</a>
     </div>
     <div class="side-panel-header" id="panel-header">Review</div>
     <div class="side-panel-items" id="panel-items"></div>
-    <div class="side-panel-foot"><span id="live-badge">__LIVE_BADGE__</span></div>
   </div>
 
   <main class="main">
@@ -1414,7 +1413,7 @@ document.getElementById('side-avatar').addEventListener('click', function() {
 // ===== API HELPERS =====
 async function patchCompany(domain, updates) {
   const actor = getActor();
-  const resp = await fetch('/api/company/' + encodeURIComponent(domain) + '?actor=' + actor, {
+  const resp = await fetch('api/company/' + encodeURIComponent(domain) + '?actor=' + actor, {
     method: 'PATCH',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify(updates),
@@ -1439,7 +1438,7 @@ function persistViewState() {
 async function undoLastChange(domain) {
   if (!SERVE_MODE) { showToast('Undo nicht verfügbar offline', 'err'); return; }
   try {
-    var resp = await fetch('/api/activity?domain=' + encodeURIComponent(domain) + '&limit=1');
+    var resp = await fetch('api/activity?domain=' + encodeURIComponent(domain) + '&limit=1');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     var entries = await resp.json();
     if (!entries || !entries.length || !entries[0].field) {
@@ -1450,7 +1449,7 @@ async function undoLastChange(domain) {
     patch[last.field] = last.old_value != null ? last.old_value : '';
     await patchCompany(domain, patch);
     showToast('↩ ' + last.field + ' → ' + (last.old_value || '(leer)'));
-    try { var d = await (await fetch('/api/data')).json(); if (d && d.records) { DATA.records = d.records; assignRefIds(DATA.records); } } catch(e) {}
+    try { var d = await (await fetch('api/data')).json(); if (d && d.records) { DATA.records = d.records; assignRefIds(DATA.records); } } catch(e) {}
     renderRecord();
   } catch(e) {
     showToast('Undo fehlgeschlagen: ' + (e.message || e), 'err');
@@ -1472,7 +1471,7 @@ async function postApi(url, body) {
 // F32 — REGION_MAPPING is injected at template render time; if backend exposes /api/region-mapping in the future,
 // fetch it here alongside /api/data. Current backend has no such endpoint — accepting staleness for now.
 if (SERVE_MODE) {
-  fetch('/api/data')
+  fetch('api/data')
     .then(function(r){ return r.json(); })
     .then(function(d){
       DATA = d;
@@ -1857,7 +1856,7 @@ function batchSend() {
   if (!confirm(selectedBA + ': ' + rows.length + ' freigegebene Records als versendet markieren?\n\nDiese Aktion kann nicht rückgängig gemacht werden.')) return;
   var btn = document.getElementById('btn-batch-send');
   if (btn) { btn.disabled = true; btn.textContent = 'Wird markiert…'; }
-  fetch('/api/batch-send', {
+  fetch('api/batch-send', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ batch: selectedBA, actor: getActor() })
@@ -1936,7 +1935,7 @@ function exportPdf() {
   var orig = btn ? btn.textContent : '';
   if (btn) { btn.disabled = true; btn.textContent = 'Generiert…'; }
   var domains = eligible.map(function(r){ return r.domain; });
-  fetch('/api/export-pdf', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({domains: domains}) })
+  fetch('api/export-pdf', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({domains: domains}) })
     .then(function(resp) {
       if (!resp.ok) return resp.text().then(function(t) { throw new Error(t); });
       var disp = resp.headers.get('Content-Disposition') || '';
@@ -2831,7 +2830,7 @@ function renderRecord() {
         await patchCompany(rec.domain, patch);
         // PATCH succeeded — now refresh DATA (failure here is non-fatal since DB is already correct)
         try {
-          var resp = await fetch('/api/data');
+          var resp = await fetch('api/data');
           DATA = await resp.json();
           assignRefIds(DATA.records);
         } catch (refreshErr) {
@@ -2903,12 +2902,12 @@ function renderRecord() {
       btnResolve.textContent = 'Auflösung…';
       showToast('Gesellschafter von ' + parentName + ' werden gesucht…', 'info', 8000);
       try {
-        var data = await postApi('/api/resolve-parent/' + encodeURIComponent(rec.domain), { parent_name: parentName });
+        var data = await postApi('api/resolve-parent/' + encodeURIComponent(rec.domain), { parent_name: parentName });
         if (data && data.ok) {
           var owners = data.parent_owners || [];
           var ownerNames = owners.map(function(o){ return o.name || '?'; }).join(', ');
           showToast('Aufgelöst: ' + (ownerNames || parentName) + ' → Gesellschafter aktualisiert', 'ok', 5000);
-          var resp = await fetch('/api/data');
+          var resp = await fetch('api/data');
           DATA = await resp.json();
           assignRefIds(DATA.records);
           renderQueue();
@@ -2940,12 +2939,12 @@ function renderRecord() {
       btnManualResolve.textContent = 'Auflösung…';
       showToast('Gesellschafter von ' + parentName + ' werden gesucht…', 'info', 8000);
       try {
-        var data = await postApi('/api/resolve-parent/' + encodeURIComponent(rec.domain), { parent_name: parentName });
+        var data = await postApi('api/resolve-parent/' + encodeURIComponent(rec.domain), { parent_name: parentName });
         if (data && data.ok) {
           var owners = data.parent_owners || [];
           var ownerNames = owners.map(function(o){ return o.name || '?'; }).join(', ');
           showToast('Aufgelöst: ' + (ownerNames || parentName) + ' → Gesellschafter aktualisiert', 'ok', 5000);
-          var resp = await fetch('/api/data');
+          var resp = await fetch('api/data');
           DATA = await resp.json();
           assignRefIds(DATA.records);
           renderQueue();
@@ -2974,10 +2973,10 @@ function renderRecord() {
       btnManualReenrich.textContent = '↻…';
       showToast('Ownership wird neu angereichert für ' + rec.domain + '…', 'info', 8000);
       try {
-        var data = await postApi('/api/re-enrich/' + encodeURIComponent(rec.domain), {});
+        var data = await postApi('api/re-enrich/' + encodeURIComponent(rec.domain), {});
         if (data && data.ok) {
           showToast('Re-Enrich erfolgreich: ' + (data.gesellschafter_name || 'aktualisiert'), 'ok', 5000);
-          var resp = await fetch('/api/data');
+          var resp = await fetch('api/data');
           DATA = await resp.json();
           assignRefIds(DATA.records);
           renderQueue();
@@ -3012,7 +3011,7 @@ function renderRecord() {
       btnPass.textContent = 'Speichern…';
       try {
         await patchCompany(rec.domain, { is_subsidiary: 0, pipeline_stage: 'ownership_gated' });
-        var resp = await fetch('/api/data');
+        var resp = await fetch('api/data');
         DATA = await resp.json();
         assignRefIds(DATA.records);
         renderQueue();
@@ -3043,7 +3042,7 @@ function renderRecord() {
       btnExclude.textContent = 'Speichern…';
       try {
         await patchCompany(rec.domain, { prio: 'Excluded', is_subsidiary: 1, reclassify_reason: 'ownership_excluded' });
-        var resp = await fetch('/api/data');
+        var resp = await fetch('api/data');
         DATA = await resp.json();
         assignRefIds(DATA.records);
         renderQueue();
@@ -3073,7 +3072,7 @@ function renderRecord() {
       btn.disabled = true;
       try {
         await patchCompany(rec.domain, patch);
-        var resp = await fetch('/api/data');
+        var resp = await fetch('api/data');
         DATA = await resp.json();
         assignRefIds(DATA.records);
         renderQueue(); renderRecord();
@@ -3347,7 +3346,7 @@ function exportLeadliste() {
   var allBox = document.getElementById('leads-export-all');
   var exportAll = allBox && allBox.checked ? '1' : '0';
   var batch = selectedBA || '';
-  var url = '/api/export-leadliste?batch=' + encodeURIComponent(batch) + '&all=' + exportAll;
+  var url = 'api/export-leadliste?batch=' + encodeURIComponent(batch) + '&all=' + exportAll;
   var btn = document.getElementById('btn-export-excel');
   if (btn) { btn.disabled = true; btn.textContent = 'Lädt…'; }
   fetch(url)
@@ -3752,7 +3751,7 @@ function renderLeadsTable() {
       try {
         await patchCompany(rec.domain, patch);
         try {
-          var resp = await fetch('/api/data');
+          var resp = await fetch('api/data');
           DATA = await resp.json();
           assignRefIds(DATA.records);
           renderLeadsTable();
@@ -3919,7 +3918,7 @@ function renderReviewActivity() {
     return;
   }
   root.innerHTML = '<div class="page"><div class="page-head"><div><h2>Änderungslog</h2><p class="lead">Lädt…</p></div></div></div>';
-  fetch('/api/activity?limit=100')
+  fetch('api/activity?limit=100')
     .then(function(r){ if (!r.ok) throw new Error('http_'+r.status); return r.json(); })
     .then(function(data){ renderActivityData(root, data); })
     .catch(function(){
@@ -4133,7 +4132,7 @@ function renderExportView() {
   if (markSentBtn) markSentBtn.addEventListener('click', function() {
     var domains = checkedDomains();
     if (!domains.length) return;
-    fetch('/api/batch-send', {
+    fetch('api/batch-send', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({batch: ba, domains: domains})
@@ -4156,7 +4155,7 @@ function renderExportView() {
   if (bmBtn) bmBtn.addEventListener('click', function() {
     var orig = bmBtn.textContent;
     bmBtn.disabled = true; bmBtn.textContent = 'Exportiert…';
-    fetch('/api/export-briefmarken?batch=' + encodeURIComponent(ba))
+    fetch('api/export-briefmarken?batch=' + encodeURIComponent(ba))
       .then(function(resp) {
         if (!resp.ok) {
           if (resp.status === 404) throw new Error('Keine freigegebenen Records in ' + ba);

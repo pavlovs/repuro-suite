@@ -1838,15 +1838,6 @@ def _build_html(
         for js_file in sorted(sections_dir.glob("*.js")):
             sections_js += js_file.read_text(encoding="utf-8") + "\n"
     html = html.replace("__SECTIONS_JS__", sections_js)
-    base_path = os.environ.get("BASE_PATH", "")
-    if base_path:
-        interceptor = (
-            f"<script>window.BASE_PATH='{base_path}';"
-            "(function(){var B=window.BASE_PATH,F=window.fetch;"
-            "window.fetch=function(u,o){return F.call(this,"
-            "typeof u==='string'&&u.startsWith('/')?B+u:u,o);}})();</script>"
-        )
-        html = html.replace("</head>", interceptor + "</head>")
     return html
 
 

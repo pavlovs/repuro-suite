@@ -77,7 +77,7 @@ function renderUnifiedGuV() {
   // ── Entity dropdown ──────────────────────────────────────────────────────────
   let entityDropdown = '';
   if (entities.length > 1) {
-    entityDropdown = '<div style="margin-bottom:6px;"><label style="font-size:11px;color:#555;margin-right:6px;">Entity:</label><select style="font-size:12px;padding:2px 6px;border:1px solid #ccc;border-radius:3px;" onchange="(function(sel){var ent=sel.value;fetch(\'/api/financials?deal=\'+encodeURIComponent(DATA.deal.code_name)+\'&entity=\'+encodeURIComponent(ent)).then(function(r){return r.json();}).then(function(d){Object.assign(DATA.financials,d);document.getElementById(\'sub-guv\').innerHTML=renderUnifiedGuV();document.querySelectorAll(\'#sub-guv .expandable\').forEach(function(tr){tr.addEventListener(\'click\',function(){toggleExpandGuV(this);});});});return false;})(this)">';
+    entityDropdown = '<div style="margin-bottom:6px;"><label style="font-size:11px;color:#555;margin-right:6px;">Entity:</label><select style="font-size:12px;padding:2px 6px;border:1px solid #ccc;border-radius:3px;" onchange="(function(sel){var ent=sel.value;fetch(\'api/financials?deal=\'+encodeURIComponent(DATA.deal.code_name)+\'&entity=\'+encodeURIComponent(ent)).then(function(r){return r.json();}).then(function(d){Object.assign(DATA.financials,d);document.getElementById(\'sub-guv\').innerHTML=renderUnifiedGuV();document.querySelectorAll(\'#sub-guv .expandable\').forEach(function(tr){tr.addEventListener(\'click\',function(){toggleExpandGuV(this);});});});return false;})(this)">';
     for (const ent of entities) {
       const label = ent === 'consolidated' ? 'Consolidated' : ent;
       const sel = ent === currentEntity ? ' selected' : '';
@@ -233,7 +233,7 @@ function renderUnifiedGuV() {
 
     const commentVal = pnlComments[item.key] || '';
     if (SERVE_MODE) {
-      h += '<td style="'+tdL+'font-size:11px;max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+secBorderL+'" contenteditable="true" data-pnl-key="'+esc(item.key)+'" onblur="(function(el){var allC={};document.querySelectorAll(\'[data-pnl-key]\').forEach(function(e){allC[e.dataset.pnlKey]=e.innerText.trim();});fetch(\'/api/update\',{method:\'POST\',headers:{\'Content-Type\':\'application/json\'},body:JSON.stringify({code_name:DATA.deal.code_name,field:\'pnl_row_comments\',value:JSON.stringify(allC)})});return false;})(this)">'+esc(commentVal)+'</td>';
+      h += '<td style="'+tdL+'font-size:11px;max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+secBorderL+'" contenteditable="true" data-pnl-key="'+esc(item.key)+'" onblur="(function(el){var allC={};document.querySelectorAll(\'[data-pnl-key]\').forEach(function(e){allC[e.dataset.pnlKey]=e.innerText.trim();});fetch(\'api/update\',{method:\'POST\',headers:{\'Content-Type\':\'application/json\'},body:JSON.stringify({code_name:DATA.deal.code_name,field:\'pnl_row_comments\',value:JSON.stringify(allC)})});return false;})(this)">'+esc(commentVal)+'</td>';
     } else {
       h += '<td style="'+tdL+'font-size:11px;max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#555;'+secBorderL+'">'+esc(commentVal)+'</td>';
     }
@@ -754,7 +754,7 @@ function _postModelUpdate(params) {
     const scenario = _modelCtx.params.scenario_name || 'base';
     // Merge into current params
     const merged = Object.assign({}, _modelCtx.params, params);
-    fetch('/api/model-params', {
+    fetch('api/model-params', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({domain, scenario, params: merged})
     }).then(r=>r.json()).then(ctx=>{
@@ -1317,7 +1317,7 @@ function _addTier() {
   if(!SERVE_MODE || !_modelCtx) return;
   const domain = _modelCtx.params.domain || '';
   const scenario = _modelCtx.params.scenario_name || 'base';
-  fetch('/api/model-add-tier',{
+  fetch('api/model-add-tier',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({domain,scenario})
   }).then(r=>r.json()).then(ctx=>{
@@ -1330,7 +1330,7 @@ function _removeTier() {
   if(!SERVE_MODE || !_modelCtx) return;
   const domain = _modelCtx.params.domain || '';
   const scenario = _modelCtx.params.scenario_name || 'base';
-  fetch('/api/model-remove-tier',{
+  fetch('api/model-remove-tier',{
     method:'POST',headers:{'Content-Type':'application/json'},
     body:JSON.stringify({domain,scenario})
   }).then(r=>r.json()).then(ctx=>{

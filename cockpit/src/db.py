@@ -9,7 +9,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 3
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -44,8 +44,11 @@ def get_conn():
         else:
             conn.execute("PRAGMA journal_mode=DELETE")
         conn.execute("PRAGMA foreign_keys=ON")
-        if conn.execute("PRAGMA user_version").fetchone()[0] == 0:
+        schema_v = conn.execute("PRAGMA user_version").fetchone()[0]
+        if schema_v == 0:
             init_db(conn)
+        elif schema_v < SCHEMA_VERSION:
+            migrate_db(conn, schema_v)
         _conn, _conn_path = conn, str(path)
         return conn
 
@@ -133,7 +136,10 @@ CREATE TABLE tasks (
   deal TEXT,
   pinned_today INTEGER NOT NULL DEFAULT 0,
   staging INTEGER NOT NULL DEFAULT 0,
+  sort_order INTEGER NOT NULL DEFAULT 0,
   source TEXT,
+  input_from TEXT CHECK(input_from IS NULL OR input_from IN ('RD','FF')),
+  input_question TEXT,
   version INTEGER NOT NULL DEFAULT 1,
   created_by TEXT,
   created_at TEXT NOT NULL,
@@ -161,10 +167,38 @@ CREATE INDEX idx_tasks_status ON tasks(status);
 """
 
 
+MIGRATIONS = {
+    2: ["ALTER TABLE tasks ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0"],
+    3: [
+        "ALTER TABLE tasks ADD COLUMN input_from TEXT CHECK(input_from IS NULL OR input_from IN ('RD','FF'))",
+        "ALTER TABLE tasks ADD COLUMN input_question TEXT",
+    ],
+}
+
+
 def init_db(conn):
     conn.executescript(DDL)
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()
+
+
+def migrate_db(conn, from_version):
+    """Apply all pending migrations starting from from_version.
+    Called by get_conn() when schema_v < SCHEMA_VERSION."""
+    current = from_version
+    for version in sorted(MIGRATIONS):
+        if current < version:
+            stmts = MIGRATIONS[version]
+            for stmt in stmts:
+                conn.execute(stmt)
+            conn.execute(f"PRAGMA user_version = {version}")
+            conn.commit()
+            current = version
+
+
+# Backwards-compat alias used by api.py lifespan (no-op — migration runs in get_conn now)
+def migrate(conn):
+    pass
 
 
 def audit(conn, actor, action, entity, before=None, after=None):

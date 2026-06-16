@@ -191,7 +191,7 @@ function renderPortfolio() {
         }
         const ind = document.getElementById('saveInd');
         if (ind) { ind.textContent='Saving…'; ind.className='save-indicator saving'; }
-        fetch('/api/portfolio-comments',{method:'POST',headers:{'Content-Type':'application/json'},
+        fetch('api/portfolio-comments',{method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({value:text})})
         .then(r=>{
           if(ind){
@@ -212,7 +212,7 @@ function renderPortfolio() {
       pipEl.querySelectorAll('li').forEach(li => { const t=li.textContent.trim(); if(t) lines.push(t); });
       if (lines.length === 0) { const raw = pipEl.innerText.trim(); if (raw) lines.push(...raw.split('\n').filter(l=>l.trim())); }
       const text = lines.join('\n');
-      fetch('/api/portfolio-comments', {
+      fetch('api/portfolio-comments', {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({key:'portfolio_pipeline_comments', value:text})
       });
@@ -265,7 +265,7 @@ function renderPortfolio() {
         wrap.removeAttribute('contenteditable');
         if (!field || !code) return;
         ind.textContent='Saving…'; ind.className='save-indicator saving';
-        fetch('/api/update',{method:'POST',headers:{'Content-Type':'application/json'},
+        fetch('api/update',{method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({code_name:code,field,value})})
         .then(r=>{
           if(r.ok){ind.textContent='Saved ✓';ind.className='save-indicator saved';}
@@ -300,7 +300,7 @@ function renderPortfolio() {
         // Update the row's data-stage for filtering
         wrap.closest('tr').dataset.stage = value;
         ind.textContent='Saving…'; ind.className='save-indicator saving';
-        fetch('/api/update',{method:'POST',headers:{'Content-Type':'application/json'},
+        fetch('api/update',{method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({code_name:code,field:'deal_stage',value})})
         .then(r=>{
           if(r.ok){ind.textContent='Saved ✓';ind.className='save-indicator saved';}
@@ -343,7 +343,7 @@ function cycleFit(td, code) {
   if (!SERVE_MODE) return;
   const ind = document.getElementById('saveInd');
   if (ind) { ind.textContent='Saving…'; ind.className='save-indicator saving'; }
-  fetch('/api/update', {method:'POST', headers:{'Content-Type':'application/json'},
+  fetch('api/update', {method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({code_name: code, field: 'strategic_fit', value: String(next)})})
   .then(r => {
     if (!ind) return;

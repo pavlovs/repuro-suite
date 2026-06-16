@@ -369,7 +369,7 @@ function _attachOnepagerHandlers() {
       }
       const code = DATA.deal.code_name;
 
-      fetch('/api/update', {
+      fetch('api/update', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({code_name: code, field: field, value: value})
@@ -386,7 +386,7 @@ function _attachOnepagerHandlers() {
       const code = DATA.deal.code_name;
       const field = 'onepager_' + q + '_approved';
 
-      fetch('/api/update', {
+      fetch('api/update', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({code_name: code, field: field, value: newVal})

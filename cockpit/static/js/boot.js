@@ -35,10 +35,29 @@
       box.appendChild(h);
       var inputs = [];
       fields.forEach(function (f) {
-        var inp = document.createElement("input");
-        inp.type = f.type || "text";
-        inp.placeholder = f.placeholder || "";
-        if (f.value != null) inp.value = f.value;
+        if (f.label) {
+          var lbl = document.createElement("label");
+          lbl.textContent = f.label;
+          lbl.style.cssText = "display:block;font-size:11px;font-weight:600;color:#475569;margin-bottom:2px";
+          box.appendChild(lbl);
+        }
+        var inp;
+        if (f.type === "select" && f.options) {
+          inp = document.createElement("select");
+          inp.style.cssText = "width:100%;padding:6px 8px;border:1px solid #cfd9de;border-radius:6px;font-size:14px;margin-bottom:8px";
+          f.options.forEach(function (o) {
+            var opt = document.createElement("option");
+            opt.value = o.value;
+            opt.textContent = o.label;
+            if (f.value != null && o.value === f.value) opt.selected = true;
+            inp.appendChild(opt);
+          });
+        } else {
+          inp = document.createElement("input");
+          inp.type = f.type || "text";
+          inp.placeholder = f.placeholder || "";
+          if (f.value != null) inp.value = f.value;
+        }
         box.appendChild(inp);
         inputs.push(inp);
       });
@@ -71,9 +90,9 @@
 
   var JSX_FILES = [
     "tweaks-panel.jsx", "components.jsx", "task-drawer.jsx", "quick-add.jsx",
-    "palette.jsx", "view-overview.jsx", "view-board.jsx", "view-week.jsx",
-    "view-table.jsx", "view-relations.jsx", "view-timeline.jsx",
-    "view-agents.jsx", "app.jsx",
+    "palette.jsx", "view-week.jsx", "view-overview.jsx", "view-board.jsx",
+    "view-table.jsx", "view-timeline.jsx",
+    "view-agents.jsx", "activity.jsx", "app.jsx",
   ];
 
   var WS_STYLE = [ // palette/icon assignment by order; name overrides below
@@ -226,6 +245,8 @@
       claimed_by: t.claimed_by || null, claim_expires_at: t.claim_expires_at || null,
       doneAt: t.done_at || null,
       kind: t.kind, dealCode: t.deal || null, version: t.version,
+      inputFrom: t.input_from || null, inputQuestion: t.input_question || null,
+      sortOrder: t.sort_order != null ? t.sort_order : 99999,
     };
   }
 
@@ -254,6 +275,8 @@
       else if (k === "detail") out.detail = v;
       else if (k === "execution") out.execution = v === "agent" ? "agent_supervised" : v;
       else if (k === "ac") out.acceptance_criteria = v;
+      else if (k === "inputFrom") out.input_from = v;
+      else if (k === "inputQuestion") out.input_question = v;
       else out[k] = v;
     });
     return out;
@@ -272,11 +295,21 @@
     function syncArray(liveArr, freshArr, liveIdx) {
       var freshById = {};
       freshArr.forEach(function (x) { freshById[x.id] = x; });
+      // Remove items that no longer exist on server
       for (var i = liveArr.length - 1; i >= 0; i--) {
         if (!freshById[liveArr[i].id]) { delete liveIdx[liveArr[i].id]; liveArr.splice(i, 1); }
       }
+      // Update properties in place (preserves object identity for React refs)
       liveArr.forEach(function (x) { Object.assign(x, freshById[x.id]); delete freshById[x.id]; });
+      // Append new items
       Object.keys(freshById).forEach(function (id) { liveArr.push(freshById[id]); liveIdx[id] = freshById[id]; });
+      // Reorder live array to match server order (critical for drag-reorder to take effect)
+      var liveByIdNow = {};
+      liveArr.forEach(function (x) { liveByIdNow[x.id] = x; });
+      var j = 0;
+      freshArr.forEach(function (fresh) {
+        if (liveByIdNow[fresh.id]) { liveArr[j] = liveByIdNow[fresh.id]; j++; }
+      });
     }
     syncArray(window.TASKS, fresh.TASKS, window.byTask);
     syncArray(window.DELIVERABLES, fresh.DELIVERABLES, window.byDeliv);
@@ -420,6 +453,24 @@
       if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return; }
       await refreshFromServer();
     },
+    async saveWs(w, fields) {
+      var r = await authedFetch("/api/workstream/" + w.id, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.assign({ version: w.version }, fields)),
+      });
+      conflictReload(r);
+      if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return; }
+      await refreshFromServer();
+    },
+    async reorder(taskIds) {
+      // taskIds: array of "t-N" strings in new display order
+      var r = await authedFetch("/api/tasks/reorder", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ task_ids: taskIds }),
+      });
+      if (!r.ok) { showToast("Reorder failed: " + (await r.text()).slice(0, 200), "err"); return; }
+      await refreshFromServer();
+    },
     reload: function () { location.reload(); },
   };
 
@@ -446,6 +497,10 @@
       state = await fetchState();
     }
     window.COCKPIT_DATA = mapState(state);
+    if (state.principal && state.principal.id && !sessionStorage.getItem("cockpit_person")) {
+      var pMap = {rd: "RD", ff: "FF"};
+      if (pMap[state.principal.id]) sessionStorage.setItem("cockpit_person", pMap[state.principal.id]);
+    }
 
     var sources = await Promise.all(JSX_FILES.map(function (f) {
       return fetch((window.COCKPIT_BASE || '') + "/static/js/" + f, { cache: "no-cache" }).then(function (r) {

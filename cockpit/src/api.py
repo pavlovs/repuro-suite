@@ -21,7 +21,7 @@ from . import compute, db, dealroom_sync, mdio, models
 # app / lifespan
 @asynccontextmanager
 async def lifespan(app):
-    conn = db.get_conn()
+    conn = db.get_conn()  # migration runs inside get_conn on schema_v mismatch
     dealroom_sync.sync_deal_mirror(conn)  # tolerant — logs and keeps stale mirror
     interval = int(os.environ.get("COCKPIT_SYNC_INTERVAL", "0"))
     task = asyncio.create_task(_sync_loop(interval)) if interval > 0 else None
@@ -107,6 +107,7 @@ def _task_json(row, computed):
         t[k] = json.loads(row[k])
     t["pinned_today"] = bool(row["pinned_today"])
     t["staging"] = bool(row["staging"])
+    t["sort_order"] = row["sort_order"] if "sort_order" in row.keys() else 0
     t["computed"] = computed
     return t
 
@@ -139,7 +140,7 @@ def assemble_state(conn):
     d_rows = conn.execute(
         "SELECT * FROM deliverables ORDER BY sort_order, id"
     ).fetchall()
-    t_rows = conn.execute("SELECT * FROM tasks ORDER BY id").fetchall()
+    t_rows = conn.execute("SELECT * FROM tasks ORDER BY sort_order, id").fetchall()
     mirror = {r["codename"]: r for r in conn.execute("SELECT * FROM deal_mirror")}
 
     deliv_by_id = {r["id"]: r for r in d_rows}
@@ -227,9 +228,11 @@ def assemble_state(conn):
         children = [
             tasks_json[t["id"]] for t in t_rows if t["deliverable_id"] == r["id"]
         ]
-        # upcoming first (spec §5.1): effective deadline asc, undated last, id tiebreak
+        # manual sort_order first; within tied sort_order (default 0) fall back to
+        # effective deadline asc (spec §5.1), undated last, id tiebreak
         children.sort(
             key=lambda c: (
+                c.get("sort_order", 0),
                 c["computed"]["effective_deadline"] is None,
                 c["computed"]["effective_deadline"] or "",
                 c["id"],
@@ -336,6 +339,8 @@ _TASK_FIELDS = {
     "staging",
     "source",
     "evidence",
+    "input_from",
+    "input_question",
 }
 _TASK_ENUMS = {
     "kind": models.KINDS,
@@ -344,6 +349,7 @@ _TASK_ENUMS = {
     "execution": models.EXECUTIONS,
     "runner": models.RUNNERS,
     "waiting_on_type": models.WAITING_TYPES,
+    "input_from": {"RD", "FF"},
 }
 
 
@@ -385,6 +391,8 @@ def _validate_task_fields(conn, fields):
         "acceptance_criteria"
     ):
         raise HTTPException(422, "acceptance_criteria required for agent execution")
+    if fields.get("input_from") and not (fields.get("input_question") or "").strip():
+        raise HTTPException(422, "input_question required when input_from is set")
 
 
 def _safe_ref(ref):
@@ -492,7 +500,9 @@ def health():
 
 @app.get("/api/state")
 def state(p=Depends(principal)):
-    return assemble_state(db.get_conn())
+    s = assemble_state(db.get_conn())
+    s["principal"] = p
+    return s
 
 
 @app.post("/api/task", status_code=201)
@@ -634,13 +644,37 @@ def create_deliverable(payload: dict = Body(...), p=Depends(principal)):
 
 @app.patch("/api/deliverable/{did}")
 def patch_deliverable(did: str, payload: dict = Body(...), p=Depends(principal)):
+    conn = db.get_conn()
+    # workstream_id needs FK validation before the generic patch path
+    if "workstream_id" in payload:
+        ws_raw = payload["workstream_id"]
+        try:
+            prefix, wnum = models.parse_ref(ws_raw)
+        except ValueError:
+            raise HTTPException(422, f"bad workstream_id: {ws_raw!r}")
+        if (
+            prefix != "w"
+            or not conn.execute(
+                "SELECT 1 FROM workstreams WHERE id=?", (wnum,)
+            ).fetchone()
+        ):
+            raise HTTPException(422, "workstream not found")
+        payload["workstream_id"] = wnum
     return _patch_simple(
         did,
         "d",
         "deliverables",
         payload,
         p,
-        {"name", "target_date", "status", "sort_order", "comment", "staging"},
+        {
+            "name",
+            "target_date",
+            "status",
+            "sort_order",
+            "comment",
+            "staging",
+            "workstream_id",
+        },
         {"status": models.DELIV_STATUSES},
     )
 
@@ -824,6 +858,26 @@ def delete_task(tid: str, p=Depends(human_only)):
         )
         conn.commit()
     return {"deleted": ref}
+
+
+@app.patch("/api/tasks/reorder")
+def reorder_tasks(payload: dict = Body(...), p=Depends(human_only)):
+    """Bulk-update sort_order for a list of task ids (in new display order).
+    Payload: {task_ids: ["t-1", "t-3", "t-2", ...]}"""
+    task_ids = payload.get("task_ids")
+    if not task_ids or not isinstance(task_ids, list):
+        raise HTTPException(422, "task_ids list is required")
+    conn = db.get_conn()
+    with db.WRITE_LOCK:
+        for idx, tid_str in enumerate(task_ids):
+            num = _tid(tid_str)
+            conn.execute(
+                "UPDATE tasks SET sort_order=?, updated_at=? WHERE id=?",
+                (idx, db.now_iso(), num),
+            )
+        db.audit(conn, p["id"], "tasks_reorder", "bulk", after={"task_ids": task_ids})
+        conn.commit()
+    return {"reordered": len(task_ids)}
 
 
 @app.post("/api/task/{tid}/approve")
@@ -1038,6 +1092,37 @@ def import_md(
         conn.commit()
     summary["created_ids"] = created_ids
     return summary
+
+
+# --------------------------------------------------------------------------
+# activity log
+@app.get("/api/activity")
+def activity_log(entity: str | None = Query(default=None), p=Depends(principal)):
+    """Last 50 audit entries, newest first. Optional ?entity=t-123 filter."""
+    conn = db.get_conn()
+    if entity:
+        rows = conn.execute(
+            "SELECT * FROM audit_log WHERE entity=? ORDER BY at DESC LIMIT 50",
+            (entity,),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            "SELECT * FROM audit_log ORDER BY at DESC LIMIT 50"
+        ).fetchall()
+    return {
+        "entries": [
+            {
+                "id": r["id"],
+                "timestamp": r["at"],
+                "actor": r["actor"],
+                "action": r["action"],
+                "entity": r["entity"],
+                "before": json.loads(r["before"]) if r["before"] else None,
+                "after": json.loads(r["after"]) if r["after"] else None,
+            }
+            for r in rows
+        ]
+    }
 
 
 # --------------------------------------------------------------------------

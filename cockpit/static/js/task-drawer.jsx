@@ -141,6 +141,30 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
           <div><span className="dm-k">Readiness</span><span className="dm-v"><span className="rdot" data-level={r} style={{ width: 9, height: 9, marginRight: 6 }} />{{ green: "Ready", amber: "Prereqs running", red: "Blocked" }[r]}
             <button className={"pin-btn" + (task.pinned ? " on" : "")} style={{ marginLeft: 10 }} title={task.pinned ? "unpin" : "pin to today"} onClick={() => api.save(task, { pinned: !task.pinned })}><Icon name="pin" size={13} /></button>
           </span></div>
+          <div><span className="dm-k">Input from</span><span className="dm-v dm-edit">
+            <select className="dm-select" value={task.inputFrom || ""}
+              onChange={(e) => {
+                const v = e.target.value || null;
+                if (v && !task.inputQuestion) {
+                  showModal("What input is needed?", [{ placeholder: "e.g. confirm budget, approve draft" }]).then((q) => {
+                    if (q === null) return;
+                    api.save(task, { inputFrom: v, inputQuestion: q.trim() || null });
+                  });
+                } else {
+                  api.save(task, { inputFrom: v, inputQuestion: v ? task.inputQuestion : null });
+                }
+              }}>
+              <option value="">— none —</option>
+              {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p].name}</option>)}
+            </select>
+          </span></div>
+          {task.inputFrom && (
+            <div><span className="dm-k">Question</span><span className="dm-v">
+              <FieldInput className="dm-date" style={{width:"100%"}} value={task.inputQuestion}
+                placeholder="what's needed from them"
+                onSave={(v) => api.save(task, { inputQuestion: v })} />
+            </span></div>
+          )}
         </div>
 
         <div className="drawer-sec-lbl">Dependencies — must finish first <span className="dm-n">{pre.length}</span>
@@ -190,6 +214,9 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
             <Avatar id={(p.owners || [])[0]} size={18} />
           </button>
         )) : <div className="empty">no downstream tasks</div>}
+
+        <div className="drawer-sec-lbl">History</div>
+        <TaskHistory taskId={task.id} />
 
         <div className="drawer-foot">
           <button className="drawer-delete" onClick={() => api.deleteTask(task)}>Delete task</button>

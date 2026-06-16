@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DEALROOM</title>
+<title>Dealroom — Repuro</title>
 <link rel="stylesheet" href="/shared.css">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -344,10 +344,8 @@ tr.detail-row.visible{display:table-row}
     <a href="/cockpit/">Cockpit</a>
     <a href="/allex/">ALLEX</a>
   </nav>
-  <h1 onclick="showPortfolio()">DEALROOM</h1>
-  <span class="badge" id="liveBadge">__LIVE_BADGE__</span>
-  <button class="lang-toggle" id="langToggle" onclick="toggleLang()">DE</button>
-  <span class="date">__DATE_STR__</span>
+  <h1 onclick="showPortfolio()">Dealroom</h1>
+  <span class="date" style="margin-left:auto">__DATE_STR__</span>
 </div>
 
 <div id="cockpit" class="cockpit" style="display:none"></div>
@@ -411,10 +409,10 @@ function toggleLang() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('liveBadge').classList.add(SERVE_MODE ? 'badge-live' : 'badge-static');
+  // liveBadge removed for clean UI
   if (INVESTOR_MODE) applyInvestorMode();
   if (SERVE_MODE) {
-    fetch('/api/data'+location.search).then(r=>r.json()).then(d=>{DATA=d;render()}).catch(()=>render());
+    fetch('api/data'+location.search).then(r=>r.json()).then(d=>{DATA=d;render()}).catch(()=>render());
   } else { render(); }
 });
 
@@ -915,7 +913,7 @@ function renderOfferStub() {
 
 function renderDocuments() {
   const docs=DATA.documents||[];
-  if(docs.length===0) return '<div class="empty">No documents registered.<br><code>python DEALROOM.py ingest-docs --deal '+DATA.deal.code_name+'</code></div>';
+  if(docs.length===0) return '<div class="empty">No documents registered yet.</div>';
 
   const groups={};
   for(const d of docs){if(!groups[d.doc_type])groups[d.doc_type]=[];groups[d.doc_type].push(d)}
@@ -937,7 +935,7 @@ function renderDocuments() {
 
 function renderNotes() {
   const notes=DATA.notes||[];
-  if(notes.length===0) return '<div class="empty">No notes yet.<br><code>python DEALROOM.py note --deal '+DATA.deal.code_name+' --text "..."</code></div>';
+  if(notes.length===0) return '<div class="empty">No notes yet.</div>';
 
   let h='';
   for(const n of notes){

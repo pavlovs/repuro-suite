@@ -13,7 +13,7 @@ const PLAYBOOK_STEPS = [
 function QuickAdd({ open, onClose, prefill }) {
   const initType = (prefill && prefill.type) || "task";
   const [mode, setMode] = React.useState(initType);
-  const [f, setF] = React.useState({ text: "", d: "", ws: "", owners: ["RD"], due: TODAY, priority: "", execution: "me", ac: "", status: "open", target: "" });
+  const [f, setF] = React.useState({ text: "", d: "", ws: "", owners: ["RD"], due: TODAY, priority: "", execution: "me", ac: "", status: "open", target: "", inputFrom: "", inputQuestion: "" });
   React.useEffect(() => {
     if (open) {
       const t = (prefill && prefill.type) || "task";
@@ -22,6 +22,7 @@ function QuickAdd({ open, onClose, prefill }) {
         text: "", d: (prefill && prefill.d) || "", ws: (prefill && prefill.ws) || "",
         owners: ["RD"], due: TODAY, priority: "", execution: "me", ac: "",
         status: (prefill && prefill.status) || "open", target: "",
+        inputFrom: "", inputQuestion: "",
       });
     }
   }, [open]);
@@ -32,12 +33,14 @@ function QuickAdd({ open, onClose, prefill }) {
   const submitTask = async () => {
     if (!f.text.trim()) return showToast("Task text required", "err");
     if (f.execution === "agent" && !f.ac.trim()) return showToast("Agent tasks need 'done when…' (acceptance criteria)", "err");
+    if (f.inputFrom && !f.inputQuestion.trim()) return showToast("Describe what input is needed", "err");
     const fields = { text: f.text.trim(), owners: f.owners, execution: f.execution, kind: f.execution === "agent" ? "agent_job" : "followup" };
     if (f.status && f.status !== "open") fields.status = f.status;
     if (f.d) fields.d = f.d;
     if (f.due) fields.due = f.due;
     if (f.priority) fields.priority = f.priority;
     if (f.ac) fields.ac = f.ac.trim();
+    if (f.inputFrom) { fields.inputFrom = f.inputFrom; fields.inputQuestion = f.inputQuestion.trim(); }
     const t = await api.create(fields);
     if (t) onClose(t.id);
   };
@@ -46,6 +49,12 @@ function QuickAdd({ open, onClose, prefill }) {
     if (!f.text.trim()) return showToast("Deliverable name required", "err");
     const wsId = f.ws || (WORKSTREAMS[0] && WORKSTREAMS[0].id);
     if (!wsId) return showToast("No workstream available", "err");
+    if (!f.target) {
+      const ok = await showModal("No target date set", [
+        {label: "This deliverable won't appear on the timeline. Click OK to continue anyway.", type: "select", options: [{value: "yes", label: "Continue without a target date"}], value: "yes"},
+      ]);
+      if (ok === null) return;
+    }
     await api.createDeliv(wsId, f.text.trim(), f.target || null);
     onClose();
   };
@@ -105,6 +114,26 @@ function QuickAdd({ open, onClose, prefill }) {
                   onChange={(e) => setF({ ...f, ac: e.target.value })} />
               </label>
             )}
+            <div className="qa-input-required">
+              <label className="qa-ir-toggle">
+                <input type="checkbox" checked={!!f.inputFrom}
+                  onChange={(e) => setF({ ...f, inputFrom: e.target.checked ? "FF" : "", inputQuestion: "" })} />
+                <span>Needs input from someone?</span>
+              </label>
+              {f.inputFrom && (
+                <div className="qa-row">
+                  <label>Who
+                    <select value={f.inputFrom} onChange={(e) => setF({ ...f, inputFrom: e.target.value })}>
+                      {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p].name}</option>)}
+                    </select>
+                  </label>
+                  <label style={{flex:2}}>What's needed
+                    <input className="qa-input" placeholder="e.g. confirm budget, approve draft" value={f.inputQuestion}
+                      onChange={(e) => setF({ ...f, inputQuestion: e.target.value })} />
+                  </label>
+                </div>
+              )}
+            </div>
           </React.Fragment>
         )}
         {mode === "deliverable" && (

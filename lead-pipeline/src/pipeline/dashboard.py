@@ -580,15 +580,6 @@ def _build_html(
         .replace("__LETTER_TEMPLATE__", letter_template_js)
         .replace("__RELEASE_NOTES_JSON__", release_notes_json)
     )
-    base_path = os.environ.get("BASE_PATH", "")
-    if base_path:
-        interceptor = (
-            f"<script>window.BASE_PATH='{base_path}';"
-            "(function(){var B=window.BASE_PATH,F=window.fetch;"
-            "window.fetch=function(u,o){return F.call(this,"
-            "typeof u==='string'&&u.startsWith('/')?B+u:u,o);}})();</script>"
-        )
-        html = html.replace("</head>", interceptor + "</head>")
     return html
 
 

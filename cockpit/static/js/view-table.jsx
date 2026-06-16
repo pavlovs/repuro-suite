@@ -13,12 +13,40 @@ function StatusCell({ t, mutate }) {
   );
 }
 
+async function editWs(w) {
+  const name = await showModal("Workstream name:", [{value: w.name}]);
+  if (name === null || !name.trim() || name.trim() === w.name) return;
+  api.saveWs(w, { name: name.trim() });
+}
+
 async function editDeliv(d) {
-  const name = await showModal("Deliverable name:", [{value: d.name}]);
-  if (name === null) return;
-  const target = await showModal("Target date (empty = none):", [{type: "date", value: d.target || ""}]);
-  if (target === null) return;
-  api.saveDeliv(d, { name: name.trim() || d.name, target_date: target.trim() || null });
+  const result = await showModal("Edit deliverable", [
+    {label: "Name", value: d.name},
+    {label: "Target date", type: "date", value: d.target || ""},
+    {label: "Workstream", type: "select", value: d.ws,
+      options: WORKSTREAMS.map((w) => ({ value: w.id, label: w.name }))},
+  ]);
+  if (result === null) return;
+  const [name, target, wsId] = result;
+  const changes = { name: name.trim() || d.name, target_date: target.trim() || null };
+  if (wsId && wsId !== d.ws) changes.workstream_id = wsId;
+  api.saveDeliv(d, changes);
+}
+
+async function editTask(t) {
+  const deliv = byDeliv[t.d];
+  const ws = deliv ? byWs[deliv.ws] : null;
+  const context = ws && deliv ? ws.name + " › " + deliv.name : deliv ? deliv.name : null;
+  const result = await showModal(context ? "Edit task — " + context : "Edit task", [
+    {label: "Task", value: t.text},
+    {label: "Due date", type: "date", value: t.ownDue || ""},
+  ]);
+  if (result === null) return;
+  const [text, due] = result;
+  const changes = {};
+  if (text.trim() && text.trim() !== t.text) changes.text = text.trim();
+  if (due !== (t.ownDue || "")) changes.due = due || null;
+  if (Object.keys(changes).length) api.save(t, changes);
 }
 
 function TableView({ mutate, openTask, filters }) {
@@ -45,34 +73,49 @@ function TableView({ mutate, openTask, filters }) {
     if (!filters.showDone && t.status === "done") return false;
     if (filters.person && !(t.owners || []).includes(filters.person)) return false;
     if (filters.readiness && readiness(t) !== filters.readiness) return false;
+    if (filters.priority && (t.priority || "") !== filters.priority) return false;
     return true;
   };
 
-  const TRow = ({ t }) => (
-    <div className={"trow" + (t.status === "done" ? " done" : "")}>
-      <span className="tc-r"><ReadinessDot t={t} /></span>
-      <span className="tc-txt tc-click" onClick={() => openTask(t.id)} title="open & edit">
-        <PriorityFlag p={t.priority} />
-        <span className="tc-main">{t.text}</span>
-        {t.status === "waiting" && <WaitingChip t={t} />}
-        {(t.prereqs && t.prereqs.length) ? <span className="tc-pre" title={"needs: " + blockingPrereqs(t).map((p) => p.text).join(", ")}><Icon name="link" size={11} /> {t.prereqs.length}</span> : null}
-      </span>
-      <span><StatusCell t={t} mutate={mutate} /></span>
-      <span><OwnerStack owners={t.owners} size={22} /></span>
-      <span><DueChip t={t} /></span>
-      <span className="tc-pin">
-        <button className={"pin-btn" + (t.pinned ? " on" : "")} title={t.pinned ? "unpin" : "pin to today"} onClick={() => api.save(t, { pinned: !t.pinned })}><Icon name="pin" size={13} /></button>
-      </span>
-    </div>
-  );
+  const TRow = ({ t, dragHandlers }) => {
+    const dragging = dragHandlers && dragHandlers["data-dragging"] === "true";
+    const dragOver = dragHandlers && dragHandlers["data-drag-over"] === "true";
+    const extraClass = (dragging ? " dragging" : "") + (dragOver ? " drag-over" : "");
+    const blocked = readiness(t) === "red";
+    const prereqs = blocked ? blockingPrereqs(t) : [];
+    return (
+      <React.Fragment>
+        <div className={"trow" + (t.status === "done" ? " done" : "") + extraClass} {...(dragHandlers || {})}>
+          <span className="tc-txt tc-click" onClick={() => openTask(t.id)} title="open task">
+            <span className="tc-main">{t.text}</span>
+            {blocked && <span className="tc-blocked">Blocked</span>}
+            <button className="deliv-edit tc-edit" title="edit task name / due date"
+              onClick={(e) => { e.stopPropagation(); editTask(t); }}>✎</button>
+          </span>
+          <span><OwnerStack owners={t.owners} size={22} /></span>
+          <span><DueChip t={t} /></span>
+        </div>
+        {prereqs.map((p) => (
+          <div key={p.id} className="trow prereq-row">
+            <span className="tc-txt prereq-txt" onClick={() => openTask(p.id)} title="open blocking task">
+              <span className="prereq-connector">&#x21B3;</span>
+              <span className="prereq-label">blocked by:</span>
+              <span className="prereq-name">{p.text}</span>
+            </span>
+            <span></span>
+            <span></span>
+          </div>
+        ))}
+      </React.Fragment>
+    );
+  };
 
   const standalone = TASKS.filter((t) => !t.d && visible(t));
 
   return (
     <div className="tbl">
       <div className="trow thead tbl-sticky">
-        <span></span><span>Task</span><span>Status</span><span>Owner</span><span>Due</span>
-        <span><button className="pin-btn" title={allExpanded ? "collapse all" : "expand all"} onClick={toggleAll} style={{fontSize:11,opacity:.6}}>{allExpanded ? "▾" : "▸"}</button></span>
+        <span>Task</span><span>Owner</span><span>Due</span>
       </div>
       {WORKSTREAMS.map((w) => {
         const delivs = DELIVERABLES.filter((d) => d.ws === w.id);
@@ -83,13 +126,13 @@ function TableView({ mutate, openTask, filters }) {
               <span className={"caret" + (wsOpen[w.id] ? " open" : "")} style={{marginRight:4}}><Icon name="chevron" size={14} /></span>
               <span className="ws-ico" style={{ background: w.color }}><Icon name={w.icon} size={14} /></span>
               <span className="ws-name">{w.name}</span>
+              <button className="deliv-edit" title="Rename workstream" onClick={(e) => { e.stopPropagation(); editWs(w); }}>✎</button>
               {flat && delivs[0] && (
                 <button className="ws-band-target" title="deliverable target — click to edit"
                   onClick={(e) => { e.stopPropagation(); editDeliv(delivs[0]); }}>
                   {delivs[0].target ? "target " + fdate(delivs[0].target) : "set target"} ✎
                 </button>
               )}
-              {!flat && <span className="ws-count">{delivs.length} deliverables</span>}
               <button className="ws-band-target" style={{ marginLeft: "auto", border: "1px dashed var(--line)", color: "var(--muted)" }}
                 title="add a deliverable (milestone) to this workstream"
                 onClick={(e) => {
@@ -98,11 +141,16 @@ function TableView({ mutate, openTask, filters }) {
                 }}>+ deliverable</button>
             </div>
             {wsOpen[w.id] && (flat
-              ? (delivs[0] ? TASKS.filter((t) => t.d === delivs[0].id && visible(t)).map((t) => <TRow key={t.id} t={t} />) : null)
+              ? (delivs[0] ? (() => {
+                  const flatTasks = TASKS.filter((t) => t.d === delivs[0].id && visible(t));
+                  return (
+                    <DragList items={flatTasks} onReorder={(items) => api.reorder(items.map((t) => t.id))}
+                      renderItem={(t, h) => <TRow key={t.id} t={t} dragHandlers={h} />} />
+                  );
+                })() : null)
               : delivs.map((d) => {
                 const tasks = TASKS.filter((t) => t.d === d.id && visible(t));
                 if (filters.person || filters.readiness || !filters.showDone) { if (!tasks.length) return null; }
-                const s = delivStats(d);
                 const du = daysUntil(d.target);
                 return (
                   <div key={d.id} className="deliv">
@@ -111,16 +159,12 @@ function TableView({ mutate, openTask, filters }) {
                       <span className="deliv-name">{d.name}</span>
                       <button className="deliv-edit" title="rename / set target date"
                         onClick={(e) => { e.stopPropagation(); editDeliv(d); }}>✎</button>
-                      {d.deal && <DealChip deal={d.deal} small />}
-                      <span className="deliv-prog">
-                        <span className="prog-bar"><span style={{ width: (s.total ? s.done / s.total * 100 : 0) + "%", background: w.color }} /></span>
-                        {s.done}/{s.total}
-                      </span>
                       {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")}>{du < 0 ? "overdue " : "due "}{fdate(d.target)}</span>}
                     </div>
                     {open[d.id] && (
                       <div className="deliv-body">
-                        {tasks.map((t) => <TRow key={t.id} t={t} />)}
+                        <DragList items={tasks} onReorder={(items) => api.reorder(items.map((t) => t.id))}
+                          renderItem={(t, h) => <TRow key={t.id} t={t} dragHandlers={h} />} />
                         {!tasks.length && <div className="trow"><span></span><span className="empty">no matching tasks</span></div>}
                       </div>
                     )}
@@ -192,11 +236,6 @@ function DeliverableView({ mutate, openTask }) {
                   <div className="wk-deliv-head" style={{ cursor: "pointer" }} onClick={() => toggle(d.id + "-" + id)}>
                     <span className={"caret" + (isOpen ? " open" : "")}><Icon name="chevron" size={12} /></span>
                     <span className="wk-deliv-name">{d.name}</span>
-                    {d.deal && <DealChip deal={d.deal} small />}
-                    <span className="wk-deliv-prog">
-                      <span className="prog-bar" style={{ width: 60 }}><span style={{ width: pct + "%", background: ws.color }} /></span>
-                      <span style={{ fontSize: 11, color: "#64748b" }}>{s.done}/{s.total}</span>
-                    </span>
                     {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")} style={{ fontSize: 11 }}>{fdate(d.target)}</span>}
                     <button className="deliv-edit" title="rename / set target date" style={{marginLeft:4}}
                       onClick={(e) => { e.stopPropagation(); editDeliv(d); }}>✎</button>

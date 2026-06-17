@@ -4,6 +4,19 @@ Format: one entry per prod deploy. Group changes by feature, not individual item
 
 ---
 
+## v2.1.9 — 2026-06-17
+
+### Cockpit — Space architecture + UX polish
+- **Spaces entity** — new `spaces` table with two seeded spaces (Repuro, M&A). Workstreams grouped under spaces with `space_id` FK. Schema v3→v4 migration with deal-linked projects auto-assigned to M&A
+- **Visual hierarchy** — teal space banners as top-level separators, elevated workstream bands (card-style, colored left border), toned-down deliverable cards (indented, no shadow). Consistent across Table, Timeline, Board views
+- **Deal filtering** — dead/on_hold deals hidden by default, "+N inactive" toggle to reveal. Pre-LOI deals collapsed, LOI+ expanded. Computed visibility from deal_mirror stage
+- **Deal stage editing** — clickable stage chips on M&A workstreams open modal to change deal stage. `PATCH /api/deal/{codename}` endpoint
+- **Deliverable drawer** — side panel (like task drawer) with inline editing for name, target, status, workstream, task list, delete button. Replaces modal popup
+- **Deal name normalization** — dealroom_sync strips legacy suffixes (e.g., "Fox — DD" → "Fox"), auto-aligns workstream names with codenames
+- **Delete deliverable** — `DELETE /api/deliverable/{did}` endpoint; tasks become standalone
+
+---
+
 ## v2.1.8 — 2026-06-16
 
 ### Cockpit — suite-fix session (30+ issues)

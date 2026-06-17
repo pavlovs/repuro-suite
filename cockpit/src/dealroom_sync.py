@@ -59,21 +59,42 @@ def sync_deal_mirror(conn):
         # Auto-create M&A projects for deals without a matching workstream (§4.6)
         mna = conn.execute("SELECT id FROM spaces WHERE slug='mna'").fetchone()
         if mna:
-            existing = {
+            existing_deals = {
                 r[0].lower()
                 for r in conn.execute(
                     "SELECT deal_codename FROM workstreams WHERE deal_codename IS NOT NULL"
                 ).fetchall()
             }
+            existing_names = {
+                r[0].lower()
+                for r in conn.execute("SELECT name FROM workstreams").fetchall()
+            }
             for code_name, stage, note in rows:
-                if not code_name or code_name.lower() in existing:
+                if not code_name or code_name.lower() in existing_deals:
                     continue
+                if code_name.lower() in existing_names:
+                    conn.execute(
+                        "UPDATE workstreams SET deal_codename=?, space_id=? "
+                        "WHERE lower(name)=? AND deal_codename IS NULL",
+                        (code_name, mna["id"], code_name.lower()),
+                    )
+                else:
+                    conn.execute(
+                        "INSERT INTO workstreams (name, space_id, deal_codename, status) "
+                        "VALUES (?,?,?,?)",
+                        (code_name, mna["id"], code_name, "active"),
+                    )
+                existing_deals.add(code_name.lower())
+                existing_names.add(code_name.lower())
+            # Normalize deal-linked workstream names to match codename
+            for row in conn.execute(
+                "SELECT id, name, deal_codename FROM workstreams "
+                "WHERE deal_codename IS NOT NULL AND name != deal_codename"
+            ).fetchall():
                 conn.execute(
-                    "INSERT INTO workstreams (name, space_id, deal_codename, status) "
-                    "VALUES (?,?,?,?)",
-                    (code_name, mna["id"], code_name, "active"),
+                    "UPDATE workstreams SET name=? WHERE id=?",
+                    (row["deal_codename"], row["id"]),
                 )
-                existing.add(code_name.lower())
         conn.commit()
     return {"ok": True, "count": len(rows), "error": None, "synced_at": now}
 

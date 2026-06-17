@@ -226,3 +226,89 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
   );
 }
 window.TaskDrawer = TaskDrawer;
+
+function DelivDrawer({ deliv, onClose, mutate, openTask }) {
+  React.useEffect(() => { window.closeDrawer = onClose; }, [deliv && deliv.id]);
+  React.useEffect(() => {
+    if (!deliv) return;
+    const onEsc = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, [deliv && deliv.id]);
+  if (!deliv) return null;
+
+  const ws = byWs[deliv.ws];
+  const deal = deliv.deal ? { codename: deliv.deal } : null;
+  const tasks = TASKS.filter((t) => t.d === deliv.id);
+  const openTasks = tasks.filter((t) => t.status !== "done");
+  const doneTasks = tasks.filter((t) => t.status === "done");
+  const s = delivStats(deliv);
+  const pct = s.total > 0 ? Math.round((s.done / s.total) * 100) : 0;
+
+  return (
+    <>
+      <div className="drawer-scrim" onClick={onClose} />
+      <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+        <button className="drawer-x" onClick={onClose} title="Close">&times;</button>
+        <div className="drawer-eyebrow">
+          <span className="ws-ico sm" style={{ background: ws ? ws.color : "#888" }}><Icon name={ws ? ws.icon : "ops"} size={11} /></span>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>{ws ? ws.name : "—"}</span>
+          {deal && <span className="drawer-stage">{deal.codename}</span>}
+        </div>
+
+        <FieldInput big className="drawer-title-input" value={deliv.name}
+          onSave={(v) => v && api.saveDeliv(deliv, { name: v })} placeholder="deliverable name" />
+
+        <div className="drawer-meta">
+          <div><span className="dm-k">Target</span><span className="dm-v">
+            <FieldInput type="date" className="dm-date" value={deliv.target}
+              onSave={(v) => api.saveDeliv(deliv, { target_date: v || null })} />
+          </span></div>
+          <div><span className="dm-k">Status</span><span className="dm-v">
+            <select className="dm-select" value={deliv.status || "open"}
+              onChange={(e) => api.saveDeliv(deliv, { status: e.target.value })}>
+              <option value="open">Open</option><option value="done">Done</option><option value="parked">Parked</option>
+            </select>
+          </span></div>
+          <div><span className="dm-k">Workstream</span><span className="dm-v">
+            <select className="dm-select" value={deliv.ws}
+              onChange={(e) => api.saveDeliv(deliv, { workstream_id: e.target.value })}>
+              {WORKSTREAMS.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+            </select>
+          </span></div>
+          <div><span className="dm-k">Progress</span><span className="dm-v">
+            <span className="rdot" data-level={s.readiness} style={{ width: 9, height: 9, marginRight: 6 }} />
+            {s.done}/{s.total} done ({pct}%)
+          </span></div>
+        </div>
+
+        <div className="drawer-sec-lbl">Open tasks <span className="dm-n">{openTasks.length}</span></div>
+        {openTasks.length ? openTasks.map((t) => (
+          <button key={t.id} className="drawer-link-row" onClick={() => openTask(t.id)}>
+            <span className="rdot" data-level={readiness(t)} style={{ width: 8, height: 8 }} />
+            <span className="dlr-txt">{t.text}</span>
+            <StatusPill status={t.status} />
+            <OwnerStack owners={t.owners} size={16} />
+          </button>
+        )) : <div className="empty">no open tasks</div>}
+
+        {doneTasks.length > 0 && (
+          <>
+            <div className="drawer-sec-lbl">Done <span className="dm-n">{doneTasks.length}</span></div>
+            {doneTasks.map((t) => (
+              <button key={t.id} className="drawer-link-row" style={{ opacity: 0.5 }} onClick={() => openTask(t.id)}>
+                <span className="rdot" data-level="green" style={{ width: 8, height: 8 }} />
+                <span className="dlr-txt" style={{ textDecoration: "line-through" }}>{t.text}</span>
+              </button>
+            ))}
+          </>
+        )}
+
+        <div className="drawer-foot">
+          <button className="drawer-delete" onClick={() => api.deleteDeliv(deliv)}>Delete deliverable</button>
+        </div>
+      </aside>
+    </>
+  );
+}
+window.DelivDrawer = DelivDrawer;

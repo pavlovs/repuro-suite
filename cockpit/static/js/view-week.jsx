@@ -548,6 +548,7 @@ function WeekView({ person, mutate, openTask, embedded }) {
             <span>Shared blockers</span>
             <span className="wk-n">{sharedN}</span>
           </button>
+          <div className="wk-shared-hint">Tasks blocked by the other person or needing both of you together</div>
           {sharedOpen && (
             <div className="wk-shared-body">
               {deps.length > 0 && deps.map(({ t, pre }, i) => (

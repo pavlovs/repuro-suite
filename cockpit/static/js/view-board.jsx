@@ -40,7 +40,7 @@ function BoardView({ grouping, mutate, openTask, filters }) {
   if (filters.readiness) pool = pool.filter((t) => readiness(t) === filters.readiness);
 
   const columns = grouping === "workstream"
-    ? WORKSTREAMS.map((w) => ({ id: w.id, label: w.name, color: w.color, tasks: pool.filter((t) => (wsOf(t) || {}).id === w.id) }))
+    ? SPACES.flatMap((s) => (wsPerSpace[s.id] || []).filter((w) => w.visibility !== "hidden").map((w) => ({ id: w.id, label: w.name, color: w.color, space: s.name, tasks: pool.filter((t) => (wsOf(t) || {}).id === w.id) })))
     : STATUS_ORDER.map((s) => ({ id: s, label: STATUS_LABEL[s], tasks: pool.filter((t) => t.status === s) }));
 
   const canDrag = grouping === "status";

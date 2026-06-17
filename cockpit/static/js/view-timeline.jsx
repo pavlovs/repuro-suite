@@ -5,6 +5,7 @@ function TimelineView({ openTask, mutate }) {
   const [open, setOpen] = React.useState({});
   const [filter, setFilter] = React.useState("dated"); // all | dated | undated
   const [filtersOpen, setFiltersOpen] = React.useState(true);
+  const [showAllDeals, setShowAllDeals] = React.useState(false);
   const toggle = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
 
   const activeFilterCount = filter !== "all" ? 1 : 0;
@@ -102,7 +103,25 @@ function TimelineView({ openTask, mutate }) {
               {months.map((m, i) => <div key={i} className="gantt-vline" style={{ left: LABELW + i * MW }} />)}
               <div className="gantt-today" style={{ left: LABELW + xPos(todayDate) }}><span className="gantt-today-lbl">today</span></div>
 
-              {WORKSTREAMS.map((w) => {
+              {SPACES.map((space) => {
+                const allSpaceWs = (wsPerSpace[space.id] || []);
+                const visibleWs = showAllDeals ? allSpaceWs : allSpaceWs.filter((w) => w.visibility !== "hidden");
+                const hiddenCount = allSpaceWs.filter((w) => w.visibility === "hidden").length;
+                const spaceWs = visibleWs;
+                const hasDelivs = spaceWs.some((w) => filtered.some((d) => d.ws === w.id));
+                if (!hasDelivs && !hiddenCount) return null;
+                return (
+                  <React.Fragment key={space.id}>
+                    <div className="space-band" style={{ width: LABELW + totalW }}>
+                      {space.name}
+                      <span className="space-count">{spaceWs.length}</span>
+                      {hiddenCount > 0 && (
+                        <button className="space-band-toggle" onClick={() => setShowAllDeals((v) => !v)}>
+                          {showAllDeals ? "hide inactive" : "+" + hiddenCount + " inactive"}
+                        </button>
+                      )}
+                    </div>
+                    {spaceWs.map((w) => {
                 const delivs = filtered.filter((d) => d.ws === w.id);
                 if (!delivs.length) return null;
                 return (
@@ -193,6 +212,9 @@ function TimelineView({ openTask, mutate }) {
                         </React.Fragment>
                       );
                     })}
+                  </React.Fragment>
+                );
+              })}
                   </React.Fragment>
                 );
               })}

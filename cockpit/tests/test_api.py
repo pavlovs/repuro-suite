@@ -560,6 +560,36 @@ def test_sync_auto_creates_mna_workstreams(client):
     assert {"Octopus", "Fox", "Cat"} <= ws_names
 
 
+def test_sync_adopts_existing_ws_by_name(client):
+    """If a workstream exists with same name as a deal but no deal_codename,
+    sync should adopt it (set deal_codename + move to M&A) rather than crash."""
+    conn = client.cockpit_conn
+    conn.execute(
+        "INSERT INTO workstreams (name, space_id, status) VALUES (?,?,?)",
+        ("NewDeal", 1, "active"),
+    )
+    conn.commit()
+    from tests.conftest import make_fixture_dealroom
+
+    dealroom_path = conn.execute("SELECT 1").fetchone()  # just need the env var
+    import os
+
+    dr_path = os.environ["COCKPIT_DEALROOM_DB"]
+    dr_conn = sqlite3.connect(dr_path)
+    dr_conn.execute("DROP TABLE IF EXISTS deals")
+    dr_conn.commit()
+    dr_conn.close()
+    make_fixture_dealroom(dr_path, deals=[("NewDeal", "nda", None)])
+    r = client.post("/api/sync/dealroom", headers=auth())
+    assert r.status_code == 200
+    row = conn.execute(
+        "SELECT deal_codename, space_id FROM workstreams WHERE name='NewDeal'"
+    ).fetchone()
+    mna_id = conn.execute("SELECT id FROM spaces WHERE slug='mna'").fetchone()["id"]
+    assert row["deal_codename"] == "NewDeal"
+    assert row["space_id"] == mna_id
+
+
 # ---- migration v3→v4 -------------------------------------------------------
 def test_migration_v3_to_v4(tmp_path):
     """Simulate a v3 DB and verify migration to v4 creates spaces + moves deal ws."""

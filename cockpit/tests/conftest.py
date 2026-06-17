@@ -17,7 +17,7 @@ def make_fixture_dealroom(path, deals=None):
     """Minimal dealroom.db lookalike (only the columns the sync reads)."""
     conn = sqlite3.connect(str(path))
     conn.execute(
-        "CREATE TABLE deals (id TEXT, code_name TEXT, deal_stage TEXT, status_note TEXT)"
+        "CREATE TABLE IF NOT EXISTS deals (id TEXT, code_name TEXT, deal_stage TEXT, status_note TEXT)"
     )
     for code, stage, note in (
         deals

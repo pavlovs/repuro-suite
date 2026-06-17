@@ -30,7 +30,7 @@ const NAV = [
 ];
 
 /* Workstreams tab: one dataset, two layouts (table / board), shared filters */
-function WorkstreamsTab({ mutate, openTask, person }) {
+function WorkstreamsTab({ mutate, openTask, openDeliv, person }) {
   const [layout, setLayout] = React.useState("table");
   const [grouping, setGrouping] = React.useState("workstream");
   const [filters, setFilters] = React.useState({ person: "", readiness: "", priority: "", showDone: false });
@@ -84,9 +84,9 @@ function WorkstreamsTab({ mutate, openTask, person }) {
       )}
 
       {layout === "deliverables"
-        ? <DeliverableView mutate={mutate} openTask={openTask} />
+        ? <DeliverableView mutate={mutate} openTask={openTask} openDeliv={openDeliv} />
         : layout === "table"
-        ? <TableView mutate={mutate} openTask={openTask} filters={filters} />
+        ? <TableView mutate={mutate} openTask={openTask} openDeliv={openDeliv} filters={filters} />
         : <BoardView grouping={grouping} mutate={mutate} openTask={openTask} filters={filters} />}
     </div>
   );
@@ -107,13 +107,15 @@ function App() {
   const [tab, setTabState] = React.useState(tabFromHash);
   const [person, setPerson] = React.useState(sessionStorage.getItem("cockpit_person") || "RD");
   const [drawer, setDrawer] = React.useState(null);
+  const [delivDrawer, setDelivDrawer] = React.useState(null);
   const [palette, setPalette] = React.useState(false);
   const [quickAdd, setQuickAdd] = React.useState(false);
   const [activityOpen, setActivityOpen] = React.useState(false);
   const [quickAddPrefill, setQuickAddPrefill] = React.useState(null);
   const [, setRev] = React.useState(0);
   const mutate = React.useCallback((fn) => { fn && fn(); setRev((r) => r + 1); }, []);
-  const openTask = React.useCallback((id) => setDrawer(id), []);
+  const openTask = React.useCallback((id) => { setDelivDrawer(null); setDrawer(id); }, []);
+  const openDeliv = React.useCallback((id) => { setDrawer(null); setDelivDrawer(id); }, []);
 
   /* Navigate to a tab: update state + URL hash */
   const setTab = React.useCallback((id) => {
@@ -218,7 +220,7 @@ function App() {
           <div className={"view" + (tab === "timeline" || tab === "table" ? " view-wide" : "")}>
             {tab === "overview" && <OverviewView person={person} onJump={setTab} openTask={openTask} mutate={mutate} />}
             {tab === "week" && <MeetingView mutate={mutate} openTask={openTask} />}
-            {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} person={person} />}
+            {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} openDeliv={openDeliv} person={person} />}
             {tab === "timeline" && <TimelineView openTask={openTask} />}
             {tab === "agents" && <AgentsView openTask={openTask} person={person} />}
           </div>
@@ -226,6 +228,7 @@ function App() {
       </div>
 
       <TaskDrawer task={drawer ? byTask[drawer] : null} onClose={() => setDrawer(null)} mutate={mutate} openTask={openTask} />
+      <DelivDrawer deliv={delivDrawer ? byDeliv[delivDrawer] : null} onClose={() => setDelivDrawer(null)} mutate={mutate} openTask={openTask} />
       <ActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} />
       <Palette open={palette} onClose={() => setPalette(false)} openTask={(id) => { setPalette(false); openTask(id); }} onJump={(v) => { setPalette(false); setTab(v); }} />
       <QuickAdd open={quickAdd} onClose={(id) => { setQuickAdd(false); setQuickAddPrefill(null); if (id) openTask(id); }} prefill={quickAddPrefill} />

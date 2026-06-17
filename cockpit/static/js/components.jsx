@@ -1,5 +1,5 @@
 /* Shared model helpers + UI atoms. Exported to window for the view scripts. */
-const { TODAY, PEOPLE, EXT, WORKSTREAMS, DELIVERABLES, TASKS, STAGE_LABEL } = window.COCKPIT_DATA;
+const { TODAY, PEOPLE, EXT, SPACES, WORKSTREAMS, DELIVERABLES, TASKS, STAGE_LABEL } = window.COCKPIT_DATA;
 
 const todayDate = new Date(TODAY + "T00:00:00");
 const byTask = Object.fromEntries(TASKS.map((t) => [t.id, t]));
@@ -178,9 +178,14 @@ function Icon({ name, size = 16 }) {
   );
 }
 
+const bySpace = Object.fromEntries(SPACES.map((s) => [s.id, s]));
+const wsPerSpace = {};
+SPACES.forEach((s) => { wsPerSpace[s.id] = []; });
+WORKSTREAMS.forEach((w) => { if (wsPerSpace[w.space]) wsPerSpace[w.space].push(w); });
+
 Object.assign(window, {
-  TODAY, PEOPLE, EXT, WORKSTREAMS, DELIVERABLES, TASKS, STAGE_LABEL,
-  todayDate, byTask, byDeliv, byWs,
+  TODAY, PEOPLE, EXT, SPACES, WORKSTREAMS, DELIVERABLES, TASKS, STAGE_LABEL,
+  todayDate, byTask, byDeliv, byWs, bySpace, wsPerSpace,
   daysUntil, addDays, fdate, fdateShort, readiness, blockingPrereqs, risks, recommendation, chaseDue,
   delivOf, wsOf, dealOf, STATUS_LABEL, STATUS_ORDER, DEPENDENTS,
   Dot, ReadinessDot, StatusPill, PriorityFlag, Avatar, OwnerStack, DealChip, DueChip, WaitingChip, Icon,

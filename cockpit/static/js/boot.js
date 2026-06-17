@@ -324,7 +324,11 @@
     syncArray(window.TASKS, fresh.TASKS, window.byTask);
     syncArray(window.DELIVERABLES, fresh.DELIVERABLES, window.byDeliv);
     syncArray(window.WORKSTREAMS, fresh.WORKSTREAMS, window.byWs);
-    if (window.SPACES && fresh.SPACES) syncArray(window.SPACES, fresh.SPACES, {});
+    if (window.SPACES && fresh.SPACES) {
+      syncArray(window.SPACES, fresh.SPACES, {});
+      window.SPACES.forEach(function (s) { window.wsPerSpace[s.id] = []; });
+      window.WORKSTREAMS.forEach(function (w) { if (window.wsPerSpace[w.space]) window.wsPerSpace[w.space].push(w); });
+    }
     Object.assign(window.EXT, fresh.EXT);
     Object.keys(window.DEPENDENTS).forEach(function (k) { delete window.DEPENDENTS[k]; });
     window.TASKS.forEach(function (t) { window.DEPENDENTS[t.id] = []; });
@@ -464,12 +468,27 @@
       if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return; }
       await refreshFromServer();
     },
+    async deleteDeliv(d) {
+      if (!confirm('Delete "' + d.name + '"? Tasks will become standalone. No undo.')) return;
+      var r = await authedFetch("/api/deliverable/" + d.id, { method: "DELETE" });
+      if (!r.ok) { showToast("Delete failed: " + (await r.text()).slice(0, 200), "err"); return; }
+      await refreshFromServer();
+      if (window.closeDrawer) window.closeDrawer();
+    },
     async saveWs(w, fields) {
       var r = await authedFetch("/api/workstream/" + w.id, {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(Object.assign({ version: w.version }, fields)),
       });
       conflictReload(r);
+      if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return; }
+      await refreshFromServer();
+    },
+    async saveDeal(codename, fields) {
+      var r = await authedFetch("/api/deal/" + codename, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(fields),
+      });
       if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return; }
       await refreshFromServer();
     },

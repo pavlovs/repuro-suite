@@ -752,6 +752,33 @@ def patch_deliverable(did: str, payload: dict = Body(...), p=Depends(principal))
     )
 
 
+@app.delete("/api/deliverable/{did}")
+def delete_deliverable(did: str, p=Depends(human_only)):
+    conn = db.get_conn()
+    prefix, num = _safe_ref(did)
+    if prefix != "d":
+        raise HTTPException(422, "expected d-<n>")
+    row = conn.execute("SELECT * FROM deliverables WHERE id=?", (num,)).fetchone()
+    if not row:
+        raise HTTPException(404, f"{did} not found")
+    ref = models.deliv_id(num)
+    with db.WRITE_LOCK:
+        conn.execute(
+            "UPDATE tasks SET deliverable_id=NULL, updated_at=? WHERE deliverable_id=?",
+            (db.now_iso(), num),
+        )
+        conn.execute("DELETE FROM deliverables WHERE id=?", (num,))
+        db.audit(
+            conn,
+            p["id"],
+            "deliverable_delete",
+            ref,
+            before={k: row[k] for k in row.keys()},
+        )
+        conn.commit()
+    return {"deleted": ref}
+
+
 def _patch_simple(id_str, want_prefix, table, payload, p, allowed, enums):
     conn = db.get_conn()
     prefix, num = _safe_ref(id_str)
@@ -1255,3 +1282,40 @@ def activity_log(entity: str | None = Query(default=None), p=Depends(principal))
 @app.post("/api/sync/dealroom")
 def sync_now(p=Depends(principal)):
     return dealroom_sync.sync_deal_mirror(db.get_conn())
+
+
+VALID_DEAL_STAGES = {
+    "initial_contact",
+    "screening",
+    "nda",
+    "valuation_rfi",
+    "indicative_offer",
+    "loi_signed",
+    "dd",
+    "spa",
+    "signing",
+    "on_hold",
+    "dead",
+}
+
+
+@app.patch("/api/deal/{codename}")
+def patch_deal(codename: str, payload: dict = Body(...), p=Depends(human_only)):
+    conn = db.get_conn()
+    row = conn.execute(
+        "SELECT * FROM deal_mirror WHERE codename=?", (codename,)
+    ).fetchone()
+    if not row:
+        raise HTTPException(404, "deal not found")
+    allowed = {"stage", "note"}
+    updates = {k: v for k, v in payload.items() if k in allowed}
+    if not updates:
+        raise HTTPException(422, "nothing to update")
+    if "stage" in updates and updates["stage"] not in VALID_DEAL_STAGES:
+        raise HTTPException(422, f"invalid stage: {updates['stage']}")
+    sets = ", ".join(f"{k}=?" for k in updates)
+    vals = list(updates.values()) + [codename]
+    with db.WRITE_LOCK:
+        conn.execute(f"UPDATE deal_mirror SET {sets} WHERE codename=?", vals)
+        conn.commit()
+    return {"ok": True, "codename": codename, "updated": updates}

@@ -9,24 +9,28 @@ Claude reads this when `/suite-fix` is invoked.
 ---
 ## Bugs // Improvements
 
-- [ ] New Deal wiring: Cockpit "New Deal" should create in Dealroom (cross-app API). Deferred — needs infrastructure investigation next session
+- [ ] DEFER - New Deal wiring: Cockpit "New Deal" should create in Dealroom (cross-app API). Deferred — needs infrastructure investigation next session
+- [ ] Agent Jobs should just be shown in Agent Queue
 
 Infrastructure — deferred (architecture change)
-- [ ] entrypoint.sh sed-injection of COCKPIT_BASE_PATH is fragile (breaks if source strings change or path has special chars). Replace with a /config.js endpoint in FastAPI that returns `window.COCKPIT_BASE="/cockpit"`, loaded via script tag. HTML files become immutable
+- [ ] DEFER - entrypoint.sh sed-injection of COCKPIT_BASE_PATH is fragile (breaks if source strings change or path has special chars). Replace with a /config.js endpoint in FastAPI that returns `window.COCKPIT_BASE="/cockpit"`, loaded via script tag. HTML files become immutable
 
 ---
 ## Feature Requests
 > These are NOT auto-implemented. `/suite-fix` presents each one with a recommendation and waits for Roman's go/no-go.
 
-- [ ] Tasks belong to a "DEAL" workstream should be mapped accordingly, this needs to connect to DEALROOM and be specced properly. E. G. FOX, MANTIS, LION etc. should properly map to the entities in DEALROOM
-- [ ] Workstreams and item architecture of items (Workstreams, Deliverables, Tasks) should be reworked. Workstreams should rather be "Teams". Categories: Fundraising / M&A (deals infrastructure from DEALROOM there with deliverables on each deal and then tasks on each deliverable) / Repuro. Actually the top layer should be something like REPURO HOLDING (with Fundraising, operations, Admin as the subcategories) and M&A (with respective deals and Pipeline as the categories and the deliverables + tasks underneath)
-- [ ] Agents: "- **Start a session:** Open Claude Code in the `CLAUDE_REPURO` workspace and run `/agent-loop`. Claude picks up queued tasks in order, executes them, and reports results." --> Flo or other uses will not have this skill. Should we provide a build a custom github repo or something similar with cockpit skills required to use it.
+- [ ] DEFER - Agents: "- **Start a session:** Open Claude Code in the `CLAUDE_REPURO` workspace and run `/agent-loop`. Claude picks up queued tasks in order, executes them, and reports results." --> Flo or other uses will not have this skill. Should we provide a build a custom github repo or something similar with cockpit skills required to use it.
 - [ ] DEFER — Integration of calender with most important meetings of the week (ignoring daily standup in the morning) for Flo and Roman
 - [ ] DEFER — Migrate ALLEX and DEALROOM HTTP layer to FastAPI — both use stdlib http.server with manual URL parsing, JSON serialization, auth (~300 lines of boilerplate each). FastAPI gives typed parsing, automatic 422 on bad input, OpenAPI docs. Split dashboard.py into data/routes/html during migration. Effort: L (2-3 days per app)
 
 ---
 ## Resolved
 
+- [x] ?deal=Mantis routing — suite landing JS detects ?deal= param and redirects to /deals/?deal=X — fixed 2026-06-17
+- [x] Input Required opens new window — removed showModal popup, inputFrom dropdown saves inline and question field appears immediately in drawer — fixed 2026-06-17
+- [x] Weekly Meeting DAILY/WEEKLY toggle — Daily shows due-today per person + deliverables due today + shared blockers; Weekly unchanged — fixed 2026-06-17
+- [x] Adding a Deliverable default date — default target date set to TODAY in QuickAdd — fixed 2026-06-17
+- [x] Side drawer: can't edit task's deliverable or deliverable's workstream — added Deliverable dropdown to TaskDrawer; workstream dropdown already existed in DelivDrawer — fixed 2026-06-17
 - [x] Cockpit/My Week merge — OverviewView embeds WeekView (hero + Due Today/Tomorrow/Deliverables/AgentQueue); KPI cards removed; "My Week" renamed to "Weekly Meeting" (renders MeetingView directly); dead meetingMode toggle cleaned up — fixed 2026-06-16
 - [x] Version history + activity log — GET /api/activity endpoint, ActivityPanel slide-out in app header, TaskHistory section in task drawer — fixed 2026-06-16
 - [x] Nested "blocked by" font style — prereq-name changed from 11.5px italic to 12px normal, slightly greyed out (#94a3b8) — fixed 2026-06-16

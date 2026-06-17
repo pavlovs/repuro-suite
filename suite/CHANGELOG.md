@@ -1,6 +1,27 @@
-# ALLEX Dashboard — Changelog
+# Repuro Suite — Changelog
 
-Format: one entry per prod deploy. Group changes by feature, not individual items. Bump `DASHBOARD_VERSION` in `dashboard.py` on each entry.
+Format: one entry per prod deploy. Group changes by module, then by feature. Bump `suite/VERSION` on each entry.
+
+---
+
+## v2.1.11 — 2026-06-17
+
+### Infrastructure — Deploy consolidation
+- **Per-module Dockerfiles/fly.tomls removed** — `cockpit/Dockerfile`, `cockpit/fly.toml`, `lead-pipeline/Dockerfile`, `lead-pipeline/fly.toml` deleted; `suite/` is now the single deploy artefact
+- **MODULES.md** — module registry added to `suite/` documenting ports, routes, DB paths, and adding-a-module convention
+- **Suite landing page** — `suite/static/index.html` replaced with `Repuro Suite.html` (renamed)
+- **lead-pipeline/ai/CHANGELOG.md removed** — changelog consolidated into `suite/CHANGELOG.md`
+
+### Cockpit — UI fixes
+- Static index.html, app.jsx, boot.js, quick-add.jsx, task-drawer.jsx, view-week.jsx updated (follow-on fixes from v2.1.9 space architecture)
+
+---
+
+## v2.1.10 — 2026-06-17
+
+### Cockpit — Prod crash fixes
+- **FileResponse import restored** — missing import caused 500 on first load after v2.1.9 deploy
+- **Relative paths + cache-bust on boot.js** — absolute `/static/` paths broke under `/cockpit/` prefix; cache-bust param added to force reload
 
 ---
 
@@ -174,7 +195,7 @@ Format: one entry per prod deploy. Group changes by feature, not individual item
 - Fly.io: `auto_stop_machines=true`, `min_machines_running=0` (cost optimization)
 
 ### Removed
-- `CHANGELOG.md` at repo root (consolidated into `ai/CHANGELOG.md`)
+- `CHANGELOG.md` at repo root (consolidated into `suite/CHANGELOG.md`)
 - M33 plan file (completed)
 
 ---
@@ -249,4 +270,4 @@ Dashboard v2 promoted to default (M29). Letter review UI feature-complete (M28).
 
 ## v1.x (pre-v2)
 
-See `ROADMAP.md` Delivered section (M11–M23) for full history.
+See `lead-pipeline/ai/ROADMAP.md` Delivered section (M11–M23) for full history.

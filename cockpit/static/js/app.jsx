@@ -231,7 +231,7 @@ function App() {
       <DelivDrawer deliv={delivDrawer ? byDeliv[delivDrawer] : null} onClose={() => setDelivDrawer(null)} mutate={mutate} openTask={openTask} />
       <ActivityPanel open={activityOpen} onClose={() => setActivityOpen(false)} />
       <Palette open={palette} onClose={() => setPalette(false)} openTask={(id) => { setPalette(false); openTask(id); }} onJump={(v) => { setPalette(false); setTab(v); }} />
-      <QuickAdd open={quickAdd} onClose={(id) => { setQuickAdd(false); setQuickAddPrefill(null); if (id) openTask(id); }} prefill={quickAddPrefill} />
+      <QuickAdd open={quickAdd} onClose={(id) => { setQuickAdd(false); setQuickAddPrefill(null); if (id) { id.startsWith("d-") ? openDeliv(id) : openTask(id); } }} prefill={quickAddPrefill} />
 
       <TweaksPanel>
         <TweakSection label="Direction" />

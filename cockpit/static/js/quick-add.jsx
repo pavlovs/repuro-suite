@@ -21,7 +21,7 @@ function QuickAdd({ open, onClose, prefill }) {
       setF({
         text: "", d: (prefill && prefill.d) || "", ws: (prefill && prefill.ws) || "",
         owners: ["RD"], due: TODAY, priority: "", execution: "me", ac: "",
-        status: (prefill && prefill.status) || "open", target: "",
+        status: (prefill && prefill.status) || "open", target: TODAY,
         inputFrom: "", inputQuestion: "",
       });
     }
@@ -55,8 +55,8 @@ function QuickAdd({ open, onClose, prefill }) {
       ]);
       if (ok === null) return;
     }
-    await api.createDeliv(wsId, f.text.trim(), f.target || null);
-    onClose();
+    const created = await api.createDeliv(wsId, f.text.trim(), f.target || null);
+    if (created) onClose(created.id);
   };
 
   const submit = mode === "deliverable" ? submitDeliv : submitTask;

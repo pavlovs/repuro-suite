@@ -287,6 +287,7 @@
       else if (k === "ac") out.acceptance_criteria = v;
       else if (k === "inputFrom") out.input_from = v;
       else if (k === "inputQuestion") out.input_question = v;
+      else if (k === "d") out.deliverable_id = v || null;
       else out[k] = v;
     });
     return out;
@@ -456,8 +457,10 @@
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ workstream_id: wsId, name: name, target_date: target || null }),
       });
-      if (!r.ok) { showToast("Create failed: " + (await r.text()).slice(0, 200), "err"); return; }
+      if (!r.ok) { showToast("Create failed: " + (await r.text()).slice(0, 200), "err"); return null; }
+      var created = await r.json();
       await refreshFromServer();
+      return created;
     },
     async saveDeliv(d, fields) { // {name?, target_date?}
       var r = await authedFetch("/api/deliverable/" + d.id, {

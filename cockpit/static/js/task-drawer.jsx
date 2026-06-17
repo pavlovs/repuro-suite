@@ -116,6 +116,17 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
               <option value="">—</option><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option>
             </select>
           </span></div>
+          <div><span className="dm-k">Deliverable</span><span className="dm-v">
+            <select className="dm-select" value={task.d || ""}
+              onChange={(e) => api.save(task, { d: e.target.value || null })}>
+              <option value="">(standalone)</option>
+              {WORKSTREAMS.map((w) => (
+                <optgroup key={w.id} label={w.name}>
+                  {DELIVERABLES.filter((d) => d.ws === w.id).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </optgroup>
+              ))}
+            </select>
+          </span></div>
           <div><span className="dm-k">Kind</span><span className="dm-v">
             <select className="dm-select" value={task.kind || "workplan"}
               onChange={(e) => api.save(task, { kind: e.target.value })}>
@@ -145,14 +156,7 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
             <select className="dm-select" value={task.inputFrom || ""}
               onChange={(e) => {
                 const v = e.target.value || null;
-                if (v && !task.inputQuestion) {
-                  showModal("What input is needed?", [{ placeholder: "e.g. confirm budget, approve draft" }]).then((q) => {
-                    if (q === null) return;
-                    api.save(task, { inputFrom: v, inputQuestion: q.trim() || null });
-                  });
-                } else {
-                  api.save(task, { inputFrom: v, inputQuestion: v ? task.inputQuestion : null });
-                }
+                api.save(task, { inputFrom: v, inputQuestion: v ? task.inputQuestion : null });
               }}>
               <option value="">— none —</option>
               {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p].name}</option>)}

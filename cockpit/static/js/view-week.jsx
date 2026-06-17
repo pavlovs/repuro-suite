@@ -2,6 +2,7 @@
 
 /* --- Weekly Meeting prep view — agenda-structured, both people, decision-first --- */
 function MeetingView({ mutate, openTask }) {
+  const [mode, setMode] = React.useState("daily");
   const live = TASKS.filter((t) => t.status !== "done");
 
   // Deadlines — next upcoming milestone per active deal
@@ -91,6 +92,14 @@ function MeetingView({ mutate, openTask }) {
 
   const rd = personFocus("RD"), ff = personFocus("FF");
 
+  // Daily mode data
+  const dueTodayRD = live.filter((t) => (t.owners || []).includes("RD") && t.due && daysUntil(t.due) <= 0 && t.status !== "waiting");
+  const dueTodayFF = live.filter((t) => (t.owners || []).includes("FF") && t.due && daysUntil(t.due) <= 0 && t.status !== "waiting");
+  const delivsDueToday = DELIVERABLES
+    .filter((d) => d.target && daysUntil(d.target) <= 0 && TASKS.some((t) => t.d === d.id && t.status !== "done"))
+    .map((d) => ({ ...d, s: delivStats(d), wsObj: byWs[d.ws] }))
+    .sort((a, b) => a.target.localeCompare(b.target));
+
   async function mtgEditDeliv(d) {
     const name = await showModal("Deliverable name:", [{value: d.name}]);
     if (name === null) return;
@@ -108,11 +117,15 @@ function MeetingView({ mutate, openTask }) {
       <div className="mtg-header card">
         <div className="mtg-header-top">
           <div>
-            <div className="mtg-title">Weekly Meeting — Week {weekNum}</div>
+            <div className="mtg-title">{mode === "daily" ? "Daily Standup" : "Weekly Meeting — Week " + weekNum}</div>
             <div className="mtg-subtitle">{todayDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
           </div>
           <div className="mtg-summary">
-            {recentDone.length > 0 && <span className="mtg-stat done"><Icon name="check" size={12} /> {recentDone.length} completed</span>}
+            <div className="seg" style={{marginRight:12}}>
+              <button className={mode === "daily" ? "on" : ""} onClick={() => setMode("daily")}>Daily</button>
+              <button className={mode === "weekly" ? "on" : ""} onClick={() => setMode("weekly")}>Weekly</button>
+            </div>
+            {mode === "weekly" && recentDone.length > 0 && <span className="mtg-stat done"><Icon name="check" size={12} /> {recentDone.length} completed</span>}
             {attentionN > 0 && <span className="mtg-stat attn">{attentionN} need attention</span>}
             {loiDeals.length > 0 && <span className="mtg-stat deals">{loiDeals.length} deal deadline{loiDeals.length !== 1 ? "s" : ""}</span>}
           </div>
@@ -138,51 +151,90 @@ function MeetingView({ mutate, openTask }) {
         </div>
       )}
 
-      {/* Section 1: This week's focus per person — editable */}
-      <div className="mtg-sec-label"><Icon name="week" size={14} /> This week's focus</div>
-      <div className="wk-cols wk-cols-2">
-        {[["RD", rd], ["FF", ff]].map(([p, data]) => {
-          const groups = groupByWs(data.delivs);
-          const taskCount = data.delivs.reduce((n, d) => n + d.myTasks.length, 0) + data.standalone.length;
-          return (
-            <div key={p} className="card wk-col">
-              <div className="wk-h"><Avatar id={p} size={18} /> {PEOPLE[p].name}<span className="wk-n">{taskCount}</span></div>
-              {groups.map(([wsName, wsDelivs]) => (
-                <React.Fragment key={wsName}>
-                  <div className="wk-grp mtg-ws">{wsName}</div>
-                  {wsDelivs.map((d) => {
-                    const pct = d.total ? Math.round(d.done / d.total * 100) : 0;
-                    const daysLeft = d.target ? daysUntil(d.target) : null;
-                    const urgent = daysLeft !== null && daysLeft <= 14 && pct < 50;
-                    return (
-                      <div key={d.id} className="wk-deliv-block">
-                        <div className={"wk-deliv-head" + (urgent ? " at-risk" : "")}>
-                          <span className="wk-deliv-name tc-click" onClick={() => mtgEditDeliv(d)}>{shortName(d)}</span>
-                          <button className="deliv-edit" title="edit deliverable" onClick={() => mtgEditDeliv(d)}>✎</button>
-                          <button className="deliv-edit mtg-add-btn" title="add task to this deliverable"
-                            onClick={() => window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } }))}>+</button>
-                          <span className="wk-deliv-prog">
-                            <span className="prog-bar" style={{width:60}}><span style={{ width: pct + "%", background: d.wsObj ? d.wsObj.color : "#94a3b8" }} /></span>
-                          </span>
-                          {d.target && <span className={"deliv-due" + (daysLeft < 0 ? " over" : daysLeft <= 7 ? " soon" : "")}>{fdate(d.target)}</span>}
-                        </div>
-                        {d.myTasks.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} showWs={false} />)}
-                      </div>
-                    );
-                  })}
-                </React.Fragment>
-              ))}
-              {data.standalone.length > 0 && (
-                <React.Fragment>
-                  <div className="wk-grp mtg-ws">Other</div>
-                  {data.standalone.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
-                </React.Fragment>
-              )}
-              {!taskCount && <div className="empty">clear</div>}
+      {/* DAILY: Due Today per person + deliverables due today */}
+      {mode === "daily" && (
+        <React.Fragment>
+          <div className="mtg-sec-label"><Icon name="week" size={14} /> Due Today</div>
+          <div className="wk-cols wk-cols-2">
+            {[["RD", dueTodayRD], ["FF", dueTodayFF]].map(([p, tasks]) => (
+              <div key={p} className="card wk-col">
+                <div className="wk-h"><Avatar id={p} size={18} /> {PEOPLE[p].name}<span className="wk-n">{tasks.length}</span></div>
+                {tasks.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
+                {!tasks.length && <div className="empty">clear — nothing due</div>}
+              </div>
+            ))}
+          </div>
+          {delivsDueToday.length > 0 && (
+            <div className="card" style={{marginTop:12}}>
+              <div className="wk-h">Deliverables Due Today<span className="wk-n">{delivsDueToday.length}</span></div>
+              {delivsDueToday.map((d) => {
+                const pct = d.s.total ? Math.round(d.s.done / d.s.total * 100) : 0;
+                return (
+                  <div key={d.id} className="wk-deliv-block">
+                    <div className="wk-deliv-head">
+                      <span className="wk-deliv-name">{d.name}</span>
+                      <span className="wk-deliv-prog">
+                        <span className="prog-bar" style={{width:60}}><span style={{ width: pct + "%", background: d.wsObj ? d.wsObj.color : "#94a3b8" }} /></span>
+                      </span>
+                      <span className="deliv-due over">{fdate(d.target)}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
-      </div>
+          )}
+        </React.Fragment>
+      )}
+
+      {/* WEEKLY: This week's focus per person — editable */}
+      {mode === "weekly" && (
+        <React.Fragment>
+          <div className="mtg-sec-label"><Icon name="week" size={14} /> This week's focus</div>
+          <div className="wk-cols wk-cols-2">
+            {[["RD", rd], ["FF", ff]].map(([p, data]) => {
+              const groups = groupByWs(data.delivs);
+              const taskCount = data.delivs.reduce((n, d) => n + d.myTasks.length, 0) + data.standalone.length;
+              return (
+                <div key={p} className="card wk-col">
+                  <div className="wk-h"><Avatar id={p} size={18} /> {PEOPLE[p].name}<span className="wk-n">{taskCount}</span></div>
+                  {groups.map(([wsName, wsDelivs]) => (
+                    <React.Fragment key={wsName}>
+                      <div className="wk-grp mtg-ws">{wsName}</div>
+                      {wsDelivs.map((d) => {
+                        const pct = d.total ? Math.round(d.done / d.total * 100) : 0;
+                        const daysLeft = d.target ? daysUntil(d.target) : null;
+                        const urgent = daysLeft !== null && daysLeft <= 14 && pct < 50;
+                        return (
+                          <div key={d.id} className="wk-deliv-block">
+                            <div className={"wk-deliv-head" + (urgent ? " at-risk" : "")}>
+                              <span className="wk-deliv-name tc-click" onClick={() => mtgEditDeliv(d)}>{shortName(d)}</span>
+                              <button className="deliv-edit" title="edit deliverable" onClick={() => mtgEditDeliv(d)}>✎</button>
+                              <button className="deliv-edit mtg-add-btn" title="add task to this deliverable"
+                                onClick={() => window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } }))}>+</button>
+                              <span className="wk-deliv-prog">
+                                <span className="prog-bar" style={{width:60}}><span style={{ width: pct + "%", background: d.wsObj ? d.wsObj.color : "#94a3b8" }} /></span>
+                              </span>
+                              {d.target && <span className={"deliv-due" + (daysLeft < 0 ? " over" : daysLeft <= 7 ? " soon" : "")}>{fdate(d.target)}</span>}
+                            </div>
+                            {d.myTasks.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} showWs={false} />)}
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  ))}
+                  {data.standalone.length > 0 && (
+                    <React.Fragment>
+                      <div className="wk-grp mtg-ws">Other</div>
+                      {data.standalone.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
+                    </React.Fragment>
+                  )}
+                  {!taskCount && <div className="empty">clear</div>}
+                </div>
+              );
+            })}
+          </div>
+        </React.Fragment>
+      )}
 
       {/* Section 2: Blockers & decisions */}
       {attentionN > 0 && (
@@ -242,8 +294,8 @@ function MeetingView({ mutate, openTask }) {
         </div>
       )}
 
-      {/* Section 3: Completed since last meeting */}
-      {recentDone.length > 0 && (
+      {/* Section 3: Completed since last meeting (weekly only) */}
+      {mode === "weekly" && recentDone.length > 0 && (
         <div className="mtg-section card">
           <div className="mtg-sec-h" style={{cursor:"pointer"}} onClick={() => {
             const el = document.getElementById("mtg-done-body");

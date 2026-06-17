@@ -12,7 +12,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import PlainTextResponse
 
 from . import compute, db, dealroom_sync, mdio, models
 
@@ -534,10 +534,22 @@ def _update_task(conn, actor, num, fields, expected_version=None, action="task_u
 _STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 
 
+_INDEX_CACHE = None
+
+
 @app.get("/")
 def index():
-    """SPA shell (Claude Design handoff) — page is public, all data behind the token."""
-    return FileResponse(os.path.join(_STATIC, "index.html"), media_type="text/html")
+    global _INDEX_CACHE
+    if _INDEX_CACHE is None:
+        with open(os.path.join(_STATIC, "index.html")) as f:
+            raw = f.read()
+        boot = os.path.join(_STATIC, "js", "boot.js")
+        with open(boot, "rb") as f:
+            h = hashlib.md5(f.read()).hexdigest()[:8]
+        _INDEX_CACHE = raw.replace("boot.js", "boot.js?v=" + h)
+    return HTMLResponse(
+        _INDEX_CACHE, headers={"Cache-Control": "no-cache, must-revalidate"}
+    )
 
 
 @app.get("/api/health")

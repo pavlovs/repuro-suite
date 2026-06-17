@@ -170,7 +170,7 @@
     var WORKSTREAMS = [], DELIVERABLES = [], TASKS = [], EXT = {};
     var wsIdx = 0;
     (state.spaces || []).forEach(function (space) {
-      var live = space.workstreams.filter(function (w) { return w.status !== "parked"; });
+      var live = (space.workstreams || []).filter(function (w) { return w.status !== "parked"; });
       live.forEach(function (w) {
         var style = WS_STYLE[wsIdx % WS_STYLE.length];
         wsIdx++;
@@ -183,9 +183,9 @@
           icon: name.indexOf("fundrais") >= 0 ? "raise"
             : (name.indexOf("admin") >= 0 || name.indexOf("general") >= 0 || name.indexOf("ops") >= 0) ? "ops" : "deal",
         });
-        w.deliverables.forEach(function (d) {
+        (w.deliverables || []).forEach(function (d) {
           if (d.staging) return;
-          var liveTasks = d.tasks.filter(function (t) { return !t.staging; });
+          var liveTasks = (d.tasks || []).filter(function (t) { return !t.staging; });
           var dealCode = d.deal || w.deal_codename ||
             (liveTasks.map(function (t) { return t.deal; }).filter(Boolean)[0] || null);
           DELIVERABLES.push({

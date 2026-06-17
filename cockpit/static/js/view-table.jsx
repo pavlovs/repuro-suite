@@ -97,6 +97,7 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
   };
 
   const visible = (t) => {
+    if (t.execution === "agent") return false;
     if (!filters.showDone && t.status === "done") return false;
     if (filters.person && !(t.owners || []).includes(filters.person)) return false;
     if (filters.readiness && readiness(t) !== filters.readiness) return false;
@@ -201,7 +202,8 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
                       })() : null)
                     : delivs.map((d) => {
                       const tasks = TASKS.filter((t) => t.d === d.id && visible(t));
-                      if (filters.person || filters.readiness || !filters.showDone) { if (!tasks.length) return null; }
+                      const allDelivTasks = TASKS.filter((t) => t.d === d.id);
+                      if (allDelivTasks.length > 0 && (filters.person || filters.readiness || !filters.showDone)) { if (!tasks.length) return null; }
                       const du = daysUntil(d.target);
                       return (
                         <div key={d.id} className="deliv">
@@ -212,7 +214,7 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
                               onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }}>✎</button>
                             {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")}>{du < 0 ? "overdue " : "due "}{fdate(d.target)}</span>}
                           </div>
-                          {open[d.id] && (
+                          {(open[d.id] !== false) && (
                             <div className="deliv-body">
                               <DragList items={tasks} onReorder={(items) => api.reorder(items.map((t) => t.id))}
                                 renderItem={(t, h) => <TRow key={t.id} t={t} dragHandlers={h} />} />

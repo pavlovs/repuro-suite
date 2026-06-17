@@ -10,7 +10,11 @@ Claude reads this when `/suite-fix` is invoked.
 ## Bugs // Improvements
 
 - [ ] DEFER - New Deal wiring: Cockpit "New Deal" should create in Dealroom (cross-app API). Deferred — needs infrastructure investigation next session
-- [ ] Agent Jobs should just be shown in Agent Queue
+- [x] Agent Jobs should just be shown in Agent Queue — filtered execution="agent" tasks out of Workstreams table + WeekView Due Today/Tomorrow/focus; only show in AgentsView + AgentQueue widget — fixed 2026-06-17
+- [x] Weekly Meeting should be called "Meeting" — nav label + meeting title renamed — fixed 2026-06-17
+- [x] Weekly Meeting: "Daily/Weekly" switch jumps — removed all three stat badges (completed/need attention/deal deadlines) from meeting header — fixed 2026-06-17
+- [x] Where does Flo see that I need input from him — added "Needs your input" card in WeekView (personal); added "Input needed" subsection in Meeting blockers — fixed 2026-06-17
+- [x] Adding a Deliverable in Workstreams does not show in the pipeline — filter guard now skips deliverables with 0 tasks (empty deliverables always visible); also default to expanded — fixed 2026-06-17
 
 Infrastructure — deferred (architecture change)
 - [ ] DEFER - entrypoint.sh sed-injection of COCKPIT_BASE_PATH is fragile (breaks if source strings change or path has special chars). Replace with a /config.js endpoint in FastAPI that returns `window.COCKPIT_BASE="/cockpit"`, loaded via script tag. HTML files become immutable

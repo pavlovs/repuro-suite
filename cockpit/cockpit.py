@@ -15,6 +15,7 @@ PRINCIPALS = {
     "rd": ("Roman", "RD", "human"),
     "ff": ("Florian", "FF", "human"),
     "rc-agent": ("Roman's Claude", "RC", "agent"),
+    "fc-agent": ("Florian's Claude", "FC", "agent"),
 }
 
 

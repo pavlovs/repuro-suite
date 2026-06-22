@@ -12,9 +12,39 @@ from datetime import date, datetime, timedelta, timezone
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse  # noqa: F401
 
 from . import compute, db, dealroom_sync, mdio, models
+
+
+# --------------------------------------------------------------------------
+# SSE broadcast
+_sse_clients: set[asyncio.Queue] = set()
+
+
+def _broadcast(actor: str) -> None:
+    """Notify all SSE clients that a change happened. Fire-and-forget."""
+    msg = f"data: {json.dumps({'type': 'refresh', 'by': actor})}\n\n"
+    dead = set()
+    for q in _sse_clients:
+        try:
+            q.put_nowait(msg)
+        except asyncio.QueueFull:
+            dead.add(q)
+    _sse_clients.difference_update(dead)
+
+
+def _principal_from_token(token: str | None) -> dict | None:
+    """Resolve a raw Bearer token string to a principal dict, or return None."""
+    if not token:
+        return None
+    token_hash = hashlib.sha256(token.strip().encode()).hexdigest()
+    row = (
+        db.get_conn()
+        .execute("SELECT id, role FROM users WHERE token_hash = ?", (token_hash,))
+        .fetchone()
+    )
+    return {"id": row["id"], "role": row["role"]} if row else None
 
 
 # --------------------------------------------------------------------------
@@ -262,6 +292,7 @@ def assemble_state(conn):
             "workstream_id": models.ws_id(r["workstream_id"]),
             "name": r["name"],
             "target_date": r["target_date"],
+            "start_date": r["start_date"] if "start_date" in r.keys() else None,
             "deal": r["deal"],
             "status": r["status"],
             "comment": r["comment"],
@@ -293,6 +324,7 @@ def assemble_state(conn):
             "deal_codename": r["deal_codename"],
             "deal_stage": deal_stage,
             "deal_mirror_status": _mirror_status(r["deal_codename"], mirror),
+            "objective": r["objective"],
             "version": r["version"],
             "deal": (
                 {
@@ -393,6 +425,7 @@ _TASK_FIELDS = {
     "evidence",
     "input_from",
     "input_question",
+    "start_date",
 }
 _TASK_ENUMS = {
     "kind": models.KINDS,
@@ -419,7 +452,7 @@ def _validate_task_fields(conn, fields):
     for key, allowed in _TASK_ENUMS.items():
         if fields.get(key) is not None and fields[key] not in allowed:
             raise HTTPException(422, f"invalid {key}: {fields[key]!r}")
-    for key in ("deadline", "next_chase_date", "expected_back_by"):
+    for key in ("deadline", "next_chase_date", "expected_back_by", "start_date"):
         _validate_date(fields, key)
     if "prereqs" in fields:
         for p in fields["prereqs"] or []:
@@ -549,6 +582,55 @@ def health():
     }
 
 
+@app.get("/api/events")
+async def sse_events(
+    token: str | None = Query(default=None),
+    x_remote_user: str | None = Header(default=None),
+) -> StreamingResponse:
+    """Server-Sent Events stream. Broadcasts a refresh event on any mutation.
+    Clients that cannot set custom headers (EventSource) pass token as ?token=."""
+    # Auth: X-Remote-User (Caddy) or Bearer token via query param
+    p = None
+    if x_remote_user and x_remote_user in _CADDY_USER_MAP:
+        pid = _CADDY_USER_MAP[x_remote_user]
+        row = (
+            db.get_conn()
+            .execute("SELECT id, role FROM users WHERE id = ?", (pid,))
+            .fetchone()
+        )
+        if row:
+            p = {"id": row["id"], "role": row["role"]}
+    if p is None:
+        p = _principal_from_token(token)
+    if p is None:
+        raise HTTPException(401, "missing or invalid token")
+
+    q: asyncio.Queue = asyncio.Queue(maxsize=32)
+    _sse_clients.add(q)
+
+    async def event_stream():
+        try:
+            yield "retry: 3000\n\n"  # tell browser to reconnect after 3 s
+            while True:
+                try:
+                    msg = await asyncio.wait_for(q.get(), timeout=30)
+                    yield msg
+                except asyncio.TimeoutError:
+                    yield ": keepalive\n\n"  # SSE comment — prevents proxy timeout
+        finally:
+            _sse_clients.discard(q)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
 @app.get("/api/state")
 def state(p=Depends(principal)):
     s = assemble_state(db.get_conn())
@@ -570,6 +652,7 @@ def create_task(payload: dict = Body(...), p=Depends(principal)):
     with db.WRITE_LOCK:
         new_id = _insert_task(conn, p["id"], payload)
         conn.commit()
+    _broadcast(p["id"])
     return assemble_task(conn, new_id)
 
 
@@ -605,6 +688,7 @@ def patch_task(tid: str, payload: dict = Body(...), p=Depends(principal)):
     with db.WRITE_LOCK:
         _update_task(conn, p["id"], num, payload, expected_version=version)
         conn.commit()
+    _broadcast(p["id"])
     return assemble_task(conn, num)
 
 
@@ -648,6 +732,7 @@ def create_workstream(payload: dict = Body(...), p=Depends(principal)):
             after=payload,
         )
         conn.commit()
+    _broadcast(p["id"])
     return {"id": models.ws_id(cur.lastrowid), "version": 1}
 
 
@@ -667,7 +752,15 @@ def patch_workstream(wid: str, payload: dict = Body(...), p=Depends(principal)):
         "workstreams",
         payload,
         p,
-        {"name", "color", "sort_order", "status", "deal_codename", "space_id"},
+        {
+            "name",
+            "color",
+            "sort_order",
+            "status",
+            "deal_codename",
+            "space_id",
+            "objective",
+        },
         {"status": models.WS_STATUSES},
     )
 
@@ -686,15 +779,17 @@ def create_deliverable(payload: dict = Body(...), p=Depends(principal)):
     if payload.get("status") and payload["status"] not in models.DELIV_STATUSES:
         raise HTTPException(422, "invalid status")
     _validate_date(payload, "target_date")
+    _validate_date(payload, "start_date")
     deal = payload.get("deal") or ws_row["deal_codename"]
     with db.WRITE_LOCK:
         cur = conn.execute(
-            "INSERT INTO deliverables (workstream_id, name, target_date, status, sort_order,"
-            " comment, staging, source, deal) VALUES (?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO deliverables (workstream_id, name, target_date, start_date, status, sort_order,"
+            " comment, staging, source, deal) VALUES (?,?,?,?,?,?,?,?,?,?)",
             (
                 wnum,
                 payload["name"],
                 payload.get("target_date"),
+                payload.get("start_date"),
                 payload.get("status", "open"),
                 payload.get("sort_order", 0),
                 payload.get("comment"),
@@ -711,6 +806,7 @@ def create_deliverable(payload: dict = Body(...), p=Depends(principal)):
             after=payload,
         )
         conn.commit()
+    _broadcast(p["id"])
     return {"id": models.deliv_id(cur.lastrowid), "version": 1}
 
 
@@ -732,6 +828,7 @@ def patch_deliverable(did: str, payload: dict = Body(...), p=Depends(principal))
         ):
             raise HTTPException(422, "workstream not found")
         payload["workstream_id"] = wnum
+    _validate_date(payload, "start_date")
     return _patch_simple(
         did,
         "d",
@@ -741,6 +838,7 @@ def patch_deliverable(did: str, payload: dict = Body(...), p=Depends(principal))
         {
             "name",
             "target_date",
+            "start_date",
             "status",
             "sort_order",
             "comment",
@@ -775,6 +873,7 @@ def delete_deliverable(did: str, p=Depends(human_only)):
             before={k: row[k] for k in row.keys()},
         )
         conn.commit()
+    _broadcast(p["id"])
     return {"deleted": ref}
 
 
@@ -816,19 +915,34 @@ def _patch_simple(id_str, want_prefix, table, payload, p, allowed, enums):
             after=updates,
         )
         conn.commit()
+    _broadcast(p["id"])
     return {"id": id_str, "version": version + 1}
 
 
 # --------------------------------------------------------------------------
 # agent queue
+# Ownership tags (SPEC-agent-skills-repo §3a): a task's owner derives from who
+# created it. ?owner=rc filters to Roman's tasks, fc to Flo's.
+_OWNER_TO_CREATOR = {"rc": "rd", "fc": "ff"}
+_CREATOR_TO_OWNER = {"rd": "RC", "ff": "FC"}
+
+
 @app.get("/api/agent/queue")
-def agent_queue(p=Depends(principal)):
+def agent_queue(owner: str | None = Query(default=None), p=Depends(agent_only)):
     conn = db.get_conn()
     _reap_expired_claims(conn)
-    rows = conn.execute(
+    sql = (
         "SELECT * FROM tasks WHERE execution IN ('agent_supervised','agent_auto') "
-        "AND staging=0 AND status='open' ORDER BY priority='high' DESC, deadline"
-    ).fetchall()
+        "AND staging=0 AND status='open'"
+    )
+    params: list = []
+    if owner is not None:
+        if owner not in _OWNER_TO_CREATOR:
+            raise HTTPException(422, f"owner must be rc or fc, got {owner!r}")
+        sql += " AND created_by=?"
+        params.append(_OWNER_TO_CREATOR[owner])
+    sql += " ORDER BY priority='high' DESC, deadline"
+    rows = conn.execute(sql, params).fetchall()
     return {
         "queue": [
             {
@@ -840,6 +954,8 @@ def agent_queue(p=Depends(principal)):
                 "execution": r["execution"],
                 "runner": r["runner"],
                 "deal": r["deal"],
+                "created_by": r["created_by"],
+                "owner": _CREATOR_TO_OWNER.get(r["created_by"]),
                 "version": r["version"],
             }
             for r in rows
@@ -956,6 +1072,7 @@ def delete_task(tid: str, p=Depends(human_only)):
             conn, p["id"], "task_delete", ref, before={k: row[k] for k in row.keys()}
         )
         conn.commit()
+    _broadcast(p["id"])
     return {"deleted": ref}
 
 
@@ -976,6 +1093,7 @@ def reorder_tasks(payload: dict = Body(...), p=Depends(human_only)):
             )
         db.audit(conn, p["id"], "tasks_reorder", "bulk", after={"task_ids": task_ids})
         conn.commit()
+    _broadcast(p["id"])
     return {"reordered": len(task_ids)}
 
 
@@ -1011,7 +1129,35 @@ def reorder_workstreams(payload: dict = Body(...), p=Depends(human_only)):
             after={"workstream_ids": ws_ids},
         )
         conn.commit()
+    _broadcast(p["id"])
     return {"reordered": len(ws_ids)}
+
+
+@app.patch("/api/deliverables/reorder")
+def reorder_deliverables(payload: dict = Body(...), p=Depends(human_only)):
+    deliv_ids = payload.get("deliverable_ids")
+    if not deliv_ids or not isinstance(deliv_ids, list):
+        raise HTTPException(422, "deliverable_ids list is required")
+    conn = db.get_conn()
+    with db.WRITE_LOCK:
+        for idx, did_str in enumerate(deliv_ids):
+            prefix, num = _safe_ref(did_str)
+            if prefix != "d":
+                raise HTTPException(422, f"expected d-<n>, got {did_str!r}")
+            conn.execute(
+                "UPDATE deliverables SET sort_order=?, version=version+1 WHERE id=?",
+                (idx, num),
+            )
+        db.audit(
+            conn,
+            p["id"],
+            "deliverables_reorder",
+            "bulk",
+            after={"deliverable_ids": deliv_ids},
+        )
+        conn.commit()
+    _broadcast(p["id"])
+    return {"reordered": len(deliv_ids)}
 
 
 @app.post("/api/task/{tid}/approve")
@@ -1027,6 +1173,7 @@ def approve(tid: str, p=Depends(human_only)):
             "UPDATE tasks SET claimed_by=NULL, claim_expires_at=NULL WHERE id=?", (num,)
         )
         conn.commit()
+    _broadcast(p["id"])
     return assemble_task(conn, num)
 
 
@@ -1051,6 +1198,7 @@ def reject(tid: str, payload: dict = Body(default={}), p=Depends(human_only)):
             "UPDATE tasks SET claimed_by=NULL, claim_expires_at=NULL WHERE id=?", (num,)
         )
         conn.commit()
+    _broadcast(p["id"])
     return assemble_task(conn, num)
 
 
@@ -1317,4 +1465,5 @@ def patch_deal(codename: str, payload: dict = Body(...), p=Depends(human_only)):
     with db.WRITE_LOCK:
         conn.execute(f"UPDATE deal_mirror SET {sets} WHERE codename=?", vals)
         conn.commit()
+    _broadcast(p["id"])
     return {"ok": True, "codename": codename, "updated": updates}

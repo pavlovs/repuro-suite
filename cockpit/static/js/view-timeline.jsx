@@ -1,7 +1,7 @@
 /* ===== Timeline v2 — workstream → deliverable gantt, all items expandable, reduced labels ===== */
-function TimelineView({ openTask, mutate }) {
-  const ZOOM_MIN = { compact: 100, comfortable: 160, wide: 260 };
-  const [zoom, setZoom] = React.useState("comfortable");
+function TimelineView({ openTask, openDeliv, mutate }) {
+  const ZOOM_MIN = 160;
+  const [range, setRange] = React.useState(3); // months from today
   const [open, setOpen] = React.useState({});
   const [filter, setFilter] = React.useState("dated"); // all | dated | undated
   const [filtersOpen, setFiltersOpen] = React.useState(true);
@@ -9,7 +9,7 @@ function TimelineView({ openTask, mutate }) {
   const toggle = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
 
   const activeFilterCount = filter !== "all" ? 1 : 0;
-  const LABELW = 280, RH = 48, SUBH = 32;
+  const LABELW = 380, RH = 48, SUBH = 32;
   const scrollRef = React.useRef(null);
   const [containerW, setContainerW] = React.useState(0);
   React.useEffect(() => {
@@ -19,8 +19,8 @@ function TimelineView({ openTask, mutate }) {
     return () => ro.disconnect();
   }, []);
 
-  const allDelivs = DELIVERABLES.filter((d) => TASKS.some((t) => t.d === d.id && t.status !== "done"));
-  const hasDates = (d) => d.target || TASKS.some((t) => t.d === d.id && t.due && t.status !== "done");
+  const allDelivs = DELIVERABLES.filter((d) => d.target || TASKS.some((t) => t.d === d.id));
+  const hasDates = (d) => d.target || TASKS.some((t) => t.d === d.id && t.due);
   const filtered = filter === "dated" ? allDelivs.filter(hasDates) : filter === "undated" ? allDelivs.filter((d) => !hasDates(d)) : allDelivs;
 
   if (!allDelivs.length) {
@@ -31,21 +31,17 @@ function TimelineView({ openTask, mutate }) {
     );
   }
 
-  // date range: from today-7d to max(target, due) + buffer
-  const allDates = [todayDate];
-  allDelivs.forEach((d) => {
-    if (d.target) allDates.push(new Date(d.target + "T00:00:00"));
-    TASKS.filter((t) => t.d === d.id && t.due).forEach((t) => allDates.push(new Date(t.due + "T00:00:00")));
-  });
-  let min = new Date(Math.min(...allDates)), max = new Date(Math.max(...allDates));
-  min = new Date(min.getFullYear(), min.getMonth(), 1);
-  max = new Date(max.getFullYear(), max.getMonth() + 2, 1);
+  // date range: from start of current month to today + range months
+  let min = new Date(todayDate.getFullYear(), todayDate.getMonth(), 1);
+  let max = new Date(todayDate.getFullYear(), todayDate.getMonth() + range + 1, 1);
   const months = [];
   for (let m = new Date(min); m < max; m.setMonth(m.getMonth() + 1)) months.push(new Date(m));
   const availW = containerW > 0 ? containerW - LABELW : 0;
-  const MW = months.length > 0 ? Math.max(ZOOM_MIN[zoom], Math.floor(availW / months.length)) : ZOOM_MIN[zoom];
+  const MW = months.length > 0 ? Math.max(ZOOM_MIN, Math.floor(availW / months.length)) : ZOOM_MIN;
   const totalW = months.length * MW;
   const xPos = (d) => (((typeof d === "string" ? new Date(d + "T00:00:00") : d) - min) / (max - min)) * totalW;
+  const xClamped = (d) => Math.min(totalW, Math.max(0, xPos(d)));
+  const inWindow = (d) => { const x = xPos(d); return x >= -MW && x <= totalW + MW; };
   const RDOT = { green: "#16a34a", amber: "#eab308", red: "#e11d48", grey: "#c8d2d6" };
   const rank = { green: 0, amber: 1, red: 2 };
   const taskColor = (t) => t.status === "done" ? "#16a34a" : RDOT[readiness(t)];
@@ -69,9 +65,9 @@ function TimelineView({ openTask, mutate }) {
       <div className="gantt-bar-top">
         <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={activeFilterCount}>
           <div className="seg">
-            <span className="seg-lbl">zoom</span>
-            {[["compact", "Compact"], ["comfortable", "Comfortable"], ["wide", "Wide"]].map(([v, l]) => (
-              <button key={v} className={zoom === v ? "on" : ""} onClick={() => setZoom(v)}>{l}</button>
+            <span className="seg-lbl">range</span>
+            {[[1, "1 mo"], [2, "2 mo"], [3, "3 mo"], [6, "6 mo"]].map(([v, l]) => (
+              <button key={v} className={range === v ? "on" : ""} onClick={() => setRange(v)}>{l}</button>
             ))}
           </div>
           <div className="seg">
@@ -101,7 +97,7 @@ function TimelineView({ openTask, mutate }) {
 
             <div className="gantt-body" style={{ position: "relative" }}>
               {months.map((m, i) => <div key={i} className="gantt-vline" style={{ left: LABELW + i * MW }} />)}
-              <div className="gantt-today" style={{ left: LABELW + xPos(todayDate) }}><span className="gantt-today-lbl">today</span></div>
+              <div className="gantt-today" style={{ left: LABELW + xClamped(todayDate) }}><span className="gantt-today-lbl">today</span></div>
 
               {SPACES.map((space) => {
                 const allSpaceWs = (wsPerSpace[space.id] || []);
@@ -128,6 +124,7 @@ function TimelineView({ openTask, mutate }) {
                   <React.Fragment key={w.id}>
                     <div className="gantt-band" style={{ width: LABELW + totalW }}>
                       <span className="ws-ico sm" style={{ background: w.color }}><Icon name={w.icon} size={11} /></span>
+                      {w.displayNum && <span className="num-prefix">{w.displayNum}</span>}
                       <span className="gantt-band-name">{w.name}</span>
                       <span className="gantt-band-count">{delivs.length}</span>
                     </div>
@@ -147,34 +144,57 @@ function TimelineView({ openTask, mutate }) {
                             <div className="gantt-label clickable" style={{ width: LABELW }} onClick={() => toggle(d.id)}>
                               <span className={"caret" + (isOpen ? " open" : "")}><Icon name="chevron" size={12} /></span>
                               <span className="rdot" data-level={s.readiness} style={{ width: 8, height: 8 }} />
+                              {d.displayNum && <span className="num-prefix">{d.displayNum}</span>}
                               <span className="gantt-name">{d.name}</span>
                               {d.deal && <span className="gantt-deal">{d.deal.codename}</span>}
+                              <button className="deliv-edit" title="edit deliverable"
+                                onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }}>✎</button>
                               <span className="gantt-prog-inline" title={s.done + " of " + s.total + " done"}>
                                 <span className="gantt-prog-bar"><span style={{ width: pct + "%", background: RDOT[s.readiness] }} /></span>
                               </span>
                             </div>
                             <div className="gantt-track" style={{ width: totalW }}>
                               {dated && (() => {
-                                const dueDates = openTasks.map((t) => t.due).concat(d.target ? [d.target] : []);
+                                const dueDates = dTasks.filter((t) => t.due).map((t) => t.due).concat(d.target ? [d.target] : []);
                                 const start = dueDates.reduce((a, b) => (a < b ? a : b));
                                 const end = dueDates.reduce((a, b) => (a > b ? a : b));
-                                const x1 = xPos(start), x2 = xPos(d.target || end);
+                                const x1 = xClamped(start), x2 = xClamped(d.target || end);
                                 const barX = Math.min(x1, x2), barW = Math.max(18, Math.abs(x2 - x1));
+
+                                // Explicit duration bar when start_date is set
+                                const hasDurationBar = !!(d.startDate && d.target);
+                                const hasOpenEndedBar = !!(d.startDate && !d.target);
+                                const dbX1 = d.startDate ? xClamped(d.startDate) : null;
+                                const dbX2 = d.target ? xClamped(d.target) : null;
+                                // open-ended: extend 60px past the task spread or at least 60px wide
+                                const openEndX = d.startDate ? Math.min(totalW, xPos(d.startDate) + Math.max(60, (xPos(end || d.startDate) - xPos(d.startDate)) + 20)) : null;
+
                                 return (
                                   <React.Fragment>
-                                    <div className="gantt-bar" style={{ left: barX, width: barW, background: w.color + "18", borderColor: w.color + "44" }} />
-                                    {clusters.map((c, i) => c.items.length === 1 ? (
-                                      <div key={i} className="gantt-tick" style={{ left: c.x, background: taskColor(c.items[0]) }}
+                                    {/* task-spread background bar — only when no explicit startDate */}
+                                    {!d.startDate && <div className="gantt-bar" style={{ left: barX, width: barW, background: w.color + "18", borderColor: w.color + "44" }} />}
+                                    {/* explicit duration bar: start_date → target_date */}
+                                    {hasDurationBar && (
+                                      <div className="tl-bar" style={{ left: dbX1, width: Math.max(18, dbX2 - dbX1), background: w.color + "33", borderColor: w.color + "88" }}
+                                        title={d.name + ": " + fdateShort(d.startDate) + " → " + fdateShort(d.target)} />
+                                    )}
+                                    {/* open-ended bar: start_date only, dashed right edge */}
+                                    {hasOpenEndedBar && (
+                                      <div className="tl-bar tl-bar-open" style={{ left: dbX1, width: Math.max(18, openEndX - dbX1), background: w.color + "22", borderColor: w.color + "66" }}
+                                        title={d.name + ": from " + fdateShort(d.startDate) + " (no target set)"} />
+                                    )}
+                                    {clusters.filter((c) => inWindow(c.items[0].due)).map((c, i) => { const cx = Math.min(totalW, Math.max(0, c.x)); return c.items.length === 1 ? (
+                                      <div key={i} className="gantt-tick" style={{ left: cx, background: taskColor(c.items[0]) }}
                                         title={c.items[0].text + " — due " + fdate(c.items[0].due)}
                                         onClick={(e) => { e.stopPropagation(); openTask(c.items[0].id); }} />
                                     ) : (
-                                      <div key={i} className="gantt-cluster" style={{ left: c.x, background: RDOT[worst(c.items)] }}
+                                      <div key={i} className="gantt-cluster" style={{ left: cx, background: RDOT[worst(c.items)] }}
                                         title={c.items.length + " tasks due here:\n" + c.items.map((t) => "• " + t.text + " (" + fdate(t.due) + ")").join("\n")}
                                         onClick={(e) => { e.stopPropagation(); toggle(d.id); }}>{c.items.length}</div>
-                                    ))}
-                                    {d.target && <div className="gantt-diamond" style={{ left: x2, background: RDOT[s.readiness] }}
+                                    ); })}
+                                    {d.target && inWindow(d.target) && <div className="gantt-diamond" style={{ left: x2, background: RDOT[s.readiness] }}
                                       title={d.name + " target: " + fdateShort(d.target)} />}
-                                    {d.target && <div className={"gantt-target-lbl" + (du < 0 ? " over" : du <= 7 ? " soon" : "")} style={{ left: x2 + 12 }}>
+                                    {d.target && inWindow(d.target) && <div className={"gantt-target-lbl" + (du < 0 ? " over" : du <= 7 ? " soon" : "")} style={{ left: Math.min(x2 + 12, totalW - 48) }}>
                                       {du < 0 ? Math.abs(du) + "d over" : du === 0 ? "today" : du <= 14 ? du + "d" : ""}
                                     </div>}
                                   </React.Fragment>
@@ -183,7 +203,7 @@ function TimelineView({ openTask, mutate }) {
                               {!dated && (
                                 <div className="gantt-undated-hint">
                                   <Icon name="clock" size={12} />
-                                  <span>{s.total} task{s.total !== 1 ? "s" : ""} — no dates set</span>
+                                  <span>{s.open} task{s.open !== 1 ? "s" : ""} open — no dates set</span>
                                 </div>
                               )}
                             </div>
@@ -196,10 +216,10 @@ function TimelineView({ openTask, mutate }) {
                                 <OwnerStack owners={t.owners} size={16} />
                               </div>
                               <div className="gantt-track" style={{ width: totalW }}>
-                                {t.due && <div className="gantt-subdot" style={{ left: xPos(t.due), background: taskColor(t) }} onClick={() => openTask(t.id)}
+                                {t.due && inWindow(t.due) && <div className="gantt-subdot" style={{ left: xClamped(t.due), background: taskColor(t) }} onClick={() => openTask(t.id)}
                                   title={t.text + " — " + fdateShort(t.due)} />}
-                                {t.due && t.status === "waiting" && t.waiting && (
-                                  <div className="gantt-sub-wait" style={{ left: xPos(t.due) + 12 }}>@ {t.waiting.party}</div>
+                                {t.due && inWindow(t.due) && t.status === "waiting" && t.waiting && (
+                                  <div className="gantt-sub-wait" style={{ left: Math.min(xClamped(t.due) + 12, totalW - 48) }}>@ {t.waiting.party}</div>
                                 )}
                                 {!t.due && (
                                   <div className="gantt-sub-nodate" onClick={() => openTask(t.id)}>

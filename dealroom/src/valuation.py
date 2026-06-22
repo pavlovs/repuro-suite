@@ -60,6 +60,7 @@ def compute_adj_pnl(
         adj_detail[cat].append(
             {
                 "description": item.get("description", ""),
+                "comment": item.get("comment", ""),
                 "amounts_by_year": {y: amounts.get(y, 0) for y in years},
             }
         )

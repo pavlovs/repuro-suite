@@ -671,8 +671,19 @@ function renderGuvTabSlide() {
   }
   var heroHtml = renderFinancialsHero();
   var kpis = _getGuvKPIs();
-  // Detail: GuV table — call renderUnifiedGuV directly (already exists in financials.js)
+  // Detail: raw GuV (actuals/BWA) + EBIT adjustment detail below if model context has adj items
   var detailHtml = (typeof renderUnifiedGuV === 'function') ? renderUnifiedGuV() : renderInformation();
+  if (typeof renderAdjDetail === 'function' && _modelCtx) {
+    var adjPnl = _modelCtx.adj_pnl || {};
+    var adjDetail = adjPnl.adjustments_detail || {};
+    if (Object.values(adjDetail).some(function(items){return Array.isArray(items)&&items.length>0;})) {
+      detailHtml +=
+        '<div style="margin-top:24px;padding-top:12px;border-top:2px solid #e2e8f0">' +
+        '<div style="font-weight:700;font-size:13px;font-family:Arial,sans-serif;color:#1D7080;margin-bottom:8px">EBIT Adjustments</div>' +
+        renderAdjDetail(adjPnl, adjPnl.summary || {}, _modelCtx.years || []) +
+        '</div>';
+    }
+  }
   return renderSlideSection('financials-guv', 'Financials — GuV', heroHtml, kpis, detailHtml);
 }
 

@@ -1,4 +1,4 @@
-// ─── Unified GuV (DR-M9) ─────────────────────────────────────────────────────
+﻿// ─── Unified GuV (DR-M9) ─────────────────────────────────────────────────────
 
 function renderUnifiedGuV() {
   const fin = DATA.financials || {};
@@ -855,90 +855,109 @@ function renderAdjGuV() {
   h+='<label>Sozialabg.: '+_modelInput('gf_s',p.gf_sozialabgaben_pct!=null?p.gf_sozialabgaben_pct*100:18,50,"_postModelUpdate({gf_sozialabgaben_pct:+this.value/100})")+'%</label>';
   h+='</div></div>';
 
-  // Adjustment detail — matches reference PDF layout
-  const adjDetail = adj.adjustments_detail || {};
-  const adjTotal = adj.adjustments_total || {};
-  if(Object.keys(adjDetail).length > 0) {
-    h+='<div style="margin-top:16px">';
-    h+='<table style="border-collapse:collapse;width:100%"><thead><tr>';
-    h+='<th style="'+thStyle+';text-align:left;min-width:200px">adjustments in \u20acK</th>';
-    for(const y of years) h+='<th style="'+thStyle+';min-width:70px">'+y+'</th>';
-    h+='<th style="'+thStyle+';text-align:left;min-width:120px">Comment</th>';
-    h+='</tr></thead><tbody>';
+  // Adjustment detail — delegated to standalone helper
+  h += renderAdjDetail(adj, summary, years, thStyle, tdR, tdL);
 
-    // Category order from reference
-    const catOrder = ['umsatz','materialkosten','personalkosten','opex','opin'];
-    // Collect all categories in preferred order, then any remaining
-    const catKeys = catOrder.filter(c=>adjDetail[c]).concat(Object.keys(adjDetail).filter(c=>!catOrder.includes(c)));
+  return h;
+}
 
-    for(const cat of catKeys) {
-      const items = adjDetail[cat];
-      if(!items) continue;
-      const catLabel = cat.charAt(0).toUpperCase()+cat.slice(1);
+// ─── EBIT Adjustment Detail — standalone helper ───────────────────────────────
+// Renders adjustment positions + commentary table.
+// Called from renderAdjGuV() and the Financials GuV tab slide.
+// adj      = ctx.adj_pnl  (contains adjustments_detail + adjustments_total)
+// summary  = adj.summary  (per-year adjusted P&L for subtotal rows)
+// years    = ctx.years
+// thStyle/tdR/tdL — optional style overrides; defaults applied when omitted.
 
-      // Category header row (bold, slight gray bg)
-      h+='<tr style="background:#f5f5f5;border-bottom:1px solid #ddd">';
-      h+='<td style="'+tdL+';font-weight:700">'+catLabel+'</td>';
-      for(const y of years) {
-        // Subtotal per category per year = sum of items
-        const total = items.reduce((s,it)=>s+(it.amounts_by_year[y]||0),0);
-        h+='<td style="'+tdR+';font-weight:700">'+_fmtK(total||null)+'</td>';
-      }
-      h+='<td style="'+tdL+'"></td></tr>';
+function renderAdjDetail(adj, summary, years, thStyle, tdR, tdL) {
+  const _TEAL = '#1D7080';
+  thStyle = thStyle || ('background:'+_TEAL+';color:#fff;padding:5px 8px;font-size:11px;font-family:Arial,sans-serif');
+  tdR = tdR || 'text-align:right;padding:3px 8px;font-size:12px;font-family:Arial,sans-serif';
+  tdL = tdL || 'text-align:left;padding:3px 8px;font-size:12px;font-family:Arial,sans-serif';
 
-      // Individual adjustment items — indented
-      for(const item of items) {
-        h+='<tr style="border-bottom:1px solid #f0f0f0">';
-        h+='<td style="'+tdL+';padding-left:20px;font-size:11px;color:#555">'+esc(item.description)+'</td>';
-        for(const y of years) {
-          const v = item.amounts_by_year[y];
-          h+='<td style="'+tdR+';font-size:11px;color:#555">'+_fmtK(v!=null?v:null)+'</td>';
-        }
-        h+='<td style="'+tdL+'"></td></tr>';
-      }
+  const adjDetail = (adj && adj.adjustments_detail) || {};
+  const adjTotal  = (adj && adj.adjustments_total)  || {};
+  summary = summary || {};
+  years   = years   || [];
+  if(!Object.keys(adjDetail).length) return '';
 
-      // Subtotal adj line — bold
-      const adjCatLabel = catLabel.replace(/en$/,'') + 'en (adj.)';
-      h+='<tr style="border-bottom:1px solid #ccc">';
-      h+='<td style="'+tdL+';font-weight:700">'+adjCatLabel+'</td>';
-      for(const y of years) {
-        const rawKey = cat==='materialkosten'?'cogs_adj':cat==='personalkosten'?'pex_adj':cat==='opex'?'opex_adj':cat==='opin'?'opin_adj':null;
-        const v = rawKey&&summary[y]?summary[y][rawKey]:null;
-        h+='<td style="'+tdR+';font-weight:700">'+_fmtK(v)+'</td>';
-      }
-      h+='<td style="'+tdL+'"></td></tr>';
-    }
+  // Human-readable label per category key — covers English (backend) + German (legacy)
+  const CAT_LABEL = {
+    revenue:'Revenue',      umsatz:'Umsatz',
+    cogs:'Cost of Sales',   materialkosten:'Materialkosten',
+    personnel:'Personnel',  personalkosten:'Personalkosten',
+    opex:'OPEX',
+    opin:'OPIN',
+  };
+  // Map category key -> adj_pnl summary sub-key for the adjusted subtotal row
+  const CAT_TO_SUMMARY = {
+    revenue:'total_sales',    umsatz:'total_sales',
+    cogs:'cogs_adj',          materialkosten:'cogs_adj',
+    personnel:'pex_adj',      personalkosten:'pex_adj',
+    opex:'opex_adj',
+    opin:'opin_adj',
+  };
 
-    // Bottom summary
-    h+='<tr><td colspan="'+(years.length+2)+'" style="padding:2px;border:none"></td></tr>';
-    const summaryRows = [
-      {label:'Revenue', key:null},
-      {label:'Cost of sales', key:null},
-      {label:'PEX', key:'pex_adj'},
-      {label:'OPEX', key:'opex_adj'},
-      {label:'OPIN', key:'opin_adj'},
-    ];
-    for(const sr of summaryRows) {
-      h+='<tr style="border-bottom:1px solid #e8e8e8">';
-      h+='<td style="'+tdL+';font-style:italic;color:#888">'+sr.label+'</td>';
-      for(const y of years) {
-        const t = sr.key&&adjTotal[y]?adjTotal[y][sr.key]:null;
-        h+='<td style="'+tdR+';font-style:italic;color:#888">'+_fmtK(t)+'</td>';
-      }
-      h+='<td style="'+tdL+'"></td></tr>';
-    }
-    // Adjustments total
-    h+='<tr style="border-top:2px solid #333">';
-    h+='<td style="'+tdL+';font-weight:700;font-style:italic">Adjustments</td>';
+  // Preferred display order (English keys first, then German aliases for legacy data)
+  const catOrder = ['revenue','umsatz','cogs','materialkosten','personnel','personalkosten','opex','opin'];
+  const catKeys = catOrder.filter(c=>adjDetail[c])
+    .concat(Object.keys(adjDetail).filter(c=>!catOrder.includes(c)));
+
+  let h='<div style="margin-top:16px">';
+  h+='<table style="border-collapse:collapse;width:100%"><thead><tr>';
+  h+='<th style="'+thStyle+';text-align:left;min-width:200px">Adjustments in €K</th>';
+  for(const y of years) h+='<th style="'+thStyle+';min-width:70px">'+y+'</th>';
+  h+='<th style="'+thStyle+';text-align:left;min-width:120px">Comment</th>';
+  h+='</tr></thead><tbody>';
+
+  for(const cat of catKeys) {
+    const items = adjDetail[cat];
+    if(!items || !items.length) continue;
+    const catLabel = CAT_LABEL[cat] || (cat.charAt(0).toUpperCase()+cat.slice(1));
+
+    // Category header row
+    h+='<tr style="background:#f5f5f5;border-bottom:1px solid #ddd">';
+    h+='<td style="'+tdL+';font-weight:700">'+catLabel+'</td>';
     for(const y of years) {
-      const t = adjTotal[y] ? adjTotal[y].total : 0;
-      h+='<td style="'+tdR+';font-weight:700">'+_fmtK(t)+'</td>';
+      const total = items.reduce((s,it)=>s+((it.amounts_by_year&&it.amounts_by_year[y])||0),0);
+      h+='<td style="'+tdR+';font-weight:700">'+_fmtK(total!=null?total:null)+'</td>';
     }
-    h+='<td></td></tr>';
+    h+='<td style="'+tdL+'"></td></tr>';
 
-    h+='</tbody></table></div>';
+    // Individual adjustment items — indented, description + comment
+    for(const item of items) {
+      h+='<tr style="border-bottom:1px solid #f0f0f0">';
+      h+='<td style="'+tdL+';padding-left:20px;font-size:11px;color:#555">'+esc(item.description||'')+'</td>';
+      for(const y of years) {
+        const v = item.amounts_by_year ? item.amounts_by_year[y] : null;
+        h+='<td style="'+tdR+';font-size:11px;color:#555">'+_fmtK(v!=null?v:null)+'</td>';
+      }
+      h+='<td style="'+tdL+';color:#888;font-size:11px">'+esc(item.comment||'')+'</td></tr>';
+    }
+
+    // Adjusted subtotal row
+    const summaryKey = CAT_TO_SUMMARY[cat] || null;
+    const adjCatLabel = catLabel + ' (adj.)';
+    h+='<tr style="border-bottom:1px solid #ccc">';
+    h+='<td style="'+tdL+';font-weight:700">'+adjCatLabel+'</td>';
+    for(const y of years) {
+      const v = summaryKey && summary[y] ? summary[y][summaryKey] : null;
+      h+='<td style="'+tdR+';font-weight:700">'+_fmtK(v)+'</td>';
+    }
+    h+='<td style="'+tdL+'"></td></tr>';
   }
 
+  // Adjustments total footer
+  h+='<tr><td colspan="'+(years.length+2)+'" style="padding:2px;border:none"></td></tr>';
+  h+='<tr style="border-top:2px solid #333">';
+  h+='<td style="'+tdL+';font-weight:700;font-style:italic">Adjustments total</td>';
+  for(const y of years) {
+    const t = adjTotal[y] ? adjTotal[y].total : 0;
+    h+='<td style="'+tdR+';font-weight:700">'+_fmtK(t)+'</td>';
+  }
+  h+='<td></td></tr>';
+
+  h+='</tbody></table></div>';
   return h;
 }
 

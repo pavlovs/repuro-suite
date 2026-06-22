@@ -7,7 +7,19 @@
 		respond "ok" 200
 	}
 
-	@needsAuth not path /healthz
+	# Basic auth on everything EXCEPT /healthz and the agent API when a Bearer
+	# token is presented. Agent endpoints (/cockpit/api/agent/*) are role-gated
+	# in the backend (agent_only / token validation), so skipping Caddy basic
+	# auth for them is safe ONLY because the bypass also requires an
+	# Authorization: Bearer header — no human mutating endpoint lives under
+	# /api/agent/*. See cockpit/ai/SPEC-agent-skills-repo.md §2 (Option B).
+	@needsAuth {
+		not path /healthz
+		not {
+			path /cockpit/api/agent/*
+			header Authorization "Bearer *"
+		}
+	}
 	basic_auth @needsAuth {
 		roman {$AUTH_ROMAN_HASH}
 		florian {$AUTH_FLORIAN_HASH}

@@ -125,9 +125,6 @@ function MeetingView({ mutate, openTask }) {
               <button className={mode === "daily" ? "on" : ""} onClick={() => setMode("daily")}>Daily</button>
               <button className={mode === "weekly" ? "on" : ""} onClick={() => setMode("weekly")}>Weekly</button>
             </div>
-            {mode === "weekly" && recentDone.length > 0 && <span className="mtg-stat done"><Icon name="check" size={12} /> {recentDone.length} completed</span>}
-            {attentionN > 0 && <span className="mtg-stat attn">{attentionN} need attention</span>}
-            {loiDeals.length > 0 && <span className="mtg-stat deals">{loiDeals.length} deal deadline{loiDeals.length !== 1 ? "s" : ""}</span>}
           </div>
         </div>
       </div>

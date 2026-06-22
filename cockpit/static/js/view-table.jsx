@@ -87,6 +87,8 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
   });
   const [wsOpen, setWsOpen] = React.useState(() => Object.fromEntries(WORKSTREAMS.map((w) => [w.id, true])));
   const [showAllDeals, setShowAllDeals] = React.useState(false);
+  const [delivDragId, setDelivDragId] = React.useState(null);
+  const [delivOverId, setDelivOverId] = React.useState(null);
   const toggle = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
   const toggleWs = (id) => setWsOpen((o) => ({ ...o, [id]: !o[id] }));
   const allExpanded = Object.values(wsOpen).every(Boolean);
@@ -104,6 +106,8 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
     if (filters.priority && (t.priority || "") !== filters.priority) return false;
     return true;
   };
+
+  const isDelivDrag = (e) => e.dataTransfer.types.includes("text/deliv-id");
 
   const TRow = ({ t, dragHandlers }) => {
     const dragging = dragHandlers && dragHandlers["data-dragging"] === "true";
@@ -169,6 +173,7 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
                   <div className="ws-band" onClick={() => toggleWs(w.id)} style={{cursor:"pointer"}}>
                     <span className={"caret" + (wsOpen[w.id] ? " open" : "")} style={{marginRight:4}}><Icon name="chevron" size={14} /></span>
                     <span className="ws-ico" style={{ background: w.color }}><Icon name={w.icon} size={14} /></span>
+                    {w.displayNum && <span className="num-prefix">{w.displayNum}</span>}
                     <span className="ws-name">{w.name}</span>
                     {w.deal && w.dealStage && (
                       <span className="ws-stage" data-active={w.visibility === "expanded" ? "true" : "false"}
@@ -206,12 +211,36 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
                       if (allDelivTasks.length > 0 && (filters.person || filters.readiness || !filters.showDone)) { if (!tasks.length) return null; }
                       const du = daysUntil(d.target);
                       return (
-                        <div key={d.id} className="deliv">
-                          <div className="deliv-h" onClick={() => toggle(d.id)}>
+                        <div key={d.id} className="deliv"
+                          data-deliv-dragging={delivDragId === d.id ? "true" : undefined}
+                          data-deliv-over={delivOverId === d.id && delivDragId !== d.id ? "true" : undefined}
+                          onDragOver={(e) => { if (!isDelivDrag(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (delivOverId !== d.id) setDelivOverId(d.id); }}
+                          onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setDelivOverId(null); }}
+                          onDrop={(e) => {
+                            if (!isDelivDrag(e)) return;
+                            e.preventDefault(); setDelivOverId(null); setDelivDragId(null);
+                            const srcId = e.dataTransfer.getData("text/deliv-id");
+                            if (srcId === d.id) return;
+                            const wsDelivs = DELIVERABLES.filter((x) => x.ws === d.ws);
+                            const ids = wsDelivs.map((x) => x.id);
+                            const srcIdx = ids.indexOf(srcId);
+                            const tgtIdx = ids.indexOf(d.id);
+                            if (srcIdx < 0) return;
+                            ids.splice(srcIdx, 1);
+                            ids.splice(tgtIdx, 0, srcId);
+                            api.reorderDelivs(ids);
+                          }}>
+                          <div className="deliv-h" draggable={true}
+                            onDragStart={(e) => { e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/deliv-id", d.id); setDelivDragId(d.id); e.stopPropagation(); }}
+                            onDragEnd={() => { setDelivDragId(null); setDelivOverId(null); }}
+                            onClick={() => toggle(d.id)}>
                             <span className={"caret" + (open[d.id] ? " open" : "")}><Icon name="chevron" size={14} /></span>
+                            {d.displayNum && <span className="num-prefix">{d.displayNum}</span>}
                             <span className="deliv-name">{d.name}</span>
                             <button className="deliv-edit" title="rename / set target date"
                               onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }}>✎</button>
+                            <button className="deliv-add" title="add task"
+                              onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }}>+</button>
                             {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")}>{du < 0 ? "overdue " : "due "}{fdate(d.target)}</span>}
                           </div>
                           {(open[d.id] !== false) && (
@@ -258,8 +287,9 @@ function DeliverableView({ mutate, openTask, openDeliv }) {
         const personTasks = allTasks.filter((t) => (t.owners || []).includes(person));
         if (!personTasks.length) continue;
         const openTasks = personTasks.filter((t) => t.status !== "done");
+        if (!openTasks.length) continue;  // skip deliverables where all person tasks are done
         const s = delivStats(d);
-        matching.push({ d, personTasks, openTasks, s });
+        matching.push({ d, personTasks: openTasks, openTasks, s });
       }
       if (matching.length) out.push({ ws, delivs: matching });
     }

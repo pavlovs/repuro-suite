@@ -171,25 +171,31 @@
     var wsIdx = 0;
     (state.spaces || []).forEach(function (space) {
       var live = (space.workstreams || []).filter(function (w) { return w.status !== "parked"; });
+      var wsNum = 0;
       live.forEach(function (w) {
         var style = WS_STYLE[wsIdx % WS_STYLE.length];
         wsIdx++;
+        wsNum++;
         var name = w.name.toLowerCase();
+        var delivNum = 0;
         WORKSTREAMS.push({
           id: w.id, name: w.name, space: w.space_id, version: w.version,
           deal: w.deal_codename || null, dealStage: w.deal_stage || null,
           visibility: w.visibility || null, sortOrder: w.sort_order || 0,
+          displayNum: String(wsNum),
           color: w.color || (name.indexOf("fundrais") >= 0 ? "#0891B2" : style.color),
           icon: name.indexOf("fundrais") >= 0 ? "raise"
             : (name.indexOf("admin") >= 0 || name.indexOf("general") >= 0 || name.indexOf("ops") >= 0) ? "ops" : "deal",
         });
         (w.deliverables || []).forEach(function (d) {
           if (d.staging) return;
+          delivNum++;
           var liveTasks = (d.tasks || []).filter(function (t) { return !t.staging; });
           var dealCode = d.deal || w.deal_codename ||
             (liveTasks.map(function (t) { return t.deal; }).filter(Boolean)[0] || null);
           DELIVERABLES.push({
             id: d.id, ws: w.id, name: d.name, target: d.target_date || null, version: d.version,
+            displayNum: wsNum + "." + delivNum,
             deal: dealCode ? { codename: dealCode, stage: w.deal_stage || stageOf[dealCode] || "?" } : null,
           });
           liveTasks.forEach(function (t) { TASKS.push(mapTask(t, d.id)); });
@@ -493,6 +499,14 @@
         body: JSON.stringify(fields),
       });
       if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return; }
+      await refreshFromServer();
+    },
+    async reorderDelivs(delivIds) {
+      var r = await authedFetch("/api/deliverables/reorder", {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deliverable_ids: delivIds }),
+      });
+      if (!r.ok) { showToast("Reorder failed: " + (await r.text()).slice(0, 200), "err"); return; }
       await refreshFromServer();
     },
     async reorder(taskIds) {

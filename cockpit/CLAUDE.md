@@ -5,7 +5,7 @@ readiness colors, waiting-on/chase model, computed daily/weekly recommendations,
 Design spec: `ai/DESIGN-SPEC.md` (v5, approved 2026-06-11). Milestones: `ai/PLAN.md` + `ai/ROADMAP.md`.
 
 ## Architecture (one line)
-FastAPI + SQLite (`data/cockpit.db`, journal DELETE) → JSON/MD API on localhost:8099 → Alpine.js SPA (M2+). Local-first; Fly.io at M5.
+FastAPI + SQLite (`data/cockpit.db`, journal DELETE) → JSON/MD API on localhost:8099 → Alpine.js SPA (M2+). Local-first; Fly.io at M5. **Remote API access: see `REMOTE-API.md`** — SSH + Python via flyctl, X-Remote-User auth.
 
 ## Hard rules (inherit workspace CLAUDE.md, plus)
 - **cockpit.db**: journal_mode=DELETE (OneDrive safety). Never commit. Mutations only through the API/db module — never raw writes from scripts.
@@ -22,9 +22,64 @@ FastAPI + SQLite (`data/cockpit.db`, journal DELETE) → JSON/MD API on localhos
   5. Codex usability review only at milestone boundaries (screenshots referenced in prompt).
   Never claim a UI change done from code reading alone — the 2026-06-12 session found a server bug (deliverable gates), an invisible button, and a false-blocked display ONLY via screenshots.
 
+## DB Schema (v4, 7 tables)
+
+Schema version tracked in `PRAGMA user_version`. Migrations in `src/db.py`.
+
+**users** — id, name, initials, token_hash, role (human/agent)
+
+**spaces** — id, name, slug, color, icon, sort_order, sort_mode (manual/deal_stage), status (active/parked/done), version
+- Seeded: Repuro (s-1), M&A (s-2)
+
+**workstreams** — id, name, space_id→spaces, color, sort_order, status (active/parked/done), deal_codename, version
+- Unique index on (space_id, name)
+
+**deliverables** — id, workstream_id→workstreams, name, target_date, status (open/done/dropped), sort_order, comment, staging, source, deal, version
+
+**tasks** — id, deliverable_id→deliverables, kind (workplan/followup/approval/agent_job/personal), text, detail, deadline, responsible, priority (high/med/low), status (open/in_progress/waiting/blocked/in_review/done), waiting_on_party, waiting_on_type (counterparty/advisor/investor/internal), next_chase_date, expected_back_by, last_touched_at, execution (me/together/agent_supervised/agent_auto), runner (local/cma/any), acceptance_criteria, claimed_by, claim_expires_at, evidence, prereqs(JSON), tags(JSON), links(JSON), deal, pinned_today, staging, sort_order, source, input_from (RD/FF), input_question, version, created_by, created_at, updated_at, done_at
+
+**deal_mirror** — codename, stage, note, owner_mode (legacy/cockpit-owned), synced_at
+- Read-only mirror from dealroom.db via `dealroom_sync.py`. Do not write directly.
+
+**audit_log** — id, at, actor, action, entity, before(JSON), after(JSON)
+
+**idempotency** — task_id+key (composite PK), response, at
+
+## File Map
+
+| Backend | Role |
+|---------|------|
+| `cockpit.py` | CLI: serve, init-db, token, sync, seed, status |
+| `src/api.py` | FastAPI app — all CRUD endpoints, agent queue, MD import/export |
+| `src/compute.py` | Pure logic — readiness, schedule risk, roll-ups. No DB imports. |
+| `src/db.py` | SQLite layer — singleton conn, schema migrations, audit helper |
+| `src/dealroom_sync.py` | Read-only pull from dealroom.db into deal_mirror |
+| `src/mdio.py` | MD import/export (task-update, new-task blocks) |
+| `src/models.py` | Enums (STATUSES, KINDS, PRIORITIES, RUNNERS) + ID helpers |
+
+| Frontend (`static/`) | Role |
+|-----------------------|------|
+| `js/boot.js` | Bootloader — fetches state, mounts app |
+| `js/app.jsx` | Main app, routing, sidebar, space/workstream rendering |
+| `js/components.jsx` | Shared UI: FilterBar, TaskRow, DeliverableCard |
+| `js/task-drawer.jsx` | Task detail side panel |
+| `js/quick-add.jsx` | Quick-add modal |
+| `js/activity.jsx` | Activity feed panel |
+| `js/view-week.jsx` | Weekly meeting / My Week view |
+| `js/view-overview.jsx` | Overview + hero dashboard |
+| `js/view-board.jsx` | Kanban board |
+| `js/view-table.jsx` | Table view with workstream grouping |
+| `js/view-timeline.jsx` | Timeline / Gantt |
+| `js/view-agents.jsx` | Agent queue view |
+| `css/cockpit.css` | Main styles |
+| `css/cockpit-views.css` | Per-view styles |
+| `css/cockpit-extras.css` | Drawer, modal, palette styles |
+
+React via Babel in-browser (no build step). Vendor libs in `static/vendor/`.
+
 ## Status
 - M1 backend: ✅ 2026-06-11 — API on :8099, 75 tests, 14 deals mirrored, workplan seeded (staging)
 - M2+M4 frontend: ✅ 2026-06-11 — SPA at `/` (Workstreams+Blockers, Today, Timeline, Agent Queue)
 - M3 agent layer: ✅ built — /cockpit-pull + /cockpit-push skills, deals.md generated block. **Trial + curation pass = Roman's part, open.**
-- M5 hosting: prepared (Dockerfile, fly.toml) — deploy gated on trial verdict
+- M5 hosting: live on Fly.io via suite/Dockerfile — served at `/cockpit/`
 - Server: auto-starts at logon (Startup `RepuroCockpit.cmd` → `start_cockpit.ps1`); manual: run the ps1

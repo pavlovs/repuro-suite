@@ -120,11 +120,16 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
             <select className="dm-select" value={task.d || ""}
               onChange={(e) => api.save(task, { d: e.target.value || null })}>
               <option value="">(standalone)</option>
-              {WORKSTREAMS.map((w) => (
-                <optgroup key={w.id} label={w.name}>
-                  {DELIVERABLES.filter((d) => d.ws === w.id).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </optgroup>
-              ))}
+              {SPACES.map((s) => {
+                const spaceWs = wsPerSpace[s.id] || [];
+                const spaceDelivs = DELIVERABLES.filter((d) => spaceWs.some((w) => w.id === d.ws));
+                if (!spaceDelivs.length) return null;
+                return (
+                  <optgroup key={s.id} label={s.name}>
+                    {spaceDelivs.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </optgroup>
+                );
+              })}
             </select>
           </span></div>
           <div><span className="dm-k">Kind</span><span className="dm-v">

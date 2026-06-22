@@ -72,6 +72,43 @@ A milestone is NOT complete until:
 6. `ai/ROADMAP.md` current state block updated
 7. One commit per milestone
 
+## DB Schema (v8, 22 tables)
+
+Schema version in `PRAGMA user_version`. Migrations in `src/db.py`. All tables keyed on `domain`.
+
+### Core
+- **deals** — id, domain, code_name, company_name, deal_stage, folder_path, investment_thesis, seller_motivation, seller_age_approx, deal_status, sector, location, exclusivity_start/end, proj_topline_growth_pct, proj_gm_pct, proj_ebitda_margin_pct, stage_entered_at, last_contact_at
+- **deal_documents** — id, domain, code_name, file_path, doc_type, doc_subtype, fiscal_year, file_name, file_size_kb, doc_status, extraction_config
+- **deal_notes** — id, domain, note, author, category, source, importance, confidence, fiscal_year
+- **deal_contacts** — id, domain, contact_name, role, company, email, phone, salutation, is_primary
+
+### Financial
+- **deal_financials** — id, domain, statement, line_item, konto_nr, fiscal_year, period_type, period, value_k, value_raw, is_adjusted, adjustment_note, source, confidence, is_authoritative, entity
+- **deal_data** — legacy EAV (category/subcategory/key/value). Migrated to deal_financials/deal_commercial.
+- **deal_model_params** — id, domain, scenario_name, entities_json, adj_items_json, gf_old/new_salary, ebitda/ebit_basis_override, multiple, net_debt, cash_at_closing, vendor_loan, earnout fields, proforma fields
+- **deal_valuations** — id, domain, valuation_date, offer_round, ebitda_basis, multiple_low/mid/high, ev_low/mid/high, cash_at_closing, rueckbeteiligung, earnout_max, earnout_structure, seller_counter_ev
+
+### Commercial (CDD)
+- **deal_commercial** — id, domain, category, metric, fiscal_year, value_num, value_text, unit, source
+- **deal_customers** — id, domain, customer_name, customer_id, fiscal_year, revenue_k, revenue_pct, rank, cohort, customer_type, specialty, relationship_start_year, has_contract, contract_end, change_of_control, churn_reason
+- **deal_products** — id, domain, product_name, category, subcategory, fiscal_year, revenue_k, cost_k, gross_profit_k, margin_pct, revenue_share_pct, units_sold
+- **deal_invoices** — id, domain, invoice_no, status, net_amount, gross_profit, segment, model, serial_no, art, invoice_date, fiscal_year, quarter, customer_ref
+- **deal_backlog** — id, domain, customer_name, project_description, location, execution_year, order_value_k, margin_pct, status
+- **deal_suppliers** — id, domain, supplier_name, fiscal_year, cost_k, cost_pct, rank, product_group, exclusivity
+- **deal_competitors** — id, domain, competitor_name, rank, estimated_revenue_k, region, segment_overlap
+- **deal_employees** — id, domain, employee_id, role, department, qualification, employment_type, hours_per_week, salary_monthly/annual_k, age_bucket, tenure_years, is_key_person
+
+### Process
+- **deal_questions** — id, domain, question, category, subcategory, importance, source, status, answer, sent_at, answered_at
+- **deal_actions** — id, domain, description, category, owner, due_date, status, priority
+- **deal_emails** — id, domain, intent, direction, recipient_name/email, subject, body_draft/final, status, thread_id, account
+- **deal_meetings** — id, domain, meeting_type, meeting_date, participants, summary, key_topics, action_items, decisions
+- **deal_granola** — id, domain, granola_meeting_id, meeting_title/date, participants, summary, data_points_json
+- **deal_dd_items** — id, domain, category, subcategory, description, datenanfrage_ref, status, risk_level, risk_note
+- **deal_manual_gates** — id, domain, gate_type, stage_transition, decided_by, decided_at, decision
+- **deal_scorecard_config** — metric_key, label, category, threshold_green/yellow, direction, unit
+- **deal_scorecard_results** — id, domain, metric_key, value, rating, fiscal_year
+
 ## Model usage
 
 - **Extraction** (financial docs, meeting transcripts): `claude-haiku-4-5` — bulk, fast, cheap

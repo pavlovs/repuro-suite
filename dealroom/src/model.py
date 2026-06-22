@@ -88,6 +88,7 @@ def extract_bewertung(ws) -> dict:
     result = {}
     header_row = None
     val_col = None
+    avg_col = None
     bp_col = None
     maxeo_col = None
     basis_label = None
@@ -116,15 +117,17 @@ def extract_bewertung(ws) -> dict:
                         bp_col = i
                     if "max" in vl and ("eo" in vl or "earn" in vl):
                         maxeo_col = i
-                # If no explicit valuation column, look for avg/basis columns
-                if val_col is None:
-                    for i, v in enumerate(row):
-                        if i < 5:
-                            continue
-                        if isinstance(v, str) and "avg" in v.lower():
-                            val_col = i
-                            basis_label = v.strip()
-                            break
+                # Record avg column for EBITDA fallback
+                for i, v in enumerate(row):
+                    if i >= 5 and isinstance(v, str) and "avg" in v.lower():
+                        avg_col = i
+                        break
+                # If no explicit valuation column, use avg as primary
+                if val_col is None and avg_col is not None:
+                    val_col = avg_col
+                    basis_label = (
+                        row[avg_col].strip() if isinstance(row[avg_col], str) else None
+                    )
                 continue
 
             continue
@@ -158,10 +161,18 @@ def extract_bewertung(ws) -> dict:
         if key == "ev_at_closing_multiple":
             continue
 
-        # Get value from valuation column
+        # Get value from valuation column (fall back to avg column for EBITDA/EBIT)
         val = row[val_col] if val_col < len(row) else None
         if isinstance(val, (int, float)):
             result[key] = round(float(val), 2)
+        elif (
+            key in ("ebitda_adj", "ebit_adj")
+            and avg_col is not None
+            and avg_col != val_col
+        ):
+            avg_val = row[avg_col] if avg_col < len(row) else None
+            if isinstance(avg_val, (int, float)):
+                result[key] = round(float(avg_val), 2)
 
         # Extract BP 2026 and Max EO columns for EBITDA/revenue rows
         if key in ("ebitda_adj", "sales") and bp_col is not None:

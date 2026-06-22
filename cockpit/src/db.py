@@ -9,7 +9,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 8
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -98,7 +98,7 @@ CREATE TABLE spaces (
   version INTEGER NOT NULL DEFAULT 1
 );
 INSERT INTO spaces (name, slug, color, icon, sort_order, sort_mode)
-  VALUES ('Repuro', 'repuro', '#0891B2', 'building', 0, 'manual');
+  VALUES ('Holding', 'holding', '#0891B2', 'building', 0, 'manual');
 INSERT INTO spaces (name, slug, color, icon, sort_order, sort_mode)
   VALUES ('M&A', 'mna', '#7C3AED', 'handshake', 1, 'deal_stage');
 CREATE TABLE workstreams (
@@ -109,7 +109,8 @@ CREATE TABLE workstreams (
   sort_order INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','parked','done')),
   deal_codename TEXT,
-  version INTEGER NOT NULL DEFAULT 1
+  version INTEGER NOT NULL DEFAULT 1,
+  objective TEXT
 );
 CREATE UNIQUE INDEX uq_workstreams_space_name ON workstreams(space_id, name);
 CREATE TABLE deliverables (
@@ -123,7 +124,8 @@ CREATE TABLE deliverables (
   staging INTEGER NOT NULL DEFAULT 0,
   source TEXT,
   deal TEXT,
-  version INTEGER NOT NULL DEFAULT 1
+  version INTEGER NOT NULL DEFAULT 1,
+  start_date TEXT
 );
 CREATE TABLE tasks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -164,7 +166,8 @@ CREATE TABLE tasks (
   created_by TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
-  done_at TEXT
+  done_at TEXT,
+  start_date TEXT
 );
 CREATE TABLE audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -227,6 +230,18 @@ MIGRATIONS = {
         "  SELECT w.deal_codename FROM workstreams w "
         "  WHERE w.id = deliverables.workstream_id AND w.deal_codename IS NOT NULL"
         ") WHERE deal IS NULL",
+    ],
+    5: [
+        "UPDATE spaces SET name = 'Holding', slug = 'holding' WHERE slug = 'repuro'",
+    ],
+    6: [
+        lambda c: _add_column_if_missing(c, "workstreams", "objective", "TEXT"),
+    ],
+    7: [
+        lambda c: _add_column_if_missing(c, "deliverables", "start_date", "TEXT"),
+    ],
+    8: [
+        lambda c: _add_column_if_missing(c, "tasks", "start_date", "TEXT"),
     ],
 }
 

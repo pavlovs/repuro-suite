@@ -76,11 +76,16 @@ function QuickAdd({ open, onClose, prefill }) {
               <label>Deliverable
                 <select value={f.d} onChange={(e) => setF({ ...f, d: e.target.value })}>
                   <option value="">(standalone)</option>
-                  {WORKSTREAMS.map((w) => (
-                    <optgroup key={w.id} label={w.name}>
-                      {DELIVERABLES.filter((d) => d.ws === w.id).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                    </optgroup>
-                  ))}
+                  {SPACES.map((s) => {
+                    const spaceWs = wsPerSpace[s.id] || [];
+                    const spaceDelivs = DELIVERABLES.filter((d) => spaceWs.some((w) => w.id === d.ws));
+                    if (!spaceDelivs.length) return null;
+                    return (
+                      <optgroup key={s.id} label={s.name}>
+                        {spaceDelivs.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                      </optgroup>
+                    );
+                  })}
                 </select>
               </label>
               <label>Due

@@ -254,6 +254,24 @@ def test_expired_lease_reaped(client):
     assert row["claimed_by"] is None and row["status"] == "open"
 
 
+def test_agent_queue_owner_tag_and_filter(client):  # SPEC-agent-skills-repo §3a
+    t = agent_task(client)  # created via RD_TOKEN -> created_by="rd"
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
+    assert q[0]["created_by"] == "rd" and q[0]["owner"] == "RC"
+
+    # ?owner=rc keeps Roman's task; ?owner=fc excludes it
+    rc = client.get("/api/agent/queue?owner=rc", headers=auth(AGENT_TOKEN)).json()
+    assert [x["id"] for x in rc["queue"]] == [t["id"]]
+    fc = client.get("/api/agent/queue?owner=fc", headers=auth(AGENT_TOKEN)).json()
+    assert fc["queue"] == []
+
+    # bad owner -> 422
+    assert (
+        client.get("/api/agent/queue?owner=xx", headers=auth(AGENT_TOKEN)).status_code
+        == 422
+    )
+
+
 # ---- export / import -------------------------------------------------------
 def test_export_scopes_and_agent_restriction(client):
     ws = make_ws(client, name="Fox Legal", deal_codename="Fox", space_id="s-2")
@@ -515,9 +533,9 @@ def test_state_has_spaces_structure(client):
     state = client.get("/api/state", headers=auth()).json()
     assert "spaces" in state
     space_names = [s["name"] for s in state["spaces"]]
-    assert "Repuro" in space_names and "M&A" in space_names
-    repuro = next(s for s in state["spaces"] if s["name"] == "Repuro")
-    assert any(w["name"] == "Admin" for w in repuro["workstreams"])
+    assert "Holding" in space_names and "M&A" in space_names
+    holding = next(s for s in state["spaces"] if s["name"] == "Holding")
+    assert any(w["name"] == "Admin" for w in holding["workstreams"])
 
 
 def test_workstream_requires_space_id(client):
@@ -654,9 +672,11 @@ def test_migration_v3_to_v4(tmp_path):
     conn.execute("PRAGMA foreign_keys=ON")
     dbmod.migrate_db(conn, 3)
 
-    assert conn.execute("PRAGMA user_version").fetchone()[0] == 4
+    # migrate_db runs forward to the latest migration, not just v4; the holding
+    # space was 'repuro' until migration 5 renamed it.
+    assert conn.execute("PRAGMA user_version").fetchone()[0] == dbmod.SCHEMA_VERSION
     spaces = {r["slug"]: r["id"] for r in conn.execute("SELECT slug, id FROM spaces")}
-    assert "repuro" in spaces and "mna" in spaces
+    assert "holding" in spaces and "mna" in spaces
     fox = conn.execute(
         "SELECT space_id FROM workstreams WHERE name='Fox DD'"
     ).fetchone()
@@ -664,7 +684,7 @@ def test_migration_v3_to_v4(tmp_path):
     admin = conn.execute(
         "SELECT space_id FROM workstreams WHERE name='Admin'"
     ).fetchone()
-    assert admin["space_id"] == spaces["repuro"]
+    assert admin["space_id"] == spaces["holding"]
     deal_col = conn.execute("SELECT deal FROM deliverables WHERE name='LDD'").fetchone()
     assert deal_col["deal"] == "Fox"
     conn.close()

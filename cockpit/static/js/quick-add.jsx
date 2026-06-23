@@ -77,7 +77,20 @@ function QuickAdd({ open, onClose, prefill }) {
     }
   };
 
-  const submit = mode === "deliverable" ? submitDeliv : submitTask;
+  const submitPersonal = async () => {
+    if (busyRef.current) return;
+    if (!f.text.trim()) return showToast("Todo text required", "err");
+    const code = PRINCIPAL && PRINCIPAL.id === "ff" ? "FF" : "RD";
+    busyRef.current = true; setBusy(true);
+    try {
+      const t = await api.create({ text: f.text.trim(), kind: "personal", owners: [code], execution: "me" });
+      if (t) onClose(); // close without an id → don't open the task drawer for a quick personal todo
+    } finally {
+      busyRef.current = false; setBusy(false);
+    }
+  };
+
+  const submit = mode === "deliverable" ? submitDeliv : mode === "personal" ? submitPersonal : submitTask;
 
   return (
     <div className="qa-scrim" onClick={onClose}>
@@ -85,7 +98,12 @@ function QuickAdd({ open, onClose, prefill }) {
         <div className="qa-type-toggle">
           <button className={mode === "task" ? "on" : ""} onClick={() => setMode("task")}><Icon name="check" size={13} />Task</button>
           <button className={mode === "deliverable" ? "on" : ""} onClick={() => setMode("deliverable")}><Icon name="timeline" size={13} />Deliverable</button>
+          <button className={mode === "personal" ? "on" : ""} onClick={() => setMode("personal")}><Icon name="pin" size={13} />Personal</button>
         </div>
+        {mode === "personal" && (
+          <input className="qa-input" autoFocus placeholder="Private todo — only you see it" value={f.text}
+            onChange={(e) => setF({ ...f, text: e.target.value })} onKeyUp={(e) => e.key === "Enter" && submit()} />
+        )}
         {mode === "task" && (
           <React.Fragment>
             <input className="qa-input" autoFocus placeholder="What needs to happen?" value={f.text}

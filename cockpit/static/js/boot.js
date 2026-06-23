@@ -424,7 +424,8 @@
       var created = await r.json();
       undoStack.push({ type: "delete", id: created.id });
       await refreshFromServer();
-      return window.byTask[created.id] || null;
+      // personal todos live in byPersonal, everything else in byTask
+      return window.byTask[created.id] || (window.byPersonal && window.byPersonal[created.id]) || null;
     },
     async deleteTask(t) {
       if (!confirm('Delete "' + t.text + '"? Dependents lose this gate. No undo.')) return;

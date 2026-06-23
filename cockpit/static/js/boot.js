@@ -167,7 +167,9 @@
     var SPACES = (state.spaces || []).map(function (s) {
       return { id: s.id, name: s.name, slug: s.slug, sortMode: s.sort_mode };
     });
-    var WORKSTREAMS = [], DELIVERABLES = [], TASKS = [], EXT = {};
+    var WORKSTREAMS = [], DELIVERABLES = [], TASKS = [], PERSONAL = [], EXT = {};
+    // Personal todos (kind="personal") never enter shared views — kept in their own array.
+    function pushTask(m) { (m.kind === "personal" ? PERSONAL : TASKS).push(m); }
     var wsIdx = 0;
     (state.spaces || []).forEach(function (space) {
       var live = (space.workstreams || []).filter(function (w) { return w.status !== "parked"; });
@@ -198,12 +200,12 @@
             displayNum: wsNum + "." + delivNum,
             deal: dealCode ? { codename: dealCode, stage: w.deal_stage || stageOf[dealCode] || "?" } : null,
           });
-          liveTasks.forEach(function (t) { TASKS.push(mapTask(t, d.id)); });
+          liveTasks.forEach(function (t) { pushTask(mapTask(t, d.id)); });
         });
       });
     });
     (state.standalone_tasks || []).forEach(function (t) {
-      if (!t.staging) TASKS.push(mapTask(t, null));
+      if (!t.staging) pushTask(mapTask(t, null));
     });
     // expand d- prereq refs into that deliverable's open task ids
     var tasksByDeliv = {};
@@ -230,7 +232,8 @@
     return {
       TODAY: state.meta.today, PEOPLE: PEOPLE, EXT: EXT,
       SPACES: SPACES, WORKSTREAMS: WORKSTREAMS, DELIVERABLES: DELIVERABLES,
-      TASKS: TASKS, STAGE_LABEL: STAGE_LABEL,
+      TASKS: TASKS, PERSONAL: PERSONAL, PRINCIPAL: state.principal || null,
+      STAGE_LABEL: STAGE_LABEL,
     };
   }
 
@@ -329,6 +332,7 @@
       });
     }
     syncArray(window.TASKS, fresh.TASKS, window.byTask);
+    if (window.PERSONAL) syncArray(window.PERSONAL, fresh.PERSONAL || [], window.byPersonal || (window.byPersonal = {}));
     syncArray(window.DELIVERABLES, fresh.DELIVERABLES, window.byDeliv);
     syncArray(window.WORKSTREAMS, fresh.WORKSTREAMS, window.byWs);
     if (window.SPACES && fresh.SPACES) {

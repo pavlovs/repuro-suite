@@ -631,10 +631,26 @@ async def sse_events(
     )
 
 
+def _scrub_personal(tasks, viewer):
+    """Personal todos (kind='personal') are private to their creator. Drop any
+    that this viewer did not create so one human never receives the other's."""
+    return [
+        t
+        for t in tasks
+        if not (t.get("kind") == "personal" and t.get("created_by") != viewer)
+    ]
+
+
 @app.get("/api/state")
 def state(p=Depends(principal)):
     s = assemble_state(db.get_conn())
     s["principal"] = p
+    # Server-side privacy: filter personal todos to the authenticated viewer.
+    s["standalone_tasks"] = _scrub_personal(s.get("standalone_tasks", []), p["id"])
+    for space in s.get("spaces", []):
+        for ws in space.get("workstreams", []):
+            for d in ws.get("deliverables", []):
+                d["tasks"] = _scrub_personal(d.get("tasks", []), p["id"])
     return s
 
 
@@ -921,14 +937,28 @@ def _patch_simple(id_str, want_prefix, table, payload, p, allowed, enums):
 
 # --------------------------------------------------------------------------
 # agent queue
-# Ownership tags (SPEC-agent-skills-repo §3a): a task's owner derives from who
-# created it. ?owner=rc filters to Roman's tasks, fc to Flo's.
-_OWNER_TO_CREATOR = {"rc": "rd", "fc": "ff"}
-_CREATOR_TO_OWNER = {"rd": "RC", "ff": "FC"}
+# Ownership lanes (SPEC-agent-skills-repo §3a) are token-derived and data-driven:
+# each agent's `represents` column links it to the human whose lane it works, and
+# the agent's initials label that lane. Onboarding a new agent (id, initials,
+# represents) needs no code change here.
+def _owner_tag_map(conn):
+    """{human_id -> lane label}, e.g. {'rd': 'RC', 'ff': 'FC'} — built from the
+    agent rows so a new person never touches this file."""
+    return {
+        r["represents"]: r["initials"]
+        for r in conn.execute(
+            "SELECT initials, represents FROM users "
+            "WHERE role='agent' AND represents IS NOT NULL"
+        )
+    }
 
 
 @app.get("/api/agent/queue")
-def agent_queue(owner: str | None = Query(default=None), p=Depends(agent_only)):
+def agent_queue(scope: str = Query(default="mine"), p=Depends(agent_only)):
+    """scope=mine (default) → only the caller's own lane, derived from the token;
+    scope=all → every open agent task across all lanes."""
+    if scope not in ("mine", "all"):
+        raise HTTPException(422, f"scope must be 'mine' or 'all', got {scope!r}")
     conn = db.get_conn()
     _reap_expired_claims(conn)
     sql = (
@@ -936,13 +966,22 @@ def agent_queue(owner: str | None = Query(default=None), p=Depends(agent_only)):
         "AND staging=0 AND status='open'"
     )
     params: list = []
-    if owner is not None:
-        if owner not in _OWNER_TO_CREATOR:
-            raise HTTPException(422, f"owner must be rc or fc, got {owner!r}")
+    if scope == "mine":
+        me = conn.execute(
+            "SELECT represents FROM users WHERE id=?", (p["id"],)
+        ).fetchone()
+        creator = me["represents"] if me else None
+        if not creator:
+            raise HTTPException(
+                409,
+                f"agent {p['id']!r} has no lane set (represents is empty); "
+                "use ?scope=all or ask an admin to link it",
+            )
         sql += " AND created_by=?"
-        params.append(_OWNER_TO_CREATOR[owner])
+        params.append(creator)
     sql += " ORDER BY priority='high' DESC, deadline"
     rows = conn.execute(sql, params).fetchall()
+    owner_of = _owner_tag_map(conn)
     return {
         "queue": [
             {
@@ -955,7 +994,7 @@ def agent_queue(owner: str | None = Query(default=None), p=Depends(agent_only)):
                 "runner": r["runner"],
                 "deal": r["deal"],
                 "created_by": r["created_by"],
-                "owner": _CREATOR_TO_OWNER.get(r["created_by"]),
+                "owner": owner_of.get(r["created_by"]),
                 "version": r["version"],
             }
             for r in rows

@@ -11,11 +11,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from src import db, dealroom_sync  # noqa: E402
 
+# (name, initials, role, represents) — represents links an agent to the human
+# whose lane it works (token-derived identity). Humans represent themselves.
 PRINCIPALS = {
-    "rd": ("Roman", "RD", "human"),
-    "ff": ("Florian", "FF", "human"),
-    "rc-agent": ("Roman's Claude", "RC", "agent"),
-    "fc-agent": ("Florian's Claude", "FC", "agent"),
+    "rd": ("Roman", "RD", "human", None),
+    "ff": ("Florian", "FF", "human", None),
+    "rc-agent": ("Roman's Claude", "RC", "agent", "rd"),
+    "fc-agent": ("Florian's Claude", "FC", "agent", "ff"),
 }
 
 
@@ -24,19 +26,22 @@ def cmd_token(args):
         sys.exit(
             f"unknown principal {args.principal!r} (M1 allows: {', '.join(PRINCIPALS)})"
         )
-    name, initials, role = PRINCIPALS[args.principal]
+    name, initials, role, represents = PRINCIPALS[args.principal]
     token = secrets.token_urlsafe(32)
     conn = db.get_conn()
     with db.WRITE_LOCK:
         conn.execute(
-            "INSERT INTO users (id, name, initials, token_hash, role) VALUES (?,?,?,?,?) "
-            "ON CONFLICT(id) DO UPDATE SET token_hash=excluded.token_hash",
+            "INSERT INTO users (id, name, initials, token_hash, role, represents) "
+            "VALUES (?,?,?,?,?,?) "
+            "ON CONFLICT(id) DO UPDATE SET token_hash=excluded.token_hash, "
+            "represents=excluded.represents",
             (
                 args.principal,
                 name,
                 initials,
                 hashlib.sha256(token.encode()).hexdigest(),
                 role,
+                represents,
             ),
         )
         db.audit(conn, "cli", "token_rotate", args.principal)

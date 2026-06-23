@@ -47,13 +47,21 @@ def cockpit_db(tmp_path, monkeypatch):
     monkeypatch.delenv("COCKPIT_SYNC_INTERVAL", raising=False)
     db.close_conn()
     conn = db.get_conn()
-    for pid, role, token in (
-        ("rd", "human", RD_TOKEN),
-        ("rc-agent", "agent", AGENT_TOKEN),
+    for pid, role, token, initials, represents in (
+        ("rd", "human", RD_TOKEN, "RD", None),
+        ("rc-agent", "agent", AGENT_TOKEN, "RC", "rd"),
     ):
         conn.execute(
-            "INSERT INTO users (id, name, role, token_hash) VALUES (?,?,?,?)",
-            (pid, pid, role, hashlib.sha256(token.encode()).hexdigest()),
+            "INSERT INTO users (id, name, role, token_hash, initials, represents) "
+            "VALUES (?,?,?,?,?,?)",
+            (
+                pid,
+                pid,
+                role,
+                hashlib.sha256(token.encode()).hexdigest(),
+                initials,
+                represents,
+            ),
         )
     conn.commit()
     yield conn

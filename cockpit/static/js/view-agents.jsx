@@ -105,13 +105,13 @@ function AgentsView({ openTask, person }) {
         {showFaqVal && (
           <div className="ag-howto-body">
             <ul>
-              <li><b>What:</b> Agent tasks are worked by Claude via the <code>/repuro</code> skill — it claims a task, executes, posts evidence, and waits for your verdict here. Nothing auto-closes.</li>
+              <li><b>What:</b> Agent tasks are worked by Claude via the <code>/repuro</code> plugin — it claims a task, executes, posts evidence, and waits for your verdict here. Nothing auto-closes.</li>
               <li><b>Queue a task:</b> create or edit a task and set execution type to <b>Claude (agent)</b>. It lands here with a position number.</li>
-              <li><b>Set up <code>/repuro</code></b> (one-time, per person): clone the private repo, run <code>./install.ps1</code> (Windows) or <code>./install.sh</code> (Mac/Linux), then paste your agent token into <code>.env</code> and set <code>REPURO_OWNER</code> to <code>rc</code> (Roman) or <code>fc</code> (Flo). Ask Roman for your token.</li>
-              <li><b>Run it:</b> <code>/repuro-queue</code> lists the queue; <code>/repuro &lt;id|#|words&gt;</code> claims and runs one task on your own lane.</li>
+              <li><b>Set up (one-time, in Claude Code):</b> <code>/plugin marketplace add pavlovs/repuro-cockpit-skills</code> → <code>/plugin install repuro</code> → <code>/repuro:setup &lt;your-token&gt;</code>. No clone, no scripts. Ask Roman for your token — it sets your lane (RC / FC) automatically.</li>
+              <li><b>Run it:</b> <code>/repuro:queue</code> lists your lane; <code>/repuro:run &lt;id|#|words&gt;</code> claims and runs one task. Add <code>--all</code> to work across lanes.</li>
               <li><b>States:</b> Queued (#1, #2…) → Running → Needs verdict. Approve to close; Send back with feedback to re-queue.</li>
               <li><b>Blocked tasks</b> (red border) have unmet dependencies — resolve them first or Claude will skip them.</li>
-              <li><b>Repo &amp; updates:</b> <a href="https://github.com/pavlovs/repuro-cockpit-skills" target="_blank" rel="noreferrer">github.com/pavlovs/repuro-cockpit-skills</a> — update anytime with <code>git pull</code> then re-run the installer.</li>
+              <li><b>Repo:</b> <a href="https://github.com/pavlovs/repuro-cockpit-skills" target="_blank" rel="noreferrer">github.com/pavlovs/repuro-cockpit-skills</a> — the plugin auto-updates.</li>
             </ul>
           </div>
         )}

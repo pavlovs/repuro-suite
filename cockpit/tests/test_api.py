@@ -254,20 +254,29 @@ def test_expired_lease_reaped(client):
     assert row["claimed_by"] is None and row["status"] == "open"
 
 
-def test_agent_queue_owner_tag_and_filter(client):  # SPEC-agent-skills-repo §3a
-    t = agent_task(client)  # created via RD_TOKEN -> created_by="rd"
-    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
-    assert q[0]["created_by"] == "rd" and q[0]["owner"] == "RC"
+def test_agent_queue_lane_and_scope(client):  # SPEC §3a — token-derived lane
+    t = agent_task(client)  # created via RD_TOKEN -> created_by="rd" (RC lane)
+    # a task in another lane (created_by ff) the caller should NOT see by default
+    conn = client.cockpit_conn
+    conn.execute(
+        "INSERT INTO tasks (text, execution, acceptance_criteria, status, staging, "
+        "created_by, created_at, updated_at) "
+        "VALUES ('ff job','agent_supervised','ac','open',0,'ff','x','x')"
+    )
+    conn.commit()
 
-    # ?owner=rc keeps Roman's task; ?owner=fc excludes it
-    rc = client.get("/api/agent/queue?owner=rc", headers=auth(AGENT_TOKEN)).json()
-    assert [x["id"] for x in rc["queue"]] == [t["id"]]
-    fc = client.get("/api/agent/queue?owner=fc", headers=auth(AGENT_TOKEN)).json()
-    assert fc["queue"] == []
+    # default scope=mine -> only the caller's lane (rc-agent represents rd)
+    mine = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
+    assert [x["id"] for x in mine] == [t["id"]]
+    assert mine[0]["created_by"] == "rd" and mine[0]["owner"] == "RC"
 
-    # bad owner -> 422
+    # scope=all -> both lanes
+    allq = client.get("/api/agent/queue?scope=all", headers=auth(AGENT_TOKEN)).json()
+    assert len(allq["queue"]) == 2
+
+    # bad scope -> 422
     assert (
-        client.get("/api/agent/queue?owner=xx", headers=auth(AGENT_TOKEN)).status_code
+        client.get("/api/agent/queue?scope=xx", headers=auth(AGENT_TOKEN)).status_code
         == 422
     )
 

@@ -9,7 +9,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -75,7 +75,8 @@ CREATE TABLE users (
   name TEXT NOT NULL,
   initials TEXT,
   token_hash TEXT,
-  role TEXT NOT NULL CHECK(role IN ('human','agent'))
+  role TEXT NOT NULL CHECK(role IN ('human','agent')),
+  represents TEXT
 );
 CREATE TABLE deal_mirror (
   codename TEXT PRIMARY KEY,
@@ -242,6 +243,13 @@ MIGRATIONS = {
     ],
     8: [
         lambda c: _add_column_if_missing(c, "tasks", "start_date", "TEXT"),
+    ],
+    9: [
+        # Link each agent to the human whose lane it works (token-derived
+        # identity). owner tag + "my lane" filter become data-driven.
+        lambda c: _add_column_if_missing(c, "users", "represents", "TEXT"),
+        "UPDATE users SET represents='rd' WHERE id='rc-agent'",
+        "UPDATE users SET represents='ff' WHERE id='fc-agent'",
     ],
 }
 

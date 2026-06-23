@@ -37,28 +37,16 @@ function MeetingView({ mutate, openTask }) {
   const rdDone = recentDone.filter((t) => (t.owners || []).includes("RD"));
   const ffDone = recentDone.filter((t) => (t.owners || []).includes("FF"));
 
-  // ---- Section 2: Blockers & decisions (deduplicated — each task appears once) ----
+  // ---- Section 2: Decisions & waiting — only what needs a person to act (issue 30) ----
+  // Roman's rule: show Decisions needed + Waiting on external ONLY. NOT plain overdue,
+  // NOT tasks blocked by the other person / a prerequisite (that's just sequencing).
   const seen = new Set();
   const claim = (list) => { const out = list.filter((t) => !seen.has(t.id)); out.forEach((t) => seen.add(t.id)); return out; };
-  const blocked = claim(live.filter((t) => readiness(t) === "red"));
-  const overdue = claim(live.filter((t) => t.due && daysUntil(t.due) < 0 && readiness(t) !== "red"));
-  const waiting = claim(live.filter((t) => chaseDue(t)));
-
-  // Cross-person dependencies
-  const byId = Object.fromEntries(live.map((t) => [t.id, t]));
-  const depsRaw = [];
-  for (const t of live) {
-    for (const ref of (t.prereqs || [])) {
-      const pre = byId[ref];
-      if (!pre) continue;
-      const tO = (t.owners || []).join(), pO = (pre.owners || []).join();
-      if (tO && pO && tO !== pO) depsRaw.push({ t, pre });
-    }
-  }
-  const deps = depsRaw.filter(({ t }) => !seen.has(t.id));
-  deps.forEach(({ t }) => seen.add(t.id));
-  const together = claim(live.filter((t) => t.execution === "together"));
-  const attentionN = blocked.length + overdue.length + waiting.length + deps.length + together.length;
+  // Decisions needed: someone owes input, it needs both of us, or it's an approval gate
+  const decisions = claim(live.filter((t) => t.inputFrom || t.execution === "together" || t.kind === "approval"));
+  // Waiting on external: the ball is with a counterparty / advisor / investor
+  const waiting = claim(live.filter((t) => t.status === "waiting"));
+  const attentionN = decisions.length + waiting.length;
 
   // ---- Section 3: This week per person (by deliverable) ----
   function personFocus(p) {
@@ -229,59 +217,33 @@ function MeetingView({ mutate, openTask }) {
         </React.Fragment>
       )}
 
-      {/* Section 2: Blockers & decisions */}
+      {/* Section 2: Decisions & waiting — only what needs a person to act */}
       {attentionN > 0 && (
         <div className="mtg-section mtg-attn-section card">
           <div className="mtg-sec-h attn">
             <Icon name="relations" size={14} />
-            <span>Blockers & decisions</span>
+            <span>Decisions &amp; waiting</span>
             <span className="wk-n">{attentionN}</span>
           </div>
-          {blocked.length > 0 && (
+          {decisions.length > 0 && (
             <React.Fragment>
-              <div className="wk-grp overdue"><Icon name="relations" size={11} /> Blocked — prerequisite not done</div>
-              {blocked.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
-            </React.Fragment>
-          )}
-          {overdue.length > 0 && (
-            <React.Fragment>
-              <div className="wk-grp overdue"><Icon name="clock" size={11} /> Overdue</div>
-              {overdue.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
+              <div className="wk-grp"><Icon name="relations" size={11} /> Decisions needed</div>
+              {decisions.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
             </React.Fragment>
           )}
           {waiting.length > 0 && (
             <React.Fragment>
-              <div className="wk-grp chase"><Icon name="clock" size={11} /> Chase — ball with others</div>
+              <div className="wk-grp chase"><Icon name="clock" size={11} /> Waiting on external</div>
               {waiting.map((t) => (
                 <div key={t.id} className="wkrow chase-row">
                   <button className="chk" data-on={false} onClick={() => api.save(t, { status: "open" })} title="mark resolved" />
-                  <div className="wkrow-txt tc-click" onClick={() => openTask && openTask(t.id)}><span className="wkrow-main">{t.text}</span><span className="wkrow-sub">with {t.waiting.party}</span></div>
+                  <div className="wkrow-txt tc-click" onClick={() => openTask && openTask(t.id)}><span className="wkrow-main">{t.text}</span><span className="wkrow-sub">with {(t.waiting && t.waiting.party) || "—"}</span></div>
                   <button className="mini-btn" onClick={async () => {
-                    const next = await showModal("Chased. Next chase date:", [{type: "date", value: addDays(t.waiting.chase || TODAY, 3)}]);
-                    if (next) api.save(t, { waiting: { ...t.waiting, chase: next } });
+                    const next = await showModal("Chased. Next chase date:", [{type: "date", value: addDays((t.waiting && t.waiting.chase) || TODAY, 3)}]);
+                    if (next) api.save(t, { waiting: { ...(t.waiting || {}), chase: next } });
                   }}>chased →</button>
                 </div>
               ))}
-            </React.Fragment>
-          )}
-          {deps.length > 0 && (
-            <React.Fragment>
-              <div className="wk-grp"><Icon name="relations" size={11} /> Cross-person dependencies</div>
-              {deps.map(({ t, pre }, i) => (
-                <div key={i} className="wkrow tc-click" onClick={() => openTask && openTask(t.id)}>
-                  <div className="wkrow-txt">
-                    <span className="wkrow-main">{t.text}</span>
-                    {readiness(t) === "red" && <span className="tc-blocked">Blocked</span>}
-                    <span className="dep-need"><OwnerStack owners={t.owners} size={14} /> waiting on <b>{pre.text}</b> <OwnerStack owners={pre.owners} size={14} /></span>
-                  </div>
-                </div>
-              ))}
-            </React.Fragment>
-          )}
-          {together.length > 0 && (
-            <React.Fragment>
-              <div className="wk-grp"><Icon name="board" size={11} /> Do together</div>
-              {together.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
             </React.Fragment>
           )}
         </div>
@@ -509,18 +471,11 @@ function WeekView({ person, mutate, openTask, embedded }) {
     .map((d) => ({ ...d, s: delivStats(d), ws: byWs[d.ws] }))
     .sort((a, b) => a.target.localeCompare(b.target));
 
-  const byId = Object.fromEntries(live.map((t) => [t.id, t]));
-  const deps = [];
-  for (const t of live) {
-    for (const ref of (t.prereqs || [])) {
-      const pre = byId[ref];
-      if (!pre) continue;
-      const tO = (t.owners || []).join(), pO = (pre.owners || []).join();
-      if (tO && pO && tO !== pO) deps.push({ t, pre });
-    }
-  }
-  const together = live.filter((t) => t.execution === "together");
-  const sharedN = deps.length + together.length;
+  // Decisions & waiting (issue 30): decisions needed + items waiting on someone external.
+  // NOT tasks blocked by the other person / a prerequisite — that's just sequencing.
+  const decisions = live.filter((t) => t.inputFrom || t.execution === "together" || t.kind === "approval");
+  const waitingShared = live.filter((t) => t.status === "waiting" && !decisions.includes(t)); // dedup: a task shows under one group only
+  const sharedN = decisions.length + waitingShared.length;
   const [sharedOpen, setSharedOpen] = React.useState(false);
   const [delivOpen, setDelivOpen] = React.useState({});
 
@@ -598,30 +553,34 @@ function WeekView({ person, mutate, openTask, embedded }) {
         <div className="wk-shared-section">
           <button className="wk-shared-toggle" onClick={() => setSharedOpen(!sharedOpen)}>
             <span className={"caret" + (sharedOpen ? " open" : "")}><Icon name="chevron" size={13} /></span>
-            <span>Shared blockers</span>
+            <span>Decisions &amp; waiting</span>
             <span className="wk-n">{sharedN}</span>
           </button>
-          <div className="wk-shared-hint">Tasks blocked by the other person or needing both of you together</div>
+          <div className="wk-shared-hint">Decisions needed and items waiting on someone else</div>
           {sharedOpen && (
             <div className="wk-shared-body">
-              {deps.length > 0 && deps.map(({ t, pre }, i) => (
-                <div key={i} className="dep-row tc-click" onClick={() => openTask && openTask(t.id)}>
-                  <span className="rdot" data-level={readiness(t)} style={{ width: 9, height: 9 }} />
-                  <div className="dep-txt">
-                    <span className="wkrow-main">{t.text}</span>
-                    <span className="dep-need">waiting on <b>{pre.text}</b> <Avatar id={(pre.owners || [])[0]} size={16} /></span>
-                  </div>
-                </div>
-              ))}
-              {together.length > 0 && (
+              {decisions.length > 0 && (
                 <React.Fragment>
-                  <div className="wk-grp">Together</div>
-                  {together.map((t) => (
+                  <div className="wk-grp">Decisions needed</div>
+                  {decisions.map((t) => (
                     <div key={t.id} className="wkrow">
                       <div className="wkrow-txt tc-click" onClick={() => openTask && openTask(t.id)}>
                         <span className="wkrow-main">{t.text}</span>
-                        {readiness(t) === "red" && <span className="tc-blocked">Blocked</span>}
-                        <span className="wkrow-sub">{(wsOf(t) || {}).name}</span>
+                        {t.inputFrom && <span className="wkrow-sub">input from {PEOPLE[t.inputFrom] ? PEOPLE[t.inputFrom].name : t.inputFrom}</span>}
+                      </div>
+                      <OwnerStack owners={t.owners} size={18} />
+                    </div>
+                  ))}
+                </React.Fragment>
+              )}
+              {waitingShared.length > 0 && (
+                <React.Fragment>
+                  <div className="wk-grp">Waiting on external</div>
+                  {waitingShared.map((t) => (
+                    <div key={t.id} className="wkrow">
+                      <div className="wkrow-txt tc-click" onClick={() => openTask && openTask(t.id)}>
+                        <span className="wkrow-main">{t.text}</span>
+                        <span className="wkrow-sub">with {(t.waiting && t.waiting.party) || "—"}</span>
                       </div>
                       <OwnerStack owners={t.owners} size={18} />
                     </div>

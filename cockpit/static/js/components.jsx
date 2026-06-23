@@ -130,7 +130,9 @@ function WaitingChip({ t }) {
 // Usage: <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={n}>
 //          <div className="seg">...</div>
 //        </FilterBar>
-function FilterBar({ filtersOpen, setFiltersOpen, activeCount, children }) {
+function FilterBar({ filtersOpen, setFiltersOpen, activeCount, children, hideToggle }) {
+  // hideToggle: the toggle lives in the global topbar (next to Activity); render only the body here.
+  if (hideToggle) return filtersOpen ? <div className="filter-bar"><div className="filter-bar-body">{children}</div></div> : null;
   return (
     <div className="filter-bar">
       <button

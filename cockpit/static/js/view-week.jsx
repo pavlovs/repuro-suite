@@ -72,9 +72,11 @@ function MeetingView({ mutate, openTask }) {
     for (const dId of delivIds) {
       const d = byDeliv[dId];
       if (!d) continue;
+      const myTasks = myActive.filter((t) => t.d === dId);
+      // Issue 27: in the weekly view only surface deliverables that have a subtask due within the coming 7 days
+      if (!myTasks.some((t) => t.due && daysUntil(t.due) <= 7)) continue;
       const allTasks = TASKS.filter((t) => t.d === dId);
       const doneCount = allTasks.filter((t) => t.status === "done").length;
-      const myTasks = myActive.filter((t) => t.d === dId);
       delivs.push({ ...d, total: allTasks.length, done: doneCount, myTasks, wsObj: byWs[d.ws] });
     }
     const standalone = myActive.filter((t) => !t.d);
@@ -412,6 +414,14 @@ function WeekRow({ t, mutate, openTask, showWs = true, showDate = true, dragHand
       <div className="wkrow-txt tc-click" onClick={() => openTask && openTask(t.id)}>
         <span className="wkrow-main">{t.text}</span>
         {readiness(t) === "red" && <span className="tc-blocked">Blocked</span>}
+        {(() => {
+          // Issue 26: flag a task whose due date falls after its deliverable's target date
+          const dv = t.d ? byDeliv[t.d] : null;
+          return dv && dv.target && t.due && t.due > dv.target
+            ? <span className="tc-blocked" style={{ background: "#fffbeb", color: "#b45309", borderColor: "#fde68a" }}
+                title={"Due " + fdate(t.due) + " — after deliverable target " + fdate(dv.target)}>⚠ after target</span>
+            : null;
+        })()}
         {showWs && ws && <span className="wkrow-sub">{ws.name}</span>}
       </div>
       {t.inputFrom && !isDone && (

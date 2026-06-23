@@ -1,14 +1,15 @@
 /* ===== Timeline v2 — workstream → deliverable gantt, all items expandable, reduced labels ===== */
-function TimelineView({ openTask, openDeliv, mutate }) {
+function TimelineView({ openTask, openDeliv, mutate, filtersOpen, setFiltersOpen, setFilterCount }) {
   const ZOOM_MIN = 160;
   const [range, setRange] = React.useState(3); // months from today
   const [open, setOpen] = React.useState({});
   const [filter, setFilter] = React.useState("dated"); // all | dated | undated
-  const [filtersOpen, setFiltersOpen] = React.useState(true);
   const [showAllDeals, setShowAllDeals] = React.useState(false);
   const toggle = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
 
   const activeFilterCount = filter !== "all" ? 1 : 0;
+  // Issue 29: report active-filter count to the topbar Filter button
+  React.useEffect(() => { setFilterCount && setFilterCount(activeFilterCount); }, [activeFilterCount]);
   const LABELW = 380, RH = 48, SUBH = 32;
   const scrollRef = React.useRef(null);
   const [containerW, setContainerW] = React.useState(0);
@@ -63,7 +64,7 @@ function TimelineView({ openTask, openDeliv, mutate }) {
   return (
     <div>
       <div className="gantt-bar-top">
-        <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={activeFilterCount}>
+        <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={activeFilterCount} hideToggle>
           <div className="seg">
             <span className="seg-lbl">range</span>
             {[[1, "1 mo"], [2, "2 mo"], [3, "3 mo"], [6, "6 mo"]].map(([v, l]) => (

@@ -8,8 +8,6 @@ function AgentsView({ openTask, person }) {
   var recent = agents.filter(function(t) { return t.status === "done"; }).slice(-5).reverse();
   var showRecent = React.useState(false);
   var showRecentVal = showRecent[0], setShowRecent = showRecent[1];
-  var showHowTo = React.useState(false);
-  var showHowToVal = showHowTo[0], setShowHowTo = showHowTo[1];
   var showFaq = React.useState(false);
   var showFaqVal = showFaq[0], setShowFaq = showFaq[1];
 
@@ -100,36 +98,19 @@ function AgentsView({ openTask, person }) {
       </div>
 
       <div className="ag-howto-panel">
-        <button className="ag-howto-toggle" onClick={function() { setShowHowTo(!showHowToVal); }}>
-          <span className={"caret" + (showHowToVal ? " open" : "")}><Icon name="chevron" size={12} /></span>
-          How to use agent tasks
-        </button>
-        {showHowToVal && (
-          <div className="ag-howto-body">
-            <ul>
-              <li><b>What:</b> Agent tasks are worked autonomously by Claude. It executes, posts evidence, and waits for your verdict.</li>
-              <li><b>Queue:</b> Create or edit a task and set execution type to <b>Claude (agent)</b>. It lands here with a position number.</li>
-              <li><b>Run:</b> In Claude Code, type <code>/repuro &lt;id|#|words&gt;</code> to claim and work one task. See the <b>AGENTIC FAQ</b> below for one-time setup.</li>
-              <li><b>States:</b> Queued (#1, #2…) → Running → Needs verdict. Approve to close; Send back with feedback to re-queue.</li>
-              <li><b>Blocked tasks</b> (red border) have unmet dependencies — resolve before starting a loop or Claude will skip them.</li>
-            </ul>
-          </div>
-        )}
-      </div>
-
-      <div className="ag-howto-panel">
         <button className="ag-howto-toggle" onClick={function() { setShowFaq(!showFaqVal); }}>
           <span className={"caret" + (showFaqVal ? " open" : "")}><Icon name="chevron" size={12} /></span>
-          AGENTIC FAQ — set up <code>/repuro</code> on your laptop
+          AGENTIC FAQ — how agent tasks work &amp; how to run them
         </button>
         {showFaqVal && (
           <div className="ag-howto-body">
             <ul>
-              <li><b>What it is:</b> the <code>/repuro</code> Claude Code skill lets you and Flo work this queue from your own laptop — no flyctl, no shared setup. Each runs their own lane (RC / FC).</li>
-              <li><b>1. Clone</b> the private repo (accept the collaborator invite first):<br/><code>git clone https://github.com/pavlovs/repuro-cockpit-skills.git</code></li>
-              <li><b>2. Install</b> — <code>./install.ps1</code> (Windows) or <code>./install.sh</code> (Mac/Linux). Copies the commands into <code>~/.claude/commands</code> and creates your <code>.env</code>.</li>
-              <li><b>3. Token</b> — paste your agent token into <code>.env</code> (<code>COCKPIT_AGENT_TOKEN</code>) and set <code>REPURO_OWNER</code> to <code>rc</code> (Roman) or <code>fc</code> (Flo). Ask Roman for your token.</li>
-              <li><b>Use it:</b> <code>/repuro-queue</code> lists the queue, then <code>/repuro &lt;id|#|words&gt;</code> claims and runs one task. The result lands here under <b>Needs verdict</b> — Approve to close, or Send back with feedback.</li>
+              <li><b>What:</b> Agent tasks are worked by Claude via the <code>/repuro</code> skill — it claims a task, executes, posts evidence, and waits for your verdict here. Nothing auto-closes.</li>
+              <li><b>Queue a task:</b> create or edit a task and set execution type to <b>Claude (agent)</b>. It lands here with a position number.</li>
+              <li><b>Set up <code>/repuro</code></b> (one-time, per person): clone the private repo, run <code>./install.ps1</code> (Windows) or <code>./install.sh</code> (Mac/Linux), then paste your agent token into <code>.env</code> and set <code>REPURO_OWNER</code> to <code>rc</code> (Roman) or <code>fc</code> (Flo). Ask Roman for your token.</li>
+              <li><b>Run it:</b> <code>/repuro-queue</code> lists the queue; <code>/repuro &lt;id|#|words&gt;</code> claims and runs one task on your own lane.</li>
+              <li><b>States:</b> Queued (#1, #2…) → Running → Needs verdict. Approve to close; Send back with feedback to re-queue.</li>
+              <li><b>Blocked tasks</b> (red border) have unmet dependencies — resolve them first or Claude will skip them.</li>
               <li><b>Repo &amp; updates:</b> <a href="https://github.com/pavlovs/repuro-cockpit-skills" target="_blank" rel="noreferrer">github.com/pavlovs/repuro-cockpit-skills</a> — update anytime with <code>git pull</code> then re-run the installer.</li>
             </ul>
           </div>

@@ -30,15 +30,17 @@ const NAV = [
 ];
 
 /* Workstreams tab: one dataset, two layouts (table / board), shared filters */
-function WorkstreamsTab({ mutate, openTask, openDeliv, person }) {
+function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setFiltersOpen, setFilterCount }) {
   const [layout, setLayout] = React.useState("table");
   const [grouping, setGrouping] = React.useState("workstream");
   const [filters, setFilters] = React.useState({ person: "", readiness: "", priority: "", showDone: false });
-  const [filtersOpen, setFiltersOpen] = React.useState(false);
 
   const activeFilterCount = [filters.person, filters.readiness].filter(f => f !== "").length
     + (layout === "table" && filters.priority !== "" ? 1 : 0)
     + (layout === "table" && filters.showDone ? 1 : 0);
+  // Issue 29: report active-filter count to the topbar Filter button.
+  // null = no filter body in this layout (Deliverables) → topbar hides the button entirely.
+  React.useEffect(() => { setFilterCount && setFilterCount(layout === "deliverables" ? null : activeFilterCount); }, [activeFilterCount, layout]);
 
   return (
     <div>
@@ -59,7 +61,7 @@ function WorkstreamsTab({ mutate, openTask, openDeliv, person }) {
       </div>
 
       {layout !== "deliverables" && (
-        <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={activeFilterCount}>
+        <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={activeFilterCount} hideToggle>
           <div className="seg">
             {[["", "Everyone"], ["RD", "Roman"], ["FF", "Flo"]].map(([v, l]) => (
               <button key={v} className={filters.person === v ? "on" : ""} onClick={() => setFilters({ ...filters, person: v })}>{l}</button>
@@ -112,6 +114,8 @@ function App() {
   const [quickAdd, setQuickAdd] = React.useState(false);
   const [activityOpen, setActivityOpen] = React.useState(false);
   const [quickAddPrefill, setQuickAddPrefill] = React.useState(null);
+  const [filtersOpen, setFiltersOpen] = React.useState(false);
+  const [filterCount, setFilterCount] = React.useState(0);
   const [, setRev] = React.useState(0);
   const mutate = React.useCallback((fn) => { fn && fn(); setRev((r) => r + 1); }, []);
   const openTask = React.useCallback((id) => { setDelivDrawer(null); setDrawer(id); }, []);
@@ -120,6 +124,8 @@ function App() {
   /* Navigate to a tab: update state + URL hash */
   const setTab = React.useCallback((id) => {
     setTabState(id);
+    setFiltersOpen(false); // close the filter panel when navigating between tabs
+    setFilterCount(0);     // zero synchronously so the topbar never flashes the prior tab's count
     const hash = TAB_TO_HASH[id];
     if (hash && window.location.hash !== hash) window.location.hash = hash;
   }, []);
@@ -133,7 +139,7 @@ function App() {
     };
     const onQuickAdd = (e) => { setQuickAddPrefill(e.detail || null); setQuickAdd(true); };
     const onJumpEvt = (e) => setTab(e.detail || "table");
-    const onHashChange = () => setTabState(tabFromHash());
+    const onHashChange = () => { setTabState(tabFromHash()); setFiltersOpen(false); setFilterCount(0); };
     window.addEventListener("keydown", onKey);
     window.addEventListener("cockpit:quickadd", onQuickAdd);
     window.addEventListener("cockpit:jump", onJumpEvt);
@@ -210,6 +216,11 @@ function App() {
               ))}
             </div>
           )}
+          {(tab === "table" || tab === "timeline") && filterCount !== null && (
+            <button className={"tb-undo" + (filterCount > 0 ? " active" : "")} onClick={() => setFiltersOpen((o) => !o)} title="Filter">
+              <Icon name="filter" size={14} /> Filter{filterCount > 0 ? " (" + filterCount + ")" : ""}
+            </button>
+          )}
           <button className="tb-undo" onClick={() => setActivityOpen(true)} title="Activity log">Activity</button>
           <button className="tb-undo" disabled={!api.undoDepth()} onClick={() => api.undo()}
             title={api.undoDepth() ? "undo last change (" + api.undoDepth() + ")" : "nothing to undo"}>↶ Undo</button>
@@ -220,8 +231,8 @@ function App() {
           <div className={"view" + (tab === "timeline" || tab === "table" ? " view-wide" : "")}>
             {tab === "overview" && <OverviewView person={person} onJump={setTab} openTask={openTask} mutate={mutate} />}
             {tab === "week" && <MeetingView mutate={mutate} openTask={openTask} />}
-            {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} openDeliv={openDeliv} person={person} />}
-            {tab === "timeline" && <TimelineView openTask={openTask} />}
+            {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} openDeliv={openDeliv} person={person} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}
+            {tab === "timeline" && <TimelineView openTask={openTask} openDeliv={openDeliv} mutate={mutate} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}
             {tab === "agents" && <AgentsView openTask={openTask} person={person} />}
           </div>
         </main>

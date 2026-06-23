@@ -322,9 +322,11 @@ function DeliverableView({ mutate, openTask, openDeliv }) {
                   <div className="wk-deliv-head" style={{ cursor: "pointer" }} onClick={() => toggle(d.id + "-" + id)}>
                     <span className={"caret" + (isOpen ? " open" : "")}><Icon name="chevron" size={12} /></span>
                     <span className="wk-deliv-name">{d.name}</span>
-                    {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")} style={{ fontSize: 11 }}>{fdate(d.target)}</span>}
-                    <button className="deliv-edit" title="rename / set target date" style={{marginLeft:4}}
+                    <button className="deliv-edit" title="rename / set target date"
                       onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }}>✎</button>
+                    <button className="deliv-edit" title="add task to this deliverable"
+                      onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }}>+</button>
+                    {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")} style={{ fontSize: 11 }}>{fdate(d.target)}</span>}
                   </div>
                   {isOpen && (
                     <div style={{ marginTop: 4 }}>

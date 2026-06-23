@@ -23,7 +23,16 @@
 	basic_auth @needsAuth {
 		roman {$AUTH_ROMAN_HASH}
 		florian {$AUTH_FLORIAN_HASH}
+		# investor {$AUTH_INVESTOR_HASH}  # add when Strada access is provisioned (defer)
 	}
+
+	# Investor isolation: a logged-in `investor` user is confined to /investor — 403 elsewhere.
+	# Inert until the investor basic_auth line above is enabled; load-bearing once Strada is provisioned.
+	@investor_outside {
+		expression {http.auth.user.id} == "investor"
+		not path /investor /investor/*
+	}
+	respond @investor_outside 403
 
 	header {
 		X-Frame-Options DENY
@@ -62,6 +71,9 @@
 	handle /cockpit {
 		redir /cockpit/ permanent
 	}
+	handle /investor {
+		redir /investor/ permanent
+	}
 
 	handle_path /allex/* {
 		reverse_proxy localhost:8081
@@ -73,6 +85,12 @@
 
 	handle_path /cockpit/* {
 		reverse_proxy localhost:8083 {
+			header_up X-Remote-User {http.auth.user.id}
+		}
+	}
+
+	handle_path /investor/* {
+		reverse_proxy localhost:8084 {
 			header_up X-Remote-User {http.auth.user.id}
 		}
 	}

@@ -1,0 +1,287 @@
+/* Investor Room — R1 CI rebuild.
+   Loads after shared.css which defines --rs-brand, --rs-brand-hover, etc.
+   UI palette: suite CI tokens (--accent = --rs-brand = #0891B2).
+   Stage-badge colors (--amber/--blue/--indigo/--purple etc.) are semantic
+   pipeline-stage tokens ported from dealroom/src/templates/dashboard.html,
+   not UI accents — they must stay distinct for stage differentiation.
+   Responsive: desktop-first (R1 scope); mobile breakpoints deferred to R3. */
+
+/* ---- Local token aliases (map to shared.css vars) ---- */
+:root {
+  --bg: #f0f4f7;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --accent: var(--rs-brand);          /* #0891B2 — replaces old #1d4ed8 */
+  --accent-hover: var(--rs-brand-hover);
+  --accent-light: var(--rs-brand-bg); /* #ecfeff */
+  --nav-w: 220px;
+  --radius: 6px;
+
+  /* dealroom portfolio-table vars (copied from dashboard.html) */
+  --repuro: #0891B2;
+  --repuro-accent2: #22D3EE;
+  --repuro-light: #e0f5fa;
+  --repuro-dark: #0670a2;
+  --wip: #E11D48;
+  --amber: #eab308;
+  --blue: #3b82f6;
+  --indigo: #6366f1;
+  --purple: #a855f7;
+  --green: #16a34a;
+  --gray: #6b7280;
+  --red: #e11d48;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  height: 100%;
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#root { height: 100%; }
+
+/* ---- Boot spinner ---- */
+.boot-spinner { display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; gap: 12px; }
+.spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.boot-label { font-size: 13px; color: var(--text-muted); }
+
+/* ---- Layout ---- */
+.layout { display: flex; height: 100%; }
+
+/* ---- Left nav — CI chrome ---- */
+.nav {
+  width: var(--nav-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 16px;
+  flex-shrink: 0;
+}
+
+/* Logo area */
+.nav-logo-wrap {
+  padding: 20px 16px 16px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.nav-logo-img {
+  display: block;
+  height: 28px;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+}
+.nav-logo-sub {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+/* Nav items */
+.nav-item {
+  display: block;
+  padding: 9px 18px;
+  color: var(--text-muted);
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: 13.5px;
+  font-family: inherit;
+  width: 100%;
+  text-align: left;
+  transition: color .15s, background .15s;
+  border-left: 3px solid transparent;
+}
+.nav-item:hover { color: var(--text); background: #f3f4f6; }
+.nav-item.active {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--accent-light);
+  border-left-color: var(--accent);
+  padding-left: 15px;
+}
+
+.nav-footer { margin-top: auto; padding: 12px 18px; font-size: 11px; color: var(--text-muted); }
+
+.badge-admin {
+  display: inline-block;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  font-weight: 600;
+}
+
+/* ---- Main content area ---- */
+.main { flex: 1; overflow-y: auto; padding: 36px 48px; }
+.page-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.page-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 28px; }
+
+/* ---- Empty / error ---- */
+.empty-state { color: var(--text-muted); padding: 48px 0; text-align: center; font-size: 14px; }
+.error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius); padding: 16px; color: #991b1b; margin-bottom: 24px; }
+
+/* ---- Section headings ---- */
+.section { margin-bottom: 36px; }
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+/* ---- OLD generic table (legacy; kept for BoardTab + CurateTab) ---- */
+.tbl-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 12px; background: var(--bg); border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+
+/* ---- Portfolio table — ported verbatim from dealroom/src/templates/dashboard.html ---- */
+/* Source: dashboard.html lines 123-169 */
+.portfolio-wrap { overflow-x: auto; }
+.portfolio-table { border-collapse: collapse; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: clamp(13px, 0.85vw, 15px); table-layout: fixed; width: 100%; }
+.portfolio-table col.c-code  { width: 8%; }
+.portfolio-table col.c-stage { width: 13%; }
+.portfolio-table col.c-sector{ width: 10%; }
+.portfolio-table col.c-region{ width: 9%; }
+.portfolio-table col.c-size  { width: 11%; }
+.portfolio-table col.c-fit   { width: 49%; }
+/* live-deal variant */
+.portfolio-table col.c-name  { width: 14%; }
+.portfolio-table col.c-rev   { width: 7%; }
+.portfolio-table col.c-ebitda{ width: 7%; }
+.portfolio-table col.c-ev    { width: 7%; }
+.portfolio-table col.c-mul   { width: 6%; }
+.portfolio-table col.c-close { width: 10%; }
+.portfolio-table col.c-comment{ width: 41%; }
+.portfolio-table thead tr { background: #0891B2; }
+.portfolio-table th { padding: 7px 8px; background: #0891B2; font-size: clamp(13px, 0.85vw, 15px); font-weight: 700; color: #fff; font-family: inherit; white-space: normal; vertical-align: middle; line-height: 1.3; text-transform: none; letter-spacing: 0; }
+.portfolio-table th.r { text-align: right; }
+.portfolio-table th.c { text-align: center; }
+.portfolio-table td { padding: 5px 8px; border-bottom: 1px solid #ddeef2; vertical-align: middle; overflow: hidden; line-height: 1.4; }
+.portfolio-table tbody tr:nth-child(even) { background: #f4fafc; }
+.portfolio-table tbody tr:hover { background: var(--repuro-light); }
+.portfolio-table td.r { text-align: right; }
+.portfolio-table td.text-cell { vertical-align: middle; overflow: hidden; padding-top: 7px; text-align: left; }
+.portfolio-table td.code-cell { font-weight: 700; white-space: nowrap; text-align: center; }
+.portfolio-table tfoot tr { background: none; }
+.portfolio-table tfoot td { padding: 6px 8px; font-weight: 700; color: var(--repuro); border-top: 2px solid var(--repuro); font-family: inherit; font-size: inherit; }
+
+/* Stage badges — ported from dashboard.html lines 50-64 */
+.stage-badge { padding: 2px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.stage-meeting_concluded    { background: var(--amber);  color: #000; }
+.stage-valuation_rfi        { background: var(--blue);   color: #fff; }
+.stage-indicative_offer     { background: var(--indigo); color: #fff; }
+.stage-loi_signed           { background: var(--purple); color: #fff; }
+.stage-due_diligence        { background: #059669;       color: #fff; }
+.stage-contract_negotiation { background: #0d9488;       color: #fff; }
+.stage-closed               { background: #065f46;       color: #fff; }
+.stage-on_hold              { background: var(--gray);   color: #fff; }
+.stage-dead                 { background: var(--red);    color: #fff; }
+
+/* Stage pills — ported from dashboard.html lines 115-118 */
+.stage-timeline { display: flex; gap: 4px; margin-top: 12px; overflow-x: auto; }
+.stage-pill { padding: 3px 8px; border-radius: 12px; font-size: 11px; background: #e2e8f0; color: #475569; white-space: nowrap; flex-shrink: 0; }
+.stage-pill.active  { background: #1D7080; color: #fff; font-weight: 700; }
+.stage-pill.passed  { background: #d1fae5; color: #065f46; }
+
+/* ---- Fundraising line (compact) ---- */
+.fundraising-line {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  font-size: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fundraising-line .fund-row { display: flex; gap: 8px; align-items: baseline; }
+.fundraising-line .fund-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); min-width: 110px; }
+.fundraising-line .fund-value { font-size: 13px; color: var(--text); }
+
+/* ---- Batch stats (compact secondary table) ---- */
+.batch-section { margin-top: 8px; }
+
+/* ---- Board pack ---- */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.kpi-metric { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+.kpi-value { font-size: 22px; font-weight: 800; }
+.kpi-prior { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+.agenda-list, .decision-list, .preread-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.agenda-item, .decision-item, .preread-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; }
+.agenda-item-title { font-weight: 600; }
+.agenda-item-owner { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.decision-topic { font-weight: 600; margin-bottom: 4px; }
+.decision-meta { font-size: 12px; color: var(--text-muted); }
+.resolution-badge { display: inline-block; background: #d1fae5; color: #065f46; font-size: 11px; padding: 1px 7px; border-radius: 4px; font-weight: 700; margin-left: 8px; }
+
+.meeting-header { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 24px; }
+.meeting-date { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.meeting-meta { font-size: 13px; color: var(--text-muted); }
+
+.minutes-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; font-size: 14px; color: var(--text-muted); font-style: italic; }
+
+/* ---- Project-update milestones ---- */
+.milestones { margin-top: 14px; }
+.milestones-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); margin-bottom: 6px; }
+.milestone-list { list-style: none; }
+.milestone-list li { padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.milestone-list li:last-child { border-bottom: none; }
+.ms-name { font-weight: 500; color: var(--text); }
+.ms-date { color: var(--text-muted); font-size: 12px; }
+.ms-note { color: var(--text-muted); }
+
+/* ---- Narrative ---- */
+.narrative { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; font-size: 14px; line-height: 1.7; color: var(--text); }
+
+/* ---- Dev-mode role switcher (local review only) ---- */
+.dev-switch { margin: 16px 10px 0; padding: 10px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: var(--radius); }
+.dev-switch-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: #92400e; margin-bottom: 6px; }
+.dev-btn { display: block; width: 100%; text-align: left; padding: 6px 8px; margin-top: 4px; font-size: 12px; font-family: inherit; border: 1px solid #e5e7eb; background: #fff; border-radius: 4px; cursor: pointer; }
+.dev-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+
+/* ---- Sources & Uses (fundraising detail) ---- */
+.sources-uses-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+
+/* ---- Hero: EBITDA-by-stage bar chart (answer-first). Bar pattern from dealroom .op-chart ---- */
+.hero { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 22px 26px 18px; margin-bottom: 30px; }
+.hero-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+.hero-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.hero-title span { color: var(--text-muted); font-weight: 500; }
+.hero-total { font-size: 13px; color: var(--text-muted); }
+.hero-total strong { color: var(--accent); font-size: 17px; font-weight: 800; }
+.hero-chart { display: flex; align-items: flex-end; gap: 16px; height: 190px; }
+.hero-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; cursor: pointer; min-width: 0; }
+.hero-col[data-clickable="0"] { cursor: default; }
+.hero-bar-val { font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text); white-space: nowrap; }
+.hero-bar { width: 100%; max-width: 70px; border-radius: 4px 4px 0 0; min-height: 3px; transition: opacity .15s; }
+.hero-col:hover .hero-bar { opacity: .82; }
+.hero-bar.indicative { opacity: .5; background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.45) 0 4px, transparent 4px 9px); }
+.hero-x { margin-top: 9px; text-align: center; max-width: 100%; }
+.hero-x-stage { font-size: 11px; font-weight: 600; color: var(--text); line-height: 1.2; }
+.hero-x-meta { font-size: 10px; color: var(--text-muted); margin-top: 1px; }
+.hero-foot { font-size: 10.5px; color: var(--text-muted); margin-top: 14px; display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+.hero-foot .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.hero-foot .sw.ind { background-image: repeating-linear-gradient(45deg, rgba(0,0,0,.25) 0 3px, transparent 3px 6px); background-color: #cbd5e1; }
+.portfolio-table col.c-pct { width: 5%; }

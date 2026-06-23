@@ -20,11 +20,11 @@ Claude reads this when `/suite-fix` is invoked.
 - [x] Cockpit error: Uncaught TypeError: id.startsWith is not a function (react-dom.production.min.js:63) — fixed 2026-06-22 (QuickAdd onClose got a React event from the scrim onClick; added `typeof id === "string"` guard in app.jsx:234). DEPLOYED + verified live 2026-06-23.
 - [x] REMOVE the badges from the Daily Weekly again!! The completed, need attention, deal deadlines is so stupid — DEPLOYED + verified live 2026-06-23 (badges absent from live view-week.jsx)
 - [ ] Adding a task lags and then the task gets added twice
-- [x] In timelines the Edit button is not working — fixed + deployed 2026-06-23 (app.jsx rendered <TimelineView> without openDeliv, so the ✎ called undefined)
+- [x] In timelines the Edit button is not working — fixed + deployed 2026-06-23 (app.jsx rendered <TimelineView without openDeliv, so the ✎ called undefined)
 - [ ] Dealroom ONepager mouse: add the content - still not in!
 - [x] Deliverable Drop Down Menu: Still shows the deals in a double format (very annoying) — fixed + deployed 2026-06-23 (dropdown now grouped by "Space › Workstream" so the workstream is visible; quick-add.jsx + task-drawer.jsx)
 - [ ] update of the updates local MOUSE onepager into the online dealroom
-- [ ] Add a personal todo list (only seen by the one who logged in: roman just sees his personal with his crednetials, Flo just sees his)
+- [x] Add a personal todo list (only seen by the one who logged in: roman just sees his personal with his crednetials, Flo just sees his) — fixed + deployed 2026-06-23 (kind="personal" tasks, server-side scrubbed to created_by==viewer; PersonalTodos section on Cockpit landing; test_personal.py proves rd/ff isolation)
 - [x] Deliverable can have an earlier deadline that the tasks beneath it. There should either be a warning on the task beneath the deliverable or some other way to showcase this — fixed + deployed 2026-06-23 (⚠ "after target" badge in week rows + warning block in task drawer when task.due > deliverable.target)
 - [x] WEEKLY Meeting: Only show the deliverables, if they are relevant subtasks due in the coming 7 days — fixed + deployed 2026-06-23 (personFocus skips deliverables with no subtask due within 7 days)
 - [ ] Blockers / Decision seems a very useless view currently, it is just a stack of 100 todos 
@@ -40,6 +40,7 @@ Infrastructure — deferred (architecture change)
 ## Feature Requests
 > These are NOT auto-implemented. `/suite-fix` presents each one with a recommendation and waits for Roman's go/no-go.
 
+- [ ] Unify CSS codes to fit to repuro-ci and have same headers, hero stages, fonts, H1, H2, H3 etc.
 - [ ] SPEC: User should be part of a team (e. g. Roman / Flo = Founder). Teams only see specific spaces and dont have access to other spaces. Also Meetings should then show the daily todo list of every member of that team
 - [ ] SPEC: Integration of office calender + granola endpoint to have something like meeting prep in the window
 - [ ] SPEC: Add and integrate the hubspot database (which we downloaded once) into the workflow

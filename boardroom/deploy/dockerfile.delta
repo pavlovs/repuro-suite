@@ -1,0 +1,15 @@
+# --- Investor Room: edits to suite/Dockerfile ---
+
+# 1) After the DEALROOM dependencies block (line ~25), add:
+#    # --- INVESTOR ROOM dependencies ---
+#    COPY boardroom/requirements-prod.txt /app/boardroom/requirements.txt
+#    RUN pip install --no-cache-dir -r /app/boardroom/requirements.txt
+
+# 2) In the "Copy application code" block (line ~31-34), add:
+#    COPY boardroom/ /app/boardroom/
+
+# 3) In the ".venv cleanup" RUN (line ~44), add /app/boardroom/.venv:
+#    RUN rm -rf /app/allex/.venv /app/dealroom/.venv /app/cockpit/.venv /app/boardroom/.venv
+
+# Note: boardroom/requirements-prod.txt = fastapi + uvicorn[standard] (same as cockpit; no pytest).
+# The investor process is started by the supervisord.delta program on :8084.

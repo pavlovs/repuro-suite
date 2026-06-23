@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Repuro · Investor Room — Strada weekly call (v5)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* brand + structural */
+  --brand:#0891B2; --brand-deep:#0f3d49; --brand-d:#076e8c;
+  --ink:#0f172a; --text:#334155; --muted:#64748b;
+  --line:#e6eaed; --canvas:#f5f8f9; --surface:#ffffff; --alert:#e11d48;
+  /* stage colors — used ONLY inside stage badges */
+  --st-loi:#8b5cf6; --st-ind:#6366f1; --st-val:#3b82f6; --st-hold:#6b7280; --st-dead:#ef4444;
+  --shadow:0 1px 2px rgba(15,31,41,.04),0 8px 28px rgba(15,31,41,.05);
+  /* dealroom variables (verbatim from dealroom-styles.css — required by the verbatim table) */
+  --bg-card:#fff; --border:#e5e7eb; --border-light:#f3f4f6; --accent:#0891B2; --accent-light:#ecfeff;
+  --text-muted:#6b7280; --repuro:#0891B2; --repuro-light:#e0f5fa;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:auto}
+body{font-family:'Inter',-apple-system,system-ui,'Segoe UI',sans-serif;background:var(--canvas);color:var(--text);font-size:14.5px;font-weight:450;line-height:1.55;-webkit-font-smoothing:antialiased}
+
+/* ---------- shell ---------- */
+.wrap{max-width:1180px;margin:0 auto;padding:0 24px 90px}
+.topbar{background:linear-gradient(110deg,var(--brand) 0%,var(--brand-d) 70%,#055a73 100%);color:#fff}
+.topbar-in{max-width:1180px;margin:0 auto;padding:20px 24px;display:flex;align-items:center;gap:18px}
+.topbar img{height:30px;display:block}
+.topbar .meta{margin-left:auto;text-align:right;font-size:12.5px;line-height:1.45;opacity:.92}
+.topbar .meta b{display:block;font-size:14.5px;font-weight:700;opacity:1}
+.room-tag{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.16);padding:3px 9px;border-radius:20px;backdrop-filter:blur(2px)}
+
+/* ---------- agenda rail ---------- */
+.callbar{position:sticky;top:0;z-index:20;background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.callbar-in{max-width:1180px;margin:0 auto;padding:10px 24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.agenda-item{display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 13px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);transition:all .14s}
+.agenda-item:hover{border-color:var(--brand);color:var(--ink)}
+.agenda-item.active{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 2px 8px rgba(8,145,178,.3)}
+.agenda-item .n{display:inline-flex;width:18px;height:18px;border-radius:50%;background:var(--canvas);color:var(--muted);align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.agenda-item.active .n{background:rgba(255,255,255,.25);color:#fff}
+.agenda-item .dot{width:7px;height:7px;border-radius:50%;background:var(--alert)}
+.callbar .timer{margin-left:auto;font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px}
+.callbar .timer b{color:var(--ink);font-weight:700}
+
+/* ============================================================
+   SLIDE SYSTEM — each Act is a deck slide.
+   Every slide opens with a LARGE solid-color header band.
+   ============================================================ */
+.act{padding-top:44px;scroll-margin-top:64px}
+/* the big "slide title" band — full content width, solid color, white text */
+.slide-band{
+  display:flex;align-items:center;gap:20px;
+  background:var(--brand);color:#fff;
+  border-radius:16px 16px 0 0;
+  padding:22px 28px;
+}
+.slide-band.deep{background:var(--brand-deep)}
+.slide-band .sb-num{
+  font-size:34px;font-weight:800;line-height:1;letter-spacing:-.02em;
+  color:rgba(255,255,255,.55);font-variant-numeric:tabular-nums;flex-shrink:0
+}
+.slide-band .sb-title{font-size:30px;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+.slide-band .sb-meta{margin-left:auto;text-align:right;font-size:12.5px;font-weight:500;color:rgba(255,255,255,.82);line-height:1.4;max-width:320px}
+/* the slide body sits on white surface, joined to the band, separated by whitespace not boxes */
+.slide-body{
+  background:var(--surface);border:1px solid var(--line);border-top:none;
+  border-radius:0 0 16px 16px;box-shadow:var(--shadow);
+  padding:30px 32px;
+}
+@media(max-width:680px){
+  .slide-band{flex-wrap:wrap;gap:10px;padding:18px 20px}
+  .slide-band .sb-title{font-size:24px}
+  .slide-band .sb-meta{margin-left:0;text-align:left;max-width:none}
+  .slide-body{padding:22px 18px}
+}
+
+/* shared sub-heading (one calm level above body) */
+.sub-heading{font-size:17px;font-weight:700;color:var(--ink);letter-spacing:-.01em;margin-bottom:14px}
+.eyebrow{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:12px}
+.key{font-size:30px;font-weight:800;color:var(--ink);letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.key.brand{color:var(--brand)}
+.key.alert{color:var(--alert)}
+.hairline{height:1px;background:var(--line);border:none;margin:26px 0}
+
+/* ---------- ACT 1: this week ---------- */
+.pulse{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:26px}
+.pulse-pill{font-size:12.5px;font-weight:600;padding:6px 13px;border-radius:20px;background:var(--canvas);color:var(--text)}
+.pulse-pill.up{background:#e9f7ef;color:#15803d}
+/* "what changed": 3 rows, stacked, separated by hairlines not boxes */
+.moved{display:flex;flex-direction:column}
+.mv{display:flex;align-items:flex-start;gap:16px;padding:16px 0;border-top:1px solid var(--line)}
+.mv:first-child{border-top:none;padding-top:4px}
+.mv .ic{flex-shrink:0;width:30px;text-align:center;font-size:19px;line-height:1.3}
+.mv .ttl{font-size:15.5px;font-weight:700;color:var(--ink)}
+.mv .sub{font-size:14px;color:var(--text);margin-top:3px;line-height:1.5}
+/* decision preview — two clean rows */
+.prev-chips{display:flex;flex-direction:column;gap:10px}
+.dchip{display:flex;align-items:center;gap:14px;border:1px solid var(--line);border-radius:11px;padding:14px 18px;background:#fff;cursor:pointer;transition:all .13s;text-align:left;width:100%}
+.dchip:hover{border-color:var(--brand);box-shadow:0 2px 10px rgba(8,145,178,.08)}
+.dchip .num{display:inline-flex;width:30px;height:30px;flex-shrink:0;border-radius:8px;background:var(--brand);color:#fff;align-items:center;justify-content:center;font-size:15px;font-weight:800}
+.dchip .dt{font-size:15px;font-weight:600;color:var(--ink);line-height:1.3}
+.dchip .go{margin-left:auto;font-size:12px;font-weight:700;color:var(--brand);white-space:nowrap}
+
+/* ---------- ACT 2: live deals ---------- */
+.deal-toggle{display:flex;gap:10px;margin-bottom:26px;flex-wrap:wrap}
+.deal-tab{display:flex;align-items:center;gap:9px;border:1px solid var(--line);background:#fff;border-radius:11px;padding:11px 18px;cursor:pointer;font-size:14.5px;font-weight:700;color:var(--muted);transition:all .14s}
+.deal-tab:hover{border-color:var(--brand);color:var(--ink)}
+.deal-tab.active{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 2px 8px rgba(8,145,178,.3)}
+.deal-tab .tco{font-size:12.5px;font-weight:500;opacity:.85}
+.deal-tab.active .tco{opacity:.92}
+.deal-panel{display:none}
+.deal-panel.active{display:block}
+
+/* deal headline strip — figures that matter, large */
+.deal-top{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:8px}
+.deal-top .dname{font-size:20px;font-weight:800;color:var(--ink);letter-spacing:-.01em}
+.deal-top .op-stage{padding:3px 11px;border-radius:12px;font-size:11px;font-weight:600;color:#fff;background:var(--st-loi)}
+.deal-top .op-days{font-size:12px;color:var(--muted)}
+.deal-headline-txt{font-size:14.5px;font-style:italic;color:var(--text);margin-bottom:20px}
+.keystrip{display:flex;flex-wrap:wrap;gap:36px;padding:18px 0 22px}
+.keystrip .ks{display:flex;flex-direction:column;gap:5px}
+.keystrip .ks .kl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.keystrip .ks .kv{font-size:27px;font-weight:800;color:var(--ink);letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.keystrip .ks .kv.brand{color:var(--brand)}
+
+/* one-pager — verbatim dealroom classes (.onepager / .op-quadrant), restyled lightly */
+.onepager-grid{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:6px}
+@media(max-width:760px){.onepager-grid{grid-template-columns:1fr}}
+.op-quadrant{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.op-quadrant-header{background:var(--brand);color:#fff;padding:11px 18px;font-size:15px;font-weight:700;font-family:inherit}
+.op-quadrant-body{padding:16px 20px;font-size:14px;line-height:1.6;font-family:inherit;color:var(--text)}
+.op-quadrant-body ul{margin:0;padding-left:18px}
+.op-quadrant-body li{margin-bottom:6px}
+.op-quadrant-body ul li strong{font-weight:700;color:var(--ink)}
+/* financials quadrant rows */
+.fin-row{display:flex;justify-content:space-between;align-items:baseline;padding:6px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.fin-row:last-child{border-bottom:none}
+.fin-row .fl{color:var(--text)}
+.fin-row .fv{font-weight:700;color:var(--ink);font-variant-numeric:tabular-nums}
+.fin-row.hl .fv{color:var(--brand)}
+.col-h{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;margin-bottom:10px}
+.bridge{margin-top:10px}
+.bridge-bar{display:flex;height:14px;border-radius:7px;overflow:hidden;margin:8px 0 6px}
+.bridge-bar span{height:100%}
+.bridge-leg{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.bridge-leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.cap-note{font-size:12px;color:var(--muted);margin-top:12px;line-height:1.5}
+.op-footnote{font-size:11px;color:var(--muted);padding-top:14px;margin-top:18px;border-top:1px solid var(--line)}
+/* red flags — clean rows, alert color only on severity */
+.rf-wrap{margin-top:26px}
+.flag{display:flex;gap:12px;padding:11px 0;border-top:1px solid var(--line);align-items:flex-start}
+.flag:first-of-type{border-top:none}
+.flag .sev{font-size:9.5px;font-weight:800;letter-spacing:.04em;padding:3px 7px;border-radius:5px;flex-shrink:0;margin-top:1px}
+.sev-h{background:#fde8ec;color:#b91c3a}
+.sev-m{background:#f1f5f9;color:#475569}
+.flag .ft{font-size:14px;color:var(--text);line-height:1.5}
+.flag .ft b{color:var(--ink)}
+.nodd{font-size:14px;color:var(--text);line-height:1.55}
+.nodd b{color:var(--ink)}
+.muted{color:var(--muted)}
+
+/* ---------- ACT 3: pipeline = VERBATIM dealroom table (untouched) ---------- */
+.portfolio-wrap{overflow-x:auto}
+.portfolio-table{border-collapse:collapse;font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:clamp(13px,0.85vw,15px);table-layout:fixed;width:100%}
+.portfolio-table col.c-code{width:6%}
+.portfolio-table col.c-rev{width:6%}
+.portfolio-table col.c-ebitda{width:6%}
+.portfolio-table col.c-pct{width:5%}
+.portfolio-table col.c-emp{width:4%}
+.portfolio-table col.c-desc{width:24%}
+.portfolio-table col.c-ev{width:6%}
+.portfolio-table col.c-mul{width:5%}
+.portfolio-table col.c-stage{width:10%}
+.portfolio-table col.c-comment{width:28%}
+.portfolio-table thead tr{background:#0891B2}
+.portfolio-table th{padding:7px 8px;font-size:clamp(13px,0.85vw,15px);font-weight:700;color:#fff;font-family:inherit;white-space:normal;vertical-align:middle;line-height:1.3}
+.portfolio-table th.r{text-align:right}
+.portfolio-table th.c{text-align:center}
+.portfolio-table td{padding:5px 8px;border-bottom:1px solid #ddeef2;vertical-align:middle;overflow:hidden;line-height:1.4}
+.portfolio-table td.stage-cell{overflow:visible;position:relative}
+.portfolio-table tbody tr:nth-child(even){background:#f4fafc}
+.portfolio-table tbody tr:hover{background:var(--repuro-light)}
+.portfolio-table td.r{text-align:right}
+.portfolio-table td.text-cell{vertical-align:middle;overflow:hidden;padding-top:7px;text-align:left}
+.clamp3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.portfolio-table td.code-cell{font-weight:700;cursor:pointer;white-space:nowrap;text-align:center}
+.portfolio-table td.code-cell:hover{color:var(--repuro)}
+.portfolio-table tfoot tr{background:none}
+.portfolio-table tfoot td{padding:6px 8px;font-weight:700;color:var(--repuro);border-top:2px solid var(--repuro);font-family:inherit;font-size:inherit}
+.portfolio-table tfoot td.r{text-align:right}
+.stage-dropdown-wrap{position:relative;display:inline-block}
+.stage-dropdown-trigger{cursor:pointer;padding:2px 4px;font-size:inherit;font-weight:600;display:inline-flex;align-items:center;gap:5px;user-select:none;color:#334155;background:none}
+.stage-dropdown-menu{display:none;position:absolute;top:100%;left:50%;transform:translateX(-50%);z-index:200;background:#fff;border:1px solid var(--border);border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,0.15);padding:4px 0;min-width:140px;margin-top:4px}
+.stage-dropdown-menu.open{display:block}
+.stage-dropdown-option{padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.stage-dropdown-option:hover{background:#f1f5f9}
+.stage-dropdown-option .stage-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.stage-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.comment-bullets{list-style:disc;margin:0;padding:0 0 0 16px;font-size:inherit;line-height:1.5}
+.comment-bullets li{margin-bottom:2px}
+.comment-cell-wrap{min-height:24px;outline:none}
+/* stage filter pills */
+.stage-filter{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.stage-filter label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+.stage-filter .filter-btn{padding:4px 12px;border-radius:12px;font-size:11.5px;font-weight:600;border:1px solid var(--border);background:var(--bg-card);color:var(--muted);cursor:pointer;transition:all 0.15s}
+.stage-filter .filter-btn:hover{border-color:var(--accent);color:var(--accent)}
+.stage-filter .filter-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+/* pipeline supporting KPIs */
+.kpi-stack{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:30px}
+@media(max-width:760px){.kpi-stack{grid-template-columns:1fr}}
+.funnel{margin-top:4px}
+.fstage{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.fstage .fl{width:90px;font-size:12.5px;font-weight:600;color:var(--text);flex-shrink:0}
+.fbar-wrap{flex:1;background:var(--canvas);border-radius:7px;overflow:hidden;height:26px;position:relative}
+.fbar{height:100%;border-radius:7px;display:flex;align-items:center;padding:0 10px;color:#fff;font-size:12px;font-weight:700}
+.fstage .fn{width:48px;text-align:right;font-size:13.5px;font-weight:700;font-variant-numeric:tabular-nums;color:var(--ink)}
+.stage{display:inline-block;font-size:11px;font-weight:600;color:#fff;padding:2px 9px;border-radius:20px}
+.s-val{background:var(--st-val)}.s-ind{background:var(--st-ind)}.s-loi{background:var(--st-loi)}
+.spread-row{display:flex;align-items:center;gap:10px;font-size:13.5px}
+.spread-row .cnt{margin-left:auto;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+
+/* ============================================================
+   ACT 4 — DECISION CARDS: one smooth flowing card each.
+   question -> inline facts row -> recommendation strip. No boxes/tables.
+   ============================================================ */
+.dec-stack{display:flex;flex-direction:column;gap:30px}
+.dec{scroll-margin-top:80px}
+.dec-label{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--brand);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.dec-label .curated{color:var(--muted);font-weight:600}
+.dec-q{font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.01em;line-height:1.3;margin-bottom:8px}
+.dec-ask{font-size:14.5px;color:var(--text);line-height:1.6;max-width:74ch}
+/* one compact inline row of the key facts — not a table, not a box */
+.dec-facts{display:flex;flex-wrap:wrap;gap:34px;padding:20px 0 4px}
+.dec-facts .f{display:flex;flex-direction:column;gap:4px}
+.dec-facts .f .fl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.dec-facts .f .fv{font-size:23px;font-weight:800;color:var(--ink);letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1}
+.dec-facts .f .fv.alert{color:var(--alert)}
+.dec-facts .f .fv.brand{color:var(--brand)}
+.dec-facts .f .fv.sm{font-size:17px}
+/* recommendation: ONE set-off line, subtle brand-tinted strip + brand left rule */
+.dec-rec{margin-top:20px;background:#effafc;border-left:3px solid var(--brand);border-radius:0 10px 10px 0;padding:16px 20px;font-size:14.5px;color:var(--text);line-height:1.6}
+.dec-rec .rl{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--brand-d);margin-bottom:5px}
+.dec-rec b{color:var(--ink)}
+.dec .yn{display:flex;gap:9px;margin-top:18px;flex-wrap:wrap}
+.btn{font-family:inherit;font-size:13px;font-weight:600;border-radius:8px;padding:8px 16px;border:1px solid var(--line);background:#fff;color:var(--text);cursor:pointer;transition:all .12s}
+.btn:hover{border-color:var(--muted)}
+.btn.y{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.y:hover{filter:brightness(.95)}
+.btn.done{background:#e9f7ef;border-color:#bfe6ce;color:#15803d;cursor:default}
+
+/* ---------- ACT 5: timeline (cockpit gantt) ---------- */
+.gantt{margin-top:4px}
+.gantt-scale{display:grid;grid-template-columns:130px 1fr;font-size:11px;color:var(--muted);font-weight:600;margin-bottom:8px;padding-left:2px}
+.gantt-months{display:grid;grid-template-columns:repeat(3,1fr);border-left:1px solid var(--line)}
+.gantt-months span{padding:0 0 6px 8px;border-right:1px solid var(--line);text-transform:uppercase;letter-spacing:.05em}
+.grow{display:grid;grid-template-columns:130px 1fr;align-items:center;min-height:38px}
+.grow .lbl{font-size:13px;font-weight:700;color:var(--ink);display:flex;align-items:center;gap:8px}
+.grow .lbl .sw{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.track{position:relative;height:28px;border-left:1px solid var(--line)}
+.track::after{content:"";position:absolute;left:33.33%;top:0;bottom:0;border-left:1px dashed var(--line)}
+.track::before{content:"";position:absolute;left:66.66%;top:0;bottom:0;border-left:1px dashed var(--line)}
+.bar{position:absolute;top:6px;height:16px;border-radius:8px;display:flex;align-items:center;padding:0 10px;font-size:10.5px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden}
+.bar.curated{background:repeating-linear-gradient(45deg,var(--brand),var(--brand) 6px,#0a9cc0 6px,#0a9cc0 12px)}
+.mile{position:absolute;top:3px;width:11px;height:11px;background:#fff;border:2.5px solid var(--brand);transform:rotate(45deg);margin-top:5px}
+.mile.crit{border-color:var(--alert)}
+.mile.cur{border-color:var(--muted);border-style:dashed}
+.gantt-now{position:absolute;top:-26px;bottom:0;width:0;border-left:2px solid var(--alert);z-index:3}
+.gantt-now span{position:absolute;top:-20px;left:-16px;font-size:10px;font-weight:700;color:var(--alert);background:#fff;padding:1px 5px;border-radius:4px;border:1px solid #fbcad4}
+
+/* ---------- footer / provenance ---------- */
+.note{font-size:12px;color:var(--muted);margin:16px 2px 0;line-height:1.55}
+.note b{color:var(--text)}
+.lock{margin-right:4px}
+.foot{margin-top:44px;padding-top:18px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);display:flex;gap:18px;flex-wrap:wrap}
+.foot b{color:var(--text)}
+.prov{font-size:11.5px;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-top:36px;line-height:1.6}
+.prov b{color:var(--text)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-in">
+    <img src="../static/img/logo-color.png" alt="Repuro">
+    <span class="room-tag">Investor Room</span>
+    <div class="meta">
+      <b>Strada — weekly co-investor call</b>
+      Week of 22 Jun 2026 · prepared by Florian &amp; Roman
+    </div>
+  </div>
+</div>
+
+<!-- AGENDA RAIL -->
+<div class="callbar">
+  <div class="callbar-in">
+    <button class="agenda-item active" data-go="act1"><span class="n">1</span> This week<span class="dot" title="2 decisions waiting"></span></button>
+    <button class="agenda-item" data-go="act2"><span class="n">2</span> Live deals</button>
+    <button class="agenda-item" data-go="act3"><span class="n">3</span> Pipeline</button>
+    <button class="agenda-item" data-go="act4"><span class="n">4</span> Decisions</button>
+    <button class="agenda-item" data-go="act5"><span class="n">5</span> Timeline</button>
+    <div class="timer">est. agenda <b id="estTime">~18 min</b></div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ ACT 1 — THIS WEEK ============ -->
+  <section class="act" id="act1">
+    <div class="slide-band">
+      <span class="sb-num">01</span>
+      <span class="sb-title">This week</span>
+      <span class="sb-meta">What changed since last week — then the 2 decisions you'll resolve in Act 4.</span>
+    </div>
+    <div class="slide-body">
+      <div class="pulse">
+        <span class="pulse-pill up">2 live deals · both on track</span>
+        <span class="pulse-pill">5 pre-LOI in pipeline</span>
+        <span class="pulse-pill">Week of 16&ndash;22 Jun 2026</span>
+      </div>
+
+      <div class="eyebrow">What changed since last week</div>
+      <div class="moved">
+        <div class="mv">
+          <div class="ic">🟣</div>
+          <div>
+            <div class="ttl">Fox &amp; Mantis in active DD</div>
+            <div class="sub">Both LOIs signed; data rooms populating to 03 Jul. Signing targeted 21 Aug (Fox) / 28 Aug (Mantis).</div>
+          </div>
+        </div>
+        <div class="mv">
+          <div class="ic">🔎</div>
+          <div>
+            <div class="ttl">Mantis: EBIT-quality flag opened</div>
+            <div class="sub">DD surfaced reported EBIT &minus;55% in 2025; seller pro-forma bridge unverified. Central open item before valuation lock.</div>
+          </div>
+        </div>
+        <div class="mv">
+          <div class="ic">📨</div>
+          <div>
+            <div class="ttl">Sourcing: 362 replies on 411 sent</div>
+            <div class="sub">Across briefaktion batches; 26 reached a meeting, 3 advanced to financials this cycle.</div>
+          </div>
+        </div>
+      </div>
+
+      <hr class="hairline">
+
+      <div class="eyebrow">2 decisions for you today — full context in Act 4, resolve there</div>
+      <div class="prev-chips">
+        <button class="dchip" data-go="dec1">
+          <span class="num">1</span>
+          <span class="dt">Confirm co-invest budget for Fox + Mantis DD</span>
+          <span class="go">Act 4 ›</span>
+        </button>
+        <button class="dchip" data-go="dec2">
+          <span class="num">2</span>
+          <span class="dt">Mantis: hold valuation until EBIT bridge is verified?</span>
+          <span class="go">Act 4 ›</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ACT 2 — LIVE DEALS ============ -->
+  <section class="act" id="act2">
+    <div class="slide-band deep">
+      <span class="sb-num">02</span>
+      <span class="sb-title">Live deals</span>
+      <span class="sb-meta">Post-LOI · real names · Dealroom one-pager format · €M</span>
+    </div>
+    <div class="slide-body">
+
+      <div class="deal-toggle">
+        <button class="deal-tab active" data-deal="fox"><span>Fox</span><span class="tco">· Com2Med</span></button>
+        <button class="deal-tab" data-deal="mantis"><span>Mantis</span><span class="tco">· Endoberatung GmbH</span></button>
+      </div>
+
+      <!-- ===== FOX ===== -->
+      <div class="deal-panel active" id="deal-fox">
+        <div class="deal-top">
+          <span class="dname">Com2Med (Fox)</span>
+          <span class="op-stage">LOI Signed</span>
+          <span class="op-days">21d in stage</span>
+        </div>
+        <div class="keystrip">
+          <div class="ks"><span class="kl">EV at closing</span><span class="kv brand">€0.89M</span></div>
+          <div class="ks"><span class="kl">EV total (incl. EO)</span><span class="kv">€1.54M</span></div>
+          <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">€0.35M</span></div>
+          <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4.5x</span></div>
+        </div>
+
+        <div class="onepager-grid">
+          <div class="op-quadrant">
+            <div class="op-quadrant-header"><span>Executive Summary</span></div>
+            <div class="op-quadrant-body">
+              <ul>
+                <li>Fox is a <strong>distribution and service partner</strong> for ambulatory care providers such as doctors, medical facilities, practice founders / operators, health centers, MVZs and ambulant surgery settings</li>
+                <li>Revenue stems from <strong>distributing medical products</strong>, and devices (such as ultrasound) with additional service offering (practice planning, IT, technical service, STK/MTK inspections)</li>
+                <li><strong>LeasyMed</strong> is a newer rental / service offering with positive development and rising rental activity according to management</li>
+                <li>Fox generated <strong>~3.5 M€ revenue</strong> at <strong>0.4 M€ adj. EBITDA (10%)</strong> in 2025, with <strong>consistent growth</strong> since 2021 (~9% CAGR 2021-2025)</li>
+                <li>EV at closing of <strong>1.6 M€ (4.5x 2025A EBITDA)</strong>, with further earn-out of <strong>0.3 M€</strong> resulting in total <strong>EV of 1.9 M€ (5.3x 2025 EBITDA or 4.4x</strong> required EBITDA for earn-out<strong>)</strong></li>
+                <li><strong>Co-Med</strong> is the main logistics and procurement backbone of the business, enabling an <strong>asset-light operating model</strong> without own large-scale warehousing</li>
+                <li>Fox could serve as an <strong>attractive add-on</strong> with broad ambulant care customer access, differentiated service capabilities and further digital / service upside</li>
+              </ul>
+            </div>
+          </div>
+          <div class="op-quadrant">
+            <div class="op-quadrant-header"><span>Financials &amp; Valuation</span></div>
+            <div class="op-quadrant-body">
+              <div class="col-h">Financials (adj., €M)</div>
+              <div class="fin-row"><span class="fl">Revenue FY2025</span><span class="fv">3.57</span></div>
+              <div class="fin-row"><span class="fl">Adj. EBITDA FY2025</span><span class="fv">0.35</span></div>
+              <div class="fin-row"><span class="fl">Adj. EBIT FY2025</span><span class="fv">0.26</span></div>
+              <div class="fin-row"><span class="fl">Rev CAGR '21&ndash;'25</span><span class="fv">8.4%</span></div>
+              <div class="col-h" style="margin-top:16px">Capital &amp; structure</div>
+              <div class="fin-row"><span class="fl">Cash at closing</span><span class="fv">1.00</span></div>
+              <div class="fin-row"><span class="fl">+ Anticipated earn-out</span><span class="fv">0.50</span></div>
+              <div class="fin-row hl"><span class="fl">EV at closing</span><span class="fv">0.89</span></div>
+              <div class="fin-row"><span class="fl">EV incl. ant. earn-out</span><span class="fv">1.39</span></div>
+              <div class="fin-row"><span class="fl">EV total (+ super earn-out 0.15)</span><span class="fv">1.54</span></div>
+              <div class="fin-row hl"><span class="fl">Equity value</span><span class="fv">1.75</span></div>
+              <div class="bridge">
+                <div class="bridge-bar">
+                  <span style="width:57.8%;background:var(--brand)" title="EV at closing"></span>
+                  <span style="width:32.5%;background:#22d3ee" title="Anticipated earn-out"></span>
+                  <span style="width:9.7%;background:var(--brand-deep)" title="Super earn-out"></span>
+                </div>
+                <div class="bridge-leg"><span><i style="background:var(--brand)"></i>Closing 0.89</span><span><i style="background:#22d3ee"></i>Earn-out 0.50</span><span><i style="background:var(--brand-deep)"></i>Super 0.15</span><span>= EV total 1.54</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="op-quadrant">
+            <div class="op-quadrant-header"><span>Service Portfolio</span></div>
+            <div class="op-quadrant-body">
+              <ul>
+                <li><strong>Distribution and service partner</strong> to ambulatory care providers (doctors, medical facilities, practice founders, health centers, MVZs, ambulant surgery settings)</li>
+                <li>Revenue from <strong>distributing medical products</strong> and devices (ultrasound) with additional service offering (practice planning, IT, technical service, STK/MTK inspections)</li>
+                <li><strong>LeasyMed</strong> is a newer rental / service offering with positive development and rising rental activity</li>
+                <li>Current project examples indicate <strong>active new customer generation</strong> in planning, PACS, IT and furnishing across outpatient specialties</li>
+                <li>Customer concentration and recurring revenue share remain to be verified in due diligence</li>
+              </ul>
+            </div>
+          </div>
+          <div class="op-quadrant">
+            <div class="op-quadrant-header"><span>Process &amp; Status</span></div>
+            <div class="op-quadrant-body">
+              <ul>
+                <li><strong>Status:</strong> Q1 in-line with 2025 numbers, preparing updated indicative offer (initial offer sent last year, now updated with full-year 2025 view that outperformed, seller price expectations in line with updated offer)</li>
+                <li><strong>Transaction:</strong> Acquiring 100% of shares; Fox approached through proprietary sourcing in 2025; Fox owns 2 Co-Med shares, mid-term dependency to be analyzed</li>
+                <li><strong>Transition:</strong> Current owner / MD to support for 2–3 years; internal successor structure appears to exist; current owner with strong industry network (former president of medical trade industry association in Germany)</li>
+                <li><strong>Due diligence:</strong> Fox appears attractive – however, we will specifically look into customer concentration, revenue split / recurring revenue share, quality of project pipeline, Co-Med dependency and LeasyMed economics</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="rf-wrap">
+          <div class="sub-heading">Red flags to watch</div>
+          <div class="nodd"><b>DD not yet started — no risk items in system yet.</b><br>Fox carries no DD findings, scorecard or notes in the dealroom (pre-DD). Risk register opens once FDD/LDD/TDD work begins (data room populates to 03 Jul; FDD 17 Jul). No flags are asserted here because none are sourced.</div>
+        </div>
+      </div>
+
+      <!-- ===== MANTIS ===== -->
+      <div class="deal-panel" id="deal-mantis">
+        <div class="deal-top">
+          <span class="dname">Endoberatung GmbH (Mantis)</span>
+          <span class="op-stage">LOI Signed</span>
+          <span class="op-days">21d in stage</span>
+        </div>
+        <div class="deal-headline-txt">Mantis is an endoscopy distribution &amp; service specialist with ~25% EBITDA.</div>
+        <div class="keystrip">
+          <div class="ks"><span class="kl">EV at closing</span><span class="kv brand">€4.78M</span></div>
+          <div class="ks"><span class="kl">EV total (incl. EO)</span><span class="kv">€5.93M</span></div>
+          <div class="ks"><span class="kl">Adj. EBITDA</span><span class="kv">€0.82M</span></div>
+          <div class="ks"><span class="kl">EBITDA margin</span><span class="kv">~26%</span></div>
+        </div>
+
+        <div class="onepager-grid">
+          <div class="op-quadrant">
+            <div class="op-quadrant-header"><span>Executive Summary</span></div>
+            <div class="op-quadrant-body">
+              <ul>
+                <li>Mantis is a manufacturer-independent <strong>endoscopy distribution and service specialist</strong> serving gastroenterology practices, MVZs and hospitals, with own technicians plus refurbished-device and reprocessing-machine (RDG-E) offerings</li>
+                <li>Mantis generated <strong>~3.1 M€ revenue at ~0.8 M€ adj. EBITDA (~25%)</strong> in 2025, with 2023-25 revenue CAGR of ~7%</li>
+                <li>EV at closing of <strong>4.3 M€ (5.3x 2025A EBITDA)</strong>, with anticipated earn-out of <strong>0.5 M€</strong> resulting in total <strong>EV of 4.8 M€ (5.9x 2025 EBITDA)</strong>¹</li>
+                <li>Strong market position given <strong>resilient, largely cycle-independent demand</strong> in a niche with <strong>few competitors</strong> – additional tailwind given OEM repair exits and healthcare cost pressure</li>
+                <li>Mantis could serve as an <strong>attractive small platform</strong> given its differentiated technical / service capability, scalable model and untapped new-customer acquisition potential (especially driven by geographic expansion and partner companies network)</li>
+              </ul>
+            </div>
+          </div>
+          <div class="op-quadrant">
+            <div class="op-quadrant-header"><span>Financials &amp; Valuation</span></div>
+            <div class="op-quadrant-body">
+              <div class="col-h">Financials (adj., €M)</div>
+              <div class="fin-row"><span class="fl">Revenue FY2024</span><span class="fv">3.09</span></div>
+              <div class="fin-row"><span class="fl">Adj. EBITDA</span><span class="fv">0.82</span></div>
+              <div class="fin-row"><span class="fl">Adj. EBIT</span><span class="fv">0.78</span></div>
+              <div class="fin-row"><span class="fl">Adj. EBITDA margin (FY24)</span><span class="fv">~26%</span></div>
+              <div class="col-h" style="margin-top:16px">Capital &amp; structure</div>
+              <div class="fin-row"><span class="fl">Cash at closing</span><span class="fv">4.43</span></div>
+              <div class="fin-row"><span class="fl">+ Anticipated earn-out</span><span class="fv">0.50</span></div>
+              <div class="fin-row hl"><span class="fl">EV at closing</span><span class="fv">4.78</span></div>
+              <div class="fin-row"><span class="fl">EV incl. ant. earn-out</span><span class="fv">5.28</span></div>
+              <div class="fin-row"><span class="fl">EV total (+ super earn-out 0.65)</span><span class="fv">5.93</span></div>
+              <div class="fin-row hl"><span class="fl">Equity value</span><span class="fv">5.58</span></div>
+              <div class="bridge">
+                <div class="bridge-bar">
+                  <span style="width:80.6%;background:var(--brand)" title="EV at closing"></span>
+                  <span style="width:8.4%;background:#22d3ee" title="Anticipated earn-out"></span>
+                  <span style="width:11.0%;background:var(--brand-deep)" title="Super earn-out"></span>
+                </div>
+                <div class="bridge-leg"><span><i style="background:var(--brand)"></i>Closing 4.78</span><span><i style="background:#22d3ee"></i>Earn-out 0.50</span><span><i style="background:var(--brand-deep)"></i>Super 0.65</span><span>= EV total 5.93</span></div>
+              </div>
+              <div class="cap-note">ⓘ Bridge shown on the v9 model. A later model version (v11) reprices EV total to ~&euro;5.43M; the super-earn-out tranche maps to 4.8&times; required EBITDA / 6.7&times; 2025 EBITDA.</div>
+            </div>
+          </div>
+          <div class="op-quadrant">
+            <div class="op-quadrant-header"><span>Service Portfolio</span></div>
+            <div class="op-quadrant-body">
+              <ul>
+                <li>Manufacturer-independent <strong>endoscopy distribution and service</strong> partner for gastroenterology practices, MVZs and hospital endoscopy departments</li>
+                <li>Revenue from <strong>endoscope repair</strong> (own technicians), <strong>refurbished endoscope and peripheral sales</strong>, and <strong>RDG-E</strong> maintenance / hygienic validation / resale</li>
+                <li><strong>Fragmented customer base</strong> (&gt;100 customers make up 80% of sales); long-standing, trust-based relationships; growth inbound / word-of-mouth with no active sales to date</li>
+                <li>Sales largely driven by <strong>existing customers (~80%)</strong> with limited sales efforts; however, contractual recurring share is thin (~14 service contracts) – recurring vs. churn to be verified in DD</li>
+              </ul>
+            </div>
+          </div>
+          <div class="op-quadrant">
+            <div class="op-quadrant-header"><span>Process &amp; Status</span></div>
+            <div class="op-quadrant-body">
+              <ul>
+                <li><strong>Transaction background:</strong> Acquiring 100% of shares (two managing shareholders: senior owner + son); proprietary sourcing, owner re-contacted Repuro after exclusive process was terminated due to personal fit with strategic buyer</li>
+                <li><strong>Reinvestment:</strong> 0.5 M€ (~10%) of cash purchase price to be reinvested pari passu with investors in Repuro group – proving commitment of management to group vision</li>
+                <li><strong>Transition:</strong> Senior owner/MD to support 6-12 months post-closing; son (junior MD) already runs day-to-day and stays on for knowledge transfer – mitigating key-person risk</li>
+                <li><strong>Due diligence:</strong> Specific focus on recurring vs. demand-driven revenue, OEM/Olympus dependency, adjustments, inventory valuation, customer churn, revenue visibility</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="op-footnote">Note: 1) Further super-earn-out (not-anticipated) of 0.7 M€, leading to total of 5.4 M€ EV (4.8x required EBITDA or 6.7x 2025 EBITDA)</div>
+
+        <div class="rf-wrap">
+          <div class="sub-heading">Red flags to watch <span class="muted" style="font-weight:500;font-size:13px">— from DD register (21 items)</span></div>
+          <div class="flag"><span class="sev sev-h">HIGH</span><div class="ft"><b>Reported EBIT &minus;55% in 2025</b> (716.8k → 320.3k). Seller pro-forma rests on unverified one-offs — core valuation risk.</div></div>
+          <div class="flag"><span class="sev sev-h">HIGH</span><div class="ft"><b>2025 GuV preliminary</b> (bis Periode 16); final JA, SuSa &amp; BWA 2026 outstanding — final accounts may shift numbers.</div></div>
+          <div class="flag"><span class="sev sev-h">HIGH</span><div class="ft"><b>Krankenhaus 2024 spike</b> (983k → 1,721k → 1,377k). If one-off, underlying 2024 growth is optics not trend.</div></div>
+          <div class="flag"><span class="sev sev-m">MED</span><div class="ft"><b>2025 tie-out depends on seller's unverified €120k revenue shift</b> to 2026 (revenue coverage MEDIUM for 2025).</div></div>
+          <div class="flag"><span class="sev sev-m">MED</span><div class="ft"><b>Gross margin: labor not allocated per segment</b> — segment GM% are contribution margins (DB I), not fully-loaded.</div></div>
+          <div class="flag"><span class="sev sev-m">MED</span><div class="ft"><b>2023 cohort degrading</b> (682k → 780k → 514k) — new vintages decaying; cohort window effect (pre-2022 lumped into 2022).</div></div>
+        </div>
+      </div>
+
+      <p class="note"><span class="lock">🔒</span> Real names &amp; financials shown only for post-LOI deals. One-pager content (Exec Summary, Service Portfolio, Process &amp; Status, headline, footnote) is verbatim from the Dealroom <b>deals</b> table; financials &amp; EV bridge from the deal model. Mantis flags are the materially-relevant subset of 21 live DD items; Fox has none yet (pre-DD).</p>
+    </div>
+  </section>
+
+  <!-- ============ ACT 3 — PIPELINE (verbatim dealroom table) ============ -->
+  <section class="act" id="act3">
+    <div class="slide-band">
+      <span class="sb-num">03</span>
+      <span class="sb-title">Pipeline</span>
+      <span class="sb-meta">Live Deal Portfolio — codename-based, exactly as in the Dealroom</span>
+    </div>
+    <div class="slide-body">
+
+      <div class="stage-filter">
+        <label>Stage</label>
+        <button class="filter-btn active" data-filter="active">Active</button>
+        <button class="filter-btn" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="on_hold">On Hold</button>
+        <button class="filter-btn" data-filter="dead">Dead</button>
+      </div>
+
+      <div class="portfolio-wrap">
+      <!-- ===== VERBATIM Dealroom "Live Deal Portfolio" table (from dealroom-table.html) ===== -->
+      <table class="portfolio-table"><colgroup><col class="c-code"><col class="c-rev"><col class="c-ebitda"><col class="c-pct"><col class="c-emp"><col class="c-desc"><col class="c-ev"><col class="c-mul"><col class="c-stage"><col class="c-comment"></colgroup><thead><tr><th class="c">Deal</th><th class="c">Rev.</th><th class="c">EBITDA</th><th class="c">EBITDA<br>margin</th><th class="c"># empl.</th><th style="text-align:left">Description</th><th class="c">EV<sup>1</sup></th><th class="c">Multiple<sup>2</sup></th><th class="c">Stage</th><th style="text-align:left">Comment</th></tr></thead><tbody><tr data-stage="loi_signed"><td class="code-cell">Fox</td><td style="text-align:center;font-weight:700">3.6</td><td style="text-align:center;font-weight:700">0.4</td><td style="text-align:center">10%</td><td style="text-align:center">20</td><td class="text-cell"><div class="clamp3">Distribution &amp; service of medical products and practice planning (including IT)</div></td><td style="text-align:center;font-weight:700">1.4</td><td style="text-align:center;font-weight:700">4.0x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="loi_signed" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#8b5cf6"></span>LOI Signed</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Indicative offer preparation</li></ul></div></td></tr><tr data-stage="loi_signed"><td class="code-cell">Mantis</td><td style="text-align:center;font-weight:700">3.2</td><td style="text-align:center;font-weight:700">0.8</td><td style="text-align:center">25%</td><td style="text-align:center">9</td><td class="text-cell"><div class="clamp3">Repair &amp; distribution of flexible endoscopes (third-party service for practices and hospitals)</div></td><td style="text-align:center;font-weight:700">4.8</td><td style="text-align:center;font-weight:700">5.9x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="loi_signed" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#8b5cf6"></span>LOI Signed</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>indicative_offer</li></ul></div></td></tr><tr data-stage="indicative_offer"><td class="code-cell">Cat</td><td style="text-align:center;font-weight:700">6.3</td><td style="text-align:center;font-weight:700">0.9</td><td style="text-align:center">15%</td><td style="text-align:center">35</td><td class="text-cell"><div class="clamp3">Distribution &amp; service of medical equipment (focus on hospitals and surgery)</div></td><td style="text-align:center;font-weight:700">5.2</td><td style="text-align:center;font-weight:700">5.4x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="indicative_offer" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#6366f1"></span>NBO Sent</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Awaiting seller feedback regarding their commercial expectations</li><li>xz</li></ul></div></td></tr><tr data-stage="indicative_offer"><td class="code-cell">Lion</td><td style="text-align:center;font-weight:700">7.8</td><td style="text-align:center;font-weight:700">0.7</td><td style="text-align:center">9%</td><td style="text-align:center">27</td><td class="text-cell"><div class="clamp3">Distribution of medical products (equipment parts)</div></td><td style="text-align:center;font-weight:700">4.8</td><td style="text-align:center;font-weight:700">5.9x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="indicative_offer" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#6366f1"></span>NBO Sent</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Lost on price (strategic buyer bid 1 M€ more)</li></ul></div></td></tr><tr data-stage="indicative_offer"><td class="code-cell">Swordfish</td><td style="text-align:center;font-weight:700">1.6</td><td style="text-align:center;font-weight:700">1.0</td><td style="text-align:center">61%</td><td style="text-align:center">—</td><td class="text-cell"><div class="clamp3">(Soft) OEM of small medical devices (focus on assembly with lean operations)</div></td><td style="text-align:center;font-weight:700">3.2</td><td style="text-align:center;font-weight:700">3.3x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="indicative_offer" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#6366f1"></span>NBO Sent</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>NBO Sent</li></ul></div></td></tr><tr data-stage="valuation_rfi"><td class="code-cell">Mouse</td><td style="text-align:center;font-weight:700">1.0</td><td style="text-align:center;font-weight:700">0.1</td><td style="text-align:center">10%</td><td style="text-align:center">8</td><td class="text-cell"><div class="clamp3">Service and repair of medical products</div></td><td style="text-align:center;font-weight:700">2.8</td><td style="text-align:center;font-weight:700">4.5x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="valuation_rfi" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#3b82f6"></span>Valuation &amp; RFI</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Initial meeting done, awaiting financials</li></ul></div></td></tr><tr data-stage="valuation_rfi"><td class="code-cell">Wolf</td><td style="text-align:center;font-weight:700">8.0</td><td style="text-align:center;font-weight:700">0.8</td><td style="text-align:center">10%</td><td style="text-align:center">18</td><td class="text-cell"><div class="clamp3">Distribution &amp; service of medical products (SSB focus)</div></td><td style="text-align:center;font-weight:700">5.2</td><td style="text-align:center;font-weight:700">5.1x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="valuation_rfi" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#3b82f6"></span>Valuation &amp; RFI</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Awaiting seller feedback regarding their commercial expectations</li></ul></div></td></tr><tr data-stage="on_hold" style="display:none"><td class="code-cell">Eagle</td><td style="text-align:center;font-weight:700">1.4</td><td style="text-align:center;font-weight:700">0.2</td><td style="text-align:center">14%</td><td style="text-align:center">7</td><td class="text-cell"><div class="clamp3">Development &amp; sourcing surgery equipment and QM-consultation</div></td><td style="text-align:center;font-weight:700">—</td><td style="text-align:center;font-weight:700">—</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="on_hold" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#6b7280"></span>On Hold</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Awaiting broker feedback</li></ul></div></td></tr><tr data-stage="on_hold" style="display:none"><td class="code-cell">Falcon</td><td style="text-align:center;font-weight:700">1.2</td><td style="text-align:center;font-weight:700">0.2</td><td style="text-align:center">17%</td><td style="text-align:center">4</td><td class="text-cell"><div class="clamp3">Distribution of medical products</div></td><td style="text-align:center;font-weight:700">—</td><td style="text-align:center;font-weight:700">—</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="on_hold" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#6b7280"></span>On Hold</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Indicative offer preparation</li></ul></div></td></tr><tr data-stage="on_hold" style="display:none"><td class="code-cell">Owl</td><td style="text-align:center;font-weight:700">1.8</td><td style="text-align:center;font-weight:700">0.2</td><td style="text-align:center">11%</td><td style="text-align:center">12</td><td class="text-cell"><div class="clamp3">Distribution &amp; service of medical products (focus: radiology and ambulatory surgery)</div></td><td style="text-align:center;font-weight:700">—</td><td style="text-align:center;font-weight:700">—</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="on_hold" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#6b7280"></span>On Hold</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Personal meeting done in Jan, analysis of financials</li></ul></div></td></tr><tr data-stage="on_hold" style="display:none"><td class="code-cell">Panda</td><td style="text-align:center;font-weight:700">—</td><td style="text-align:center;font-weight:700">—</td><td style="text-align:center">—</td><td style="text-align:center">49</td><td class="text-cell"><div class="clamp3"></div></td><td style="text-align:center;font-weight:700">—</td><td style="text-align:center;font-weight:700">—</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="on_hold" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#6b7280"></span>On Hold</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>On hold</li></ul></div></td></tr><tr data-stage="dead" style="display:none"><td class="code-cell">Blackbird</td><td style="text-align:center;font-weight:700">—</td><td style="text-align:center;font-weight:700">—</td><td style="text-align:center">—</td><td style="text-align:center">—</td><td class="text-cell"><div class="clamp3">Should we even include this?</div></td><td style="text-align:center;font-weight:700">—</td><td style="text-align:center;font-weight:700">—</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="dead" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#ef4444"></span>Dead</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Financials received; analyzing</li><li>xyz</li></ul></div></td></tr><tr data-stage="dead" style="display:none"><td class="code-cell">Colibri</td><td style="text-align:center;font-weight:700">4.1</td><td style="text-align:center;font-weight:700">0.4</td><td style="text-align:center">10%</td><td style="text-align:center">22</td><td class="text-cell"><div class="clamp3">Distribution of medical products (aesthetics)</div></td><td style="text-align:center;font-weight:700">—</td><td style="text-align:center;font-weight:700">—</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="dead" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#ef4444"></span>Dead</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Indicative offer preparation</li></ul></div></td></tr><tr data-stage="dead" style="display:none"><td class="code-cell">Octopus</td><td style="text-align:center;font-weight:700">11.0</td><td style="text-align:center;font-weight:700">2.1</td><td style="text-align:center">19%</td><td style="text-align:center">36</td><td class="text-cell"><div class="clamp3">Distribution &amp; service of medical products (SSB focus)</div></td><td style="text-align:center;font-weight:700">3.2</td><td style="text-align:center;font-weight:700">2.1x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="dead" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#ef4444"></span>Dead</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>LOI preparation awaiting feedback</li></ul></div></td></tr></tbody><tfoot><tr><td style="text-align:center">SUM</td><td style="text-align:center">31.5</td><td style="text-align:center">4.6</td><td style="text-align:center">—</td><td style="text-align:center">117</td><td></td><td style="text-align:center">—</td><td style="text-align:center">—</td><td></td><td></td></tr></tfoot></table>
+      </div>
+      <p class="note"><span class="lock">ℹ</span> <sup>1</sup> EV = Enterprise Value (€M). <sup>2</sup> Multiple = EV / EBITDA. Table is the verbatim Dealroom "Live Deal Portfolio" view — codename-based; figures, comments and the SUM row are carried over exactly as they stand in the Dealroom (SUM EBITDA reflects the Dealroom's own rounding; per-row EBITDA sums to ~4.7).</p>
+
+      <div class="kpi-stack">
+        <div>
+          <div class="sub-heading">Sourcing funnel — briefaktion campaign</div>
+          <div class="funnel">
+            <div class="fstage"><div class="fl">Sent</div><div class="fbar-wrap"><div class="fbar" style="width:100%;background:var(--brand)">411</div></div><div class="fn">411</div></div>
+            <div class="fstage"><div class="fl">Replies</div><div class="fbar-wrap"><div class="fbar" style="width:88.1%;background:#1297b8">362</div></div><div class="fn">362</div></div>
+            <div class="fstage"><div class="fl">Meetings</div><div class="fbar-wrap"><div class="fbar" style="width:6.3%;min-width:34px;background:var(--brand-deep)">26</div></div><div class="fn">26</div></div>
+            <div class="fstage"><div class="fl">Financials</div><div class="fbar-wrap"><div class="fbar" style="width:1%;min-width:30px;background:var(--st-val)">3</div></div><div class="fn">3</div></div>
+          </div>
+          <p class="note">411 sent / 438 in batches · reply→meeting conversion ~7.2% · meeting→financials 3 of 26.</p>
+        </div>
+        <div>
+          <div class="sub-heading">Stage spread — all live targets</div>
+          <div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">
+            <div class="spread-row"><span class="stage s-loi">LOI signed</span><span class="cnt">2</span></div>
+            <div class="spread-row"><span class="stage s-ind">Indicative offer</span><span class="cnt">3</span></div>
+            <div class="spread-row"><span class="stage s-val">Valuation / RFI</span><span class="cnt">2</span></div>
+            <div class="spread-row"><span class="stage" style="background:#94a3b8">On hold</span><span class="cnt">4</span></div>
+            <div class="spread-row"><span class="stage" style="background:#cbd5e1;color:#475569">Dead</span><span class="cnt">3</span></div>
+          </div>
+          <p class="note">Counts from dealroom <b>deals</b> by stage (14 records total). Investor view = LOI + indicative + valuation only.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ACT 4 — DECISIONS (one smooth card each) ============ -->
+  <section class="act" id="act4">
+    <div class="slide-band deep">
+      <span class="sb-num">04</span>
+      <span class="sb-title">Decisions required today</span>
+      <span class="sb-meta">Curated by founder · 2 decisions to resolve on the call</span>
+    </div>
+    <div class="slide-body">
+      <div class="dec-stack">
+
+        <div class="dec" id="dec1">
+          <div class="dec-label">Decision 1 · Capital <span class="curated">— curated</span></div>
+          <div class="dec-q">Confirm co-invest budget for Fox + Mantis DD</div>
+          <div class="dec-ask">Both deals are in binding DD this quarter (data rooms populating to 03 Jul). Approve committing advisor budget — FDD / LDD / TDD — against the post-LOI co-invest line so the 24 Jul – 05 Aug DD gates stay on schedule.</div>
+          <div class="dec-facts">
+            <div class="f"><span class="fl">Fox — EV at closing</span><span class="fv brand">€0.89M</span></div>
+            <div class="f"><span class="fl">Mantis — EV at closing</span><span class="fv brand">€4.78M</span></div>
+            <div class="f"><span class="fl">Capped exposure</span><span class="fv">€5.67M</span></div>
+            <div class="f"><span class="fl">DD gates</span><span class="fv sm">17 Jul – 05 Aug</span></div>
+          </div>
+          <div class="dec-rec">
+            <span class="rl">Recommendation</span>
+            <b>Approve the advisor budget now.</b> Both deals are LOI-signed with dated gates 17 Jul – 05 Aug; delaying the FDD/LDD/TDD commitment slips signing (21 Aug Fox / 28 Aug Mantis). Exposure is capped by the two EV-at-closing figures (€0.89M + €4.78M); earn-out tranches are deferred and contingent.
+          </div>
+          <div class="yn">
+            <button class="btn y" onclick="decide(this)">Approve</button>
+            <button class="btn" onclick="decide(this)">Hold</button>
+            <button class="btn" onclick="decide(this)">Discuss</button>
+          </div>
+        </div>
+
+        <div class="dec" id="dec2">
+          <div class="dec-label">Decision 2 · Valuation <span class="curated">— curated</span></div>
+          <div class="dec-q">Mantis: hold valuation until the EBIT bridge is verified?</div>
+          <div class="dec-ask">DD flagged reported EBIT &minus;55% in 2025 with the seller's pro-forma bridge resting on unverified one-offs (€120k revenue shift, GF-salary normalisation, Olympus prep costs). Do we freeze the valuation discussion until final JA 2025 / SuSa / BWA land, or proceed on the seller pro-forma with a holdback?</div>
+          <div class="dec-facts">
+            <div class="f"><span class="fl">Reported EBIT 2025</span><span class="fv">320.3k</span></div>
+            <div class="f"><span class="fl">vs. prior year</span><span class="fv">716.8k</span></div>
+            <div class="f"><span class="fl">Reported change</span><span class="fv alert">&minus;55%</span></div>
+            <div class="f"><span class="fl">EV total (v9 / v11)</span><span class="fv sm">€5.93M / ~5.43M</span></div>
+          </div>
+          <div class="dec-rec">
+            <span class="rl">Recommendation</span>
+            <b>Hold the valuation lock</b> until final JA 2025 / SuSa / BWA verify the EBIT bridge — the gap (320.3k reported vs. seller pro-forma) is the single largest swing on price. If timing pressure forces movement, proceed only with a holdback sized to the unverified pro-forma adjustments. EBIT quality is the central open item; revenue coverage is only MEDIUM for 2025.
+          </div>
+          <div class="yn">
+            <button class="btn y" onclick="decide(this)">Hold valuation</button>
+            <button class="btn" onclick="decide(this)">Proceed + holdback</button>
+            <button class="btn" onclick="decide(this)">Discuss</button>
+          </div>
+        </div>
+
+      </div>
+      <p class="note"><span class="lock">⚠</span> Decisions are <b>curated by the founder (placeholder)</b> — there is no decision/gate DB source (deal_manual_gates is empty). Each is tied to real deal state, but the framing and options are illustrative until confirmed.</p>
+    </div>
+  </section>
+
+  <!-- ============ ACT 5 — TIMELINE (cockpit gantt) ============ -->
+  <section class="act" id="act5">
+    <div class="slide-band">
+      <span class="sb-num">05</span>
+      <span class="sb-title">Timeline — path to signing</span>
+      <span class="sb-meta">◆ milestone · red ◆ critical gate · dashed ◆ / hatched = curated</span>
+    </div>
+    <div class="slide-body">
+      <div class="gantt">
+        <div class="gantt-scale">
+          <span></span>
+          <div class="gantt-months"><span>Jul 2026</span><span>Aug 2026</span><span>Sep 2026</span></div>
+        </div>
+
+        <div class="grow"><div class="lbl"><span class="sw" style="background:var(--st-loi)"></span>Fox</div>
+          <div class="track">
+            <div class="gantt-now"><span>now</span></div>
+            <div class="bar" style="left:11%;width:49%;background:var(--st-loi)">Data room → DD → signing</div>
+            <div class="mile" style="left:11%" title="Dataroom fully populated · 03 Jul"></div>
+            <div class="mile" style="left:16%" title="Data room & requests · 08 Jul"></div>
+            <div class="mile" style="left:25%" title="FDD + Bank/Operating Model · 17 Jul"></div>
+            <div class="mile crit" style="left:32%" title="LDD + TDD completed · 24 Jul"></div>
+            <div class="mile crit" style="left:60%" title="Signing / Closing · 21 Aug"></div>
+          </div>
+        </div>
+
+        <div class="grow"><div class="lbl"><span class="sw" style="background:#c084e8"></span>Mantis</div>
+          <div class="track">
+            <div class="bar" style="left:11%;width:57%;background:#c084e8">Data room → DD → signing</div>
+            <div class="mile" style="left:11%" title="Dataroom fully populated · 03 Jul"></div>
+            <div class="mile" style="left:32%" title="FDD + Bank/Operating Model · 24 Jul"></div>
+            <div class="mile crit" style="left:44%" title="LDD + TDD completed · 05 Aug"></div>
+            <div class="mile crit" style="left:68%" title="Signing / Closing · 28 Aug"></div>
+          </div>
+        </div>
+
+        <div class="grow"><div class="lbl"><span class="sw" style="background:var(--brand)"></span>Fundraising</div>
+          <div class="track">
+            <div class="bar curated" style="left:0%;width:34%" title="curated">Finance setup &amp; partner</div>
+            <div class="mile" style="left:0%" title="Fundraising partner decision · 20 Jun (Cockpit)"></div>
+            <div class="mile cur" style="left:34%" title="Term-sheet / partner close · curated placeholder"></div>
+          </div>
+        </div>
+      </div>
+      <p class="note">Solid bars/◆ = Cockpit <b>deliverables</b> (dated: Fox + Mantis DD milestones, fundraising partner decision 20 Jun). Timeline is <b>sparse</b> — 20 of 62 deliverables carry a target_date; test rows filtered out. Hatched fundraising bar + dashed ◆ = <b>curated placeholder</b> (no further fundraising dates in any DB).</p>
+    </div>
+  </section>
+
+  <div class="prov">
+    <b>Data provenance.</b>
+    REAL (sourced): Fox &amp; Mantis one-pagers — Exec Summary, Service Portfolio, Process &amp; Status, headline &amp; footnote verbatim from dealroom <b>deals</b> (onepager_q1 / q4 / q3 / onepager_headline / onepager_footnote); Fox &amp; Mantis financials &amp; EV bridge (260518_Com2Med_v7.xlsx / 260128_Endoberatung_Model_v9.xlsx); Mantis 6 red flags (deal_dd_items, 21 items); pipeline table &amp; stage spread (dealroom deals — verbatim Live Deal Portfolio view); sourcing funnel (lead-pipeline pipeline.db, briefaktion batches); Fox/Mantis DD &amp; fundraising-decision dates (cockpit deliverables). &nbsp;
+    CURATED placeholder: the two decision cards (no deal_manual_gates source) and the post-decision fundraising milestone. &nbsp;
+    MISSING / honest empty state: Fox red flags (pre-DD, none in system); Fox onepager_title, onepager_headline &amp; onepager_footnote are NULL in the DB (title falls back to company name, headline/footnote omitted); pre-LOI pipeline exact figures shown as in the real codename-based Dealroom table.
+  </div>
+
+  <div class="foot">
+    <span><b>Repuro · Kamu Kapital</b> — investor room for Strada</span>
+    <span>Data: Dealroom · Cockpit · Allex (filtered to permission boundary)</span>
+    <span>Pre-LOI names hidden · other investors &amp; sellers never shown</span>
+  </div>
+
+</div>
+
+<script>
+// agenda rail -> jump + active state
+var items=[].slice.call(document.querySelectorAll('.agenda-item'));
+function go(id){var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
+document.querySelectorAll('[data-go]').forEach(function(b){
+  b.addEventListener('click',function(){go(this.getAttribute('data-go'));});
+});
+var acts=['act1','act2','act3','act4','act5'];
+window.addEventListener('scroll',function(){
+  var pos=window.scrollY+120,cur='act1';
+  acts.forEach(function(a){var e=document.getElementById(a);if(e&&e.offsetTop<=pos)cur=a;});
+  items.forEach(function(it){it.classList.toggle('active',it.getAttribute('data-go')===cur);});
+},{passive:true});
+
+// ACT 2 — live-deal toggle (Fox / Mantis)
+document.querySelectorAll('.deal-tab').forEach(function(tab){
+  tab.addEventListener('click',function(){
+    var deal=this.getAttribute('data-deal');
+    document.querySelectorAll('.deal-tab').forEach(function(t){t.classList.toggle('active',t===tab);});
+    document.querySelectorAll('.deal-panel').forEach(function(p){
+      p.classList.toggle('active',p.id==='deal-'+deal);
+    });
+  });
+});
+
+// ACT 3 — stage filter pills (show/hide rows by data-stage)
+var ACTIVE_STAGES=['loi_signed','indicative_offer','valuation_rfi','meeting_concluded','due_diligence','contract_negotiation','closed'];
+document.querySelectorAll('.stage-filter .filter-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var f=this.getAttribute('data-filter');
+    document.querySelectorAll('.stage-filter .filter-btn').forEach(function(b){b.classList.toggle('active',b===btn);});
+    document.querySelectorAll('.portfolio-table tbody tr').forEach(function(tr){
+      var st=tr.getAttribute('data-stage');
+      var show;
+      if(f==='all') show=true;
+      else if(f==='active') show=ACTIVE_STAGES.indexOf(st)!==-1;
+      else show=(st===f);
+      tr.style.display=show?'':'none';
+    });
+  });
+});
+
+// decision buttons -> mark resolved, recompute "decisions waiting" dot
+function decide(btn){
+  var grp=btn.parentNode;
+  [].slice.call(grp.children).forEach(function(b){
+    b.classList.remove('done');b.disabled=false;
+    if(!b.dataset.label) b.dataset.label=b.textContent.replace('✓ ','');
+    b.textContent=b.dataset.label;
+  });
+  if(!btn.dataset.label) btn.dataset.label=btn.textContent;
+  btn.classList.add('done');btn.textContent='✓ '+btn.dataset.label;
+  var open=document.querySelectorAll('.dec .btn.done').length;
+  var dot=document.querySelector('.agenda-item .dot');
+  if(dot) dot.style.display=(open>=2)?'none':'';
+}
+</script>
+</body>
+</html>

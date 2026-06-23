@@ -1,0 +1,8 @@
+# --- Investor Room: add to suite/fly.toml [env] block ---
+# (AUTH_INVESTOR_HASH is NOT here — it's a Fly secret: `fly secrets set AUTH_INVESTOR_HASH=...`)
+
+  # INVESTOR ROOM
+  INVESTOR_DB = "/data/investor.db"
+  INVESTOR_DEALROOM_DB = "/data/dealroom.db"
+  INVESTOR_PIPELINE_DB = "/data/pipeline.db"
+  INVESTOR_COCKPIT_DB = "/data/cockpit.db"

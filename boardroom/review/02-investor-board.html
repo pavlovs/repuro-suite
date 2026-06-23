@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<title>Investor Room — Board (investor view) (static review snapshot)</title>
+<style>
+/* Investor Room — minimal professional styling */
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f9fafb;
+  --surface: #ffffff;
+  --border: #e5e7eb;
+  --text: #111827;
+  --text-muted: #6b7280;
+  --accent: #1d4ed8;
+  --accent-hover: #1e40af;
+  --nav-w: 200px;
+  --radius: 6px;
+}
+
+html, body { height: 100%; font-family: Inter, -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+
+#root { height: 100%; }
+
+/* Boot spinner */
+.boot-spinner { display: flex; align-items: center; justify-content: center; height: 100vh; flex-direction: column; gap: 12px; }
+.spinner { width: 28px; height: 28px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.boot-label { font-size: 13px; color: var(--text-muted); }
+
+/* Layout */
+.layout { display: flex; height: 100%; }
+
+/* Left nav */
+.nav { width: var(--nav-w); background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 24px 0; flex-shrink: 0; }
+.nav-logo { padding: 0 20px 24px; font-weight: 700; font-size: 15px; color: var(--text); letter-spacing: -.3px; }
+.nav-logo span { color: var(--text-muted); font-weight: 400; }
+.nav-item { display: block; padding: 9px 20px; color: var(--text-muted); text-decoration: none; cursor: pointer; border: none; background: none; font-size: 14px; font-family: inherit; width: 100%; text-align: left; transition: color .15s; }
+.nav-item:hover { color: var(--text); }
+.nav-item.active { color: var(--accent); font-weight: 600; background: #eff6ff; border-left: 3px solid var(--accent); padding-left: 17px; }
+.nav-footer { margin-top: auto; padding: 16px 20px; font-size: 12px; color: var(--text-muted); }
+.badge-admin { display: inline-block; background: #fef3c7; color: #92400e; font-size: 11px; padding: 1px 6px; border-radius: 4px; margin-left: 6px; font-weight: 500; }
+
+/* Main content */
+.main { flex: 1; overflow-y: auto; padding: 40px 48px; }
+.page-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.page-sub { color: var(--text-muted); font-size: 13px; margin-bottom: 32px; }
+
+/* Empty state */
+.empty-state { color: var(--text-muted); padding: 48px 0; text-align: center; font-size: 14px; }
+
+/* Error */
+.error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: var(--radius); padding: 16px; color: #991b1b; margin-bottom: 24px; }
+
+/* Section headings */
+.section { margin-bottom: 40px; }
+.section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: 12px; }
+
+/* Tables */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th { text-align: left; padding: 8px 12px; background: var(--bg); border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text-muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+.tbl-wrap { border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+
+/* Deal cards */
+.deal-cards { display: flex; flex-direction: column; gap: 16px; }
+.deal-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; }
+.deal-card-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.deal-name { font-weight: 700; font-size: 16px; }
+.deal-stage { font-size: 12px; color: var(--accent); background: #eff6ff; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+.deal-metrics { display: flex; gap: 24px; flex-wrap: wrap; margin-bottom: 12px; }
+.metric { display: flex; flex-direction: column; gap: 2px; }
+.metric-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.metric-value { font-size: 15px; font-weight: 700; }
+.deal-commentary { font-size: 13px; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 12px; margin-top: 4px; }
+
+/* Narrative block */
+.narrative { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; font-size: 14px; line-height: 1.7; color: var(--text); }
+
+/* Fundraising */
+.fundraising-block { display: flex; flex-direction: column; gap: 16px; }
+.fund-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; }
+.fund-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-muted); margin-bottom: 6px; }
+.fund-text { font-size: 13px; line-height: 1.6; }
+
+/* Board pack */
+.kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+.kpi-metric { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+.kpi-value { font-size: 22px; font-weight: 800; }
+.kpi-prior { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+.agenda-list, .decision-list, .preread-list { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.agenda-item, .decision-item, .preread-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; }
+.agenda-item-title { font-weight: 600; }
+.agenda-item-owner { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.decision-topic { font-weight: 600; margin-bottom: 4px; }
+.decision-meta { font-size: 12px; color: var(--text-muted); }
+.resolution-badge { display: inline-block; background: #d1fae5; color: #065f46; font-size: 11px; padding: 1px 7px; border-radius: 4px; font-weight: 700; margin-left: 8px; }
+
+.meeting-header { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 24px; }
+.meeting-date { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.meeting-meta { font-size: 13px; color: var(--text-muted); }
+
+.minutes-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; font-size: 14px; color: var(--text-muted); font-style: italic; }
+
+/* Project-update milestones */
+.milestones { margin-top: 14px; }
+.milestones-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; color: var(--text-muted); margin-bottom: 6px; }
+.milestone-list { list-style: none; }
+.milestone-list li { padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+.milestone-list li:last-child { border-bottom: none; }
+.ms-name { font-weight: 500; color: var(--text); }
+.ms-date { color: var(--text-muted); font-size: 12px; }
+.ms-note { color: var(--text-muted); }
+
+.__review_banner{position:sticky;top:0;z-index:99;background:#fef3c7;color:#92400e;
+  font:600 12px/1.4 Inter,system-ui,sans-serif;padding:6px 14px;border-bottom:1px solid #f59e0b;}
+</style></head>
+<body>
+<div class="__review_banner">STATIC REVIEW SNAPSHOT — What Strada sees — Board · seeded demo data · not the live app</div>
+<div id="root"><div class="layout"><nav class="nav"><div class="nav-logo">Investor Room</div><button class="nav-item">Updates</button><button class="nav-item active">Board</button><div class="nav-footer">Repuro © 2026</div></nav><main class="main"><div class="page-title">Board</div><div class="page-sub">Board Meeting — 30 Jun 2026</div><div><div class="meeting-header"><div class="meeting-date">Board meeting — 2026-06-30</div><div class="meeting-meta"><span>Berlin / Video call</span><span> · Roman Dobriakov (MD), Florian (Co-Founder), Strada Representative</span></div></div><div class="section"><div class="section-title">KPIs</div><div class="kpi-grid"><div class="kpi-card"><div class="kpi-metric">Pipeline (active leads)</div><div class="kpi-value">3</div><div class="kpi-prior">Prior: 2</div></div><div class="kpi-card"><div class="kpi-metric">Live deals (post-LOI)</div><div class="kpi-value">2</div><div class="kpi-prior">Prior: 1</div></div><div class="kpi-card"><div class="kpi-metric">Combined EV in DD (€M)</div><div class="kpi-value">15.0</div><div class="kpi-prior">Prior: 9.6</div></div><div class="kpi-card"><div class="kpi-metric">Batch outreach (total sent)</div><div class="kpi-value">515</div><div class="kpi-prior">Prior: 425</div></div></div></div><div class="section"><div class="section-title">Agenda</div><ul class="agenda-list"><li class="agenda-item"><div class="agenda-item-title">1. Deal pipeline update — Eagle &amp; OWL status</div><div class="agenda-item-owner">Owner: Roman</div></li><li class="agenda-item"><div class="agenda-item-title">2. Fundraising &amp; cap table — sources/uses approval</div><div class="agenda-item-owner">Owner: Roman / Florian</div></li><li class="agenda-item"><div class="agenda-item-title">3. Q3 milestones &amp; resolutions</div><div class="agenda-item-owner">Owner: All</div></li></ul></div><div class="section"><div class="section-title">Decisions &amp; resolutions</div><ul class="decision-list"><li class="decision-item"><div class="decision-topic">Eagle acquisition — EV and earn-out<span class="resolution-badge">APPROVED</span></div><div class="decision-meta"><span>Approve EV of €9.6M with €0.5M earn-out over 2 years</span><span> · Vote: Unanimous</span></div></li><li class="decision-item"><div class="decision-topic">OWL acquisition — LOI ratification<span class="resolution-badge">APPROVED</span></div><div class="decision-meta"><span>Ratify LOI signed 2026-06-12 at EV €5.4M</span><span> · Vote: Unanimous</span></div></li></ul></div><div class="section"><div class="section-title">Pre-read materials</div><ul class="preread-list"><li class="preread-item"><strong>Eagle FDD interim report (week 3)</strong><span style="color: rgb(107, 114, 128);"> — Shared via secure data room</span></li><li class="preread-item"><strong>OWL LOI + NDA</strong><span style="color: rgb(107, 114, 128);"> — Executed copies in data room</span></li><li class="preread-item"><strong>Capital structure memo v2</strong><span style="color: rgb(107, 114, 128);"> — Ebner Stolz, dated 2026-06-15</span></li></ul></div><div class="section"><div class="section-title">Minutes</div><div class="minutes-block">Minutes not yet available.</div></div></div></main></div></div>
+</body></html>

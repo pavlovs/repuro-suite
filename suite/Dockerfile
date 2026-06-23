@@ -24,6 +24,10 @@ RUN pip install --no-cache-dir -r /app/cockpit/requirements.txt
 COPY dealroom/requirements-prod.txt /app/dealroom/requirements.txt
 RUN pip install --no-cache-dir -r /app/dealroom/requirements.txt
 
+# --- INVESTOR ROOM dependencies ---
+COPY boardroom/requirements-prod.txt /app/boardroom/requirements.txt
+RUN pip install --no-cache-dir -r /app/boardroom/requirements.txt
+
 # Non-root user — supervisord runs as root, child processes as appuser
 RUN adduser --disabled-password --gecos "" --no-create-home appuser
 
@@ -31,6 +35,7 @@ RUN adduser --disabled-password --gecos "" --no-create-home appuser
 COPY lead-pipeline/ /app/allex/
 COPY dealroom/ /app/dealroom/
 COPY cockpit/ /app/cockpit/
+COPY boardroom/ /app/boardroom/
 COPY suite/static/ /app/suite/static/
 
 # --- Config files ---
@@ -41,7 +46,7 @@ COPY suite/entrypoint.sh /app/entrypoint.sh
 RUN sed -i 's/\r$//' /app/entrypoint.sh /etc/caddy/Caddyfile /etc/supervisor/supervisord.conf && chmod +x /app/entrypoint.sh
 
 # Clean up .venv dirs (not needed in container)
-RUN rm -rf /app/allex/.venv /app/dealroom/.venv /app/cockpit/.venv
+RUN rm -rf /app/allex/.venv /app/dealroom/.venv /app/cockpit/.venv /app/boardroom/.venv
 
 EXPOSE 8080
 

@@ -9,6 +9,7 @@
 !/dealroom/
 !/cockpit/
 !/suite/
+!/boardroom/
 
 # Track repo config
 !/.gitignore

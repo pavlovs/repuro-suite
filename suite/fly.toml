@@ -18,6 +18,11 @@ primary_region = "fra"
   COCKPIT_DB = "/data/cockpit.db"
   COCKPIT_DEALROOM_DB = "/data/dealroom.db"
   COCKPIT_BASE_PATH = "/cockpit"
+  # INVESTOR ROOM (AUTH_INVESTOR_HASH is a Fly secret, not set here — Strada access deferred)
+  INVESTOR_DB = "/data/investor.db"
+  INVESTOR_DEALROOM_DB = "/data/dealroom.db"
+  INVESTOR_PIPELINE_DB = "/data/pipeline.db"
+  INVESTOR_COCKPIT_DB = "/data/cockpit.db"
 
 [http_service]
   internal_port = 8080

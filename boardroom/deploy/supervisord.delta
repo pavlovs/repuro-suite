@@ -1,0 +1,16 @@
+# --- Investor Room: append this program to suite/supervisord.conf (priority 400) ---
+
+[program:investor]
+command=python /app/boardroom/boardroom.py serve --port 8084
+directory=/app/boardroom
+environment=INVESTOR_DB="/data/investor.db",INVESTOR_DEALROOM_DB="/data/dealroom.db",INVESTOR_PIPELINE_DB="/data/pipeline.db",INVESTOR_COCKPIT_DB="/data/cockpit.db"
+user=appuser
+priority=400
+startsecs=5
+startretries=3
+autostart=true
+autorestart=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0

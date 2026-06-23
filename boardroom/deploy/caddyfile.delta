@@ -1,0 +1,29 @@
+# --- Investor Room: apply into suite/Caddyfile inside the :8080 { } block ---
+
+# 1) Add `investor` to the existing basic_auth block:
+#    basic_auth @needsAuth {
+#        roman    {$AUTH_ROMAN_HASH}
+#        florian  {$AUTH_FLORIAN_HASH}
+#        investor {$AUTH_INVESTOR_HASH}     # <-- add this line
+#    }
+
+# 2) Add this isolation block IMMEDIATELY AFTER the basic_auth block and BEFORE the
+#    `handle /api/whoami` / handle_path module routes. Order matters — it must run first.
+
+# Strada (investor) is confined to /investor — 403 on everything else.
+@investor_outside {
+	expression {http.auth.user.id} == "investor"
+	not path /investor /investor/*
+}
+respond @investor_outside 403
+
+# 3) Add these route handlers alongside the other handle_path blocks
+#    (next to /allex, /deals, /cockpit):
+handle /investor {
+	redir /investor/ permanent
+}
+handle_path /investor/* {
+	reverse_proxy localhost:8084 {
+		header_up X-Remote-User {http.auth.user.id}
+	}
+}

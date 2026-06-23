@@ -262,6 +262,8 @@
       executionRaw: t.execution,
       ac: t.acceptance_criteria || null, evidence: t.evidence || null,
       claimed_by: t.claimed_by || null, claim_expires_at: t.claim_expires_at || null,
+      created_by: t.created_by || null,
+      lane: t.created_by === "rd" ? "RC" : (t.created_by === "ff" ? "FC" : null),
       doneAt: t.done_at || null,
       kind: t.kind, dealCode: t.deal || null, version: t.version,
       inputFrom: t.input_from || null, inputQuestion: t.input_question || null,

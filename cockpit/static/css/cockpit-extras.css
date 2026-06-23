@@ -86,6 +86,57 @@
 .ag-recent-toggle { background: none; border: none; font: 13px 'Inter', system-ui, sans-serif; color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 0; }
 .ag-recent-toggle:hover { color: var(--ink); }
 
+/* ===== Agents view — review-first sections (2026-06-23 rebuild) ===== */
+.ag-sec { margin-bottom: 30px; }
+/* bold dark section header with a strong rule — no grey headers */
+.ag-sec-h { font-size: 17px; font-weight: 800; color: var(--ink); margin: 0 0 14px; padding-bottom: 9px; border-bottom: 2px solid var(--line); display: flex; align-items: center; gap: 10px; letter-spacing: -.01em; }
+.ag-sec-count { font-size: 12px; font-weight: 700; background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); padding: 1px 10px; border-radius: 999px; }
+.ag-sec-count.ag-count-attn { background: var(--amber); color: #3a2c00; border-color: var(--amber); }
+.ag-sec-empty { font-size: 14px; color: var(--ink-2); padding: 8px 0 4px; }
+.ag-sec-empty code { font-family: ui-monospace, monospace; font-size: 12.5px; background: #e8f7fb; color: var(--brand); padding: 1px 6px; border-radius: 4px; }
+
+/* verdict card — the surface you live in */
+.ag-rev-card { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--amber); border-radius: 12px; padding: 20px 24px; margin-bottom: 14px; box-shadow: var(--shadow-card); }
+.ag-rev-head { display: flex; align-items: center; gap: 10px; margin-bottom: 7px; }
+.ag-rev-deal { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--brand); }
+.ag-rev-ws { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--ink-2); }
+.ag-rev-id { font-size: 11.5px; font-family: ui-monospace, monospace; color: var(--faint); margin-left: auto; }
+.ag-rev-title { font-size: 17px; font-weight: 700; color: var(--ink); line-height: 1.35; cursor: pointer; }
+.ag-rev-title:hover { color: var(--brand); }
+.ag-rev-ac { font-size: 13px; color: var(--ink-2); margin-top: 7px; line-height: 1.5; }
+.ag-rev-evlabel { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-2); margin: 16px 0 7px; }
+.ag-rev-ev { font-size: 13.5px; line-height: 1.6; color: var(--ink); background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 13px 15px; max-height: 340px; overflow: auto; white-space: pre-wrap; word-break: break-word; }
+.ag-rev-ev a { color: var(--brand); font-weight: 600; text-decoration: underline; }
+.ag-rev-noev { font-size: 13px; color: var(--faint); font-style: italic; }
+.ag-rev-actions { display: flex; gap: 10px; margin-top: 16px; }
+.ag-rev-actions .btn { font-size: 13.5px; font-weight: 600; padding: 8px 18px; display: inline-flex; align-items: center; gap: 6px; }
+.ag-rev-actions .btn.approve { background: #16a34a; color: #fff; border: none; }
+.ag-rev-actions .btn.approve:hover { background: #15803d; }
+.ag-rev-actions .btn.reject { background: #fde2e9; color: #e11d48; border: none; }
+.ag-rev-actions .btn.reject:hover { background: #fcc8d7; }
+
+/* FAQ — bold dark toggle, bigger numbered body */
+.ag-faq { margin-top: 8px; }
+.ag-faq-toggle { background: none; border: none; font-family: 'Inter', system-ui, sans-serif; font-size: 14.5px; font-weight: 700; color: var(--ink); cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 0; }
+.ag-faq-toggle:hover { color: var(--brand); }
+.ag-faq-body { margin: 14px 0 0; padding: 16px 20px 16px 40px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; gap: 11px; list-style: decimal; }
+.ag-faq-body li { font-size: 14px; color: var(--ink); line-height: 1.6; padding-left: 4px; }
+.ag-faq-body code { font-family: ui-monospace, monospace; font-size: 12.5px; background: #e8f7fb; color: var(--brand); padding: 1px 6px; border-radius: 4px; }
+.ag-faq-body a { color: var(--brand); font-weight: 600; }
+
+/* lane filter (RC / FC) + per-card lane chips */
+.ag-lanebar { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+.ag-lanebar-label { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .6px; color: var(--ink-2); }
+.ag-seg { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; }
+.ag-seg-btn { background: none; border: none; cursor: pointer; font-family: 'Inter', system-ui, sans-serif; font-size: 13px; font-weight: 600; color: var(--ink-2); padding: 5px 15px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; transition: background .12s, color .12s; }
+.ag-seg-btn:hover { color: var(--ink); }
+.ag-seg-btn.on { background: var(--brand); color: #fff; }
+.ag-seg-n { font-size: 11px; font-weight: 700; opacity: .65; }
+.ag-seg-btn.on .ag-seg-n { opacity: .9; }
+.ag-lane-chip { font-size: 10.5px; font-weight: 800; letter-spacing: .3px; padding: 1px 7px; border-radius: 4px; }
+.ag-lane-RC { background: var(--cyan-50); color: var(--brand-800); }
+.ag-lane-FC { background: var(--purple-50); color: #7e22ce; }
+
 /* drawer inline editing */
 .dm-edit { display: flex; align-items: center; gap: 5px; }
 .own-toggle { border: 1px solid transparent; background: none; border-radius: 50%; padding: 1px; cursor: pointer; opacity: .35; }

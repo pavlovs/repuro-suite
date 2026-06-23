@@ -57,17 +57,10 @@ function PersonalTodos() {
 }
 
 function OverviewView({ person, onJump, openTask, mutate }) {
-  const dateLine = todayDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })
-    + " · week " + Math.ceil((((todayDate - new Date(todayDate.getFullYear(), 0, 1)) / 86400000) + new Date(todayDate.getFullYear(), 0, 1).getDay() + 1) / 7);
-
   return (
     <div className="ov">
-      <div className="ov-hero">
-        <div>
-          <div className="ov-hello">{PEOPLE[person].name}</div>
-          <div className="ov-date">{dateLine}</div>
-        </div>
-      </div>
+      {/* No in-view hero — the global topbar (title + date crumb) is the single, consistent
+          header across every tab (Workstreams/Timeline/Agents already follow this). */}
       <WeekView person={person} mutate={mutate} openTask={openTask} embedded={true} />
       <PersonalTodos />
     </div>

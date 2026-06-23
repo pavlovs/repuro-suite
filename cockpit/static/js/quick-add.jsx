@@ -14,8 +14,13 @@ function QuickAdd({ open, onClose, prefill }) {
   const initType = (prefill && prefill.type) || "task";
   const [mode, setMode] = React.useState(initType);
   const [f, setF] = React.useState({ text: "", d: "", ws: "", owners: ["RD"], due: TODAY, priority: "", execution: "me", ac: "", status: "open", target: "", inputFrom: "", inputQuestion: "" });
+  // Issue 22: guard against double-create. api.create awaits a full state refetch (the "lag");
+  // without this, a second Enter/click during that window creates the task twice.
+  const busyRef = React.useRef(false);
+  const [busy, setBusy] = React.useState(false);
   React.useEffect(() => {
     if (open) {
+      busyRef.current = false; setBusy(false);
       const t = (prefill && prefill.type) || "task";
       setMode(t);
       setF({
@@ -31,6 +36,7 @@ function QuickAdd({ open, onClose, prefill }) {
   const toggleOwner = (p) => setF((s) => ({ ...s, owners: s.owners.includes(p) ? s.owners.filter((x) => x !== p) : [...s.owners, p] }));
 
   const submitTask = async () => {
+    if (busyRef.current) return;
     if (!f.text.trim()) return showToast("Task text required", "err");
     if (f.execution === "agent" && !f.ac.trim()) return showToast("Agent tasks need 'done when…' (acceptance criteria)", "err");
     if (f.inputFrom && !f.inputQuestion.trim()) return showToast("Describe what input is needed", "err");
@@ -41,22 +47,34 @@ function QuickAdd({ open, onClose, prefill }) {
     if (f.priority) fields.priority = f.priority;
     if (f.ac) fields.ac = f.ac.trim();
     if (f.inputFrom) { fields.inputFrom = f.inputFrom; fields.inputQuestion = f.inputQuestion.trim(); }
-    const t = await api.create(fields);
-    if (t) onClose(t.id);
+    busyRef.current = true; setBusy(true);
+    try {
+      const t = await api.create(fields);
+      if (t) onClose(t.id);
+    } finally {
+      busyRef.current = false; setBusy(false);
+    }
   };
 
   const submitDeliv = async () => {
+    if (busyRef.current) return;
     if (!f.text.trim()) return showToast("Deliverable name required", "err");
     const wsId = f.ws || (WORKSTREAMS[0] && WORKSTREAMS[0].id);
     if (!wsId) return showToast("No workstream available", "err");
-    if (!f.target) {
-      const ok = await showModal("No target date set", [
-        {label: "This deliverable won't appear on the timeline. Click OK to continue anyway.", type: "select", options: [{value: "yes", label: "Continue without a target date"}], value: "yes"},
-      ]);
-      if (ok === null) return;
+    // Lock BEFORE the confirmation modal — otherwise two rapid submits open two modals → double-create.
+    busyRef.current = true; setBusy(true);
+    try {
+      if (!f.target) {
+        const ok = await showModal("No target date set", [
+          {label: "This deliverable won't appear on the timeline. Click OK to continue anyway.", type: "select", options: [{value: "yes", label: "Continue without a target date"}], value: "yes"},
+        ]);
+        if (ok === null) return;
+      }
+      const created = await api.createDeliv(wsId, f.text.trim(), f.target || null);
+      if (created) onClose(created.id);
+    } finally {
+      busyRef.current = false; setBusy(false);
     }
-    const created = await api.createDeliv(wsId, f.text.trim(), f.target || null);
-    if (created) onClose(created.id);
   };
 
   const submit = mode === "deliverable" ? submitDeliv : submitTask;
@@ -158,7 +176,7 @@ function QuickAdd({ open, onClose, prefill }) {
         )}
         <div className="qa-actions">
           <button className="btn" onClick={() => onClose()}>Cancel</button>
-          <button className="btn primary" onClick={submit}><Icon name="plus" size={14} />Create {mode}</button>
+          <button className="btn primary" onClick={submit} disabled={busy}><Icon name="plus" size={14} />{busy ? "Creating…" : "Create " + mode}</button>
         </div>
       </div>
     </div>

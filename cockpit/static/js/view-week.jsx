@@ -115,20 +115,14 @@ function MeetingView({ mutate, openTask }) {
 
   return (
     <div className="wk mtg">
-      {/* Meeting header */}
-      <div className="mtg-header card">
-        <div className="mtg-header-top">
-          <div>
-            <div className="mtg-title">{mode === "daily" ? "Daily Standup" : "Weekly Meeting — Week " + weekNum}</div>
-            <div className="mtg-subtitle">{todayDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</div>
-          </div>
-          <div className="mtg-summary">
-            <div className="seg" style={{marginRight:12}}>
-              <button className={mode === "daily" ? "on" : ""} onClick={() => setMode("daily")}>Daily</button>
-              <button className={mode === "weekly" ? "on" : ""} onClick={() => setMode("weekly")}>Weekly</button>
-            </div>
-          </div>
+      {/* Consistent slim toolbar — title comes from the global topbar, matching Workstreams/Timeline */}
+      <div className="ws-toolbar">
+        <div className="seg">
+          <button className={mode === "daily" ? "on" : ""} onClick={() => setMode("daily")}>Daily</button>
+          <button className={mode === "weekly" ? "on" : ""} onClick={() => setMode("weekly")}>Weekly</button>
         </div>
+        <div className="ws-toolbar-sp" />
+        <span className="ws-toolbar-note">{mode === "weekly" ? "Week " + weekNum + " · " : ""}{todayDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</span>
       </div>
 
       {/* Deadlines bar */}

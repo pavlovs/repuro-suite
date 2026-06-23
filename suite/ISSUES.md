@@ -15,17 +15,21 @@ Claude reads this when `/suite-fix` is invoked.
 - [x] Somehow, not shown "done tasks" are still being counted wrongly — fixed 2026-06-19
 - [x] Dealroom: Valuation & Financials does not show the correct details of the adjustments (commentary and positions adjusted) — fixed 2026-06-19
 - [x] Dropdown list of "deliverbles" on a task still shows deals as spaces and then deals as todos under pipeline — fixed 2026-06-21 (grouped by SPACES not WORKSTREAMS; task-drawer.jsx + quick-add.jsx)
-- [ ] Is the latest version live on /cockpit a regression? It shows again: Daily Weekly with 3 badges on top "need attention / deal deadline / completed " that nobody asked for — fixed 2026-06-21 (removed 3 mtg-stat badges from view-week.jsx; toggle kept)
-- [x] Cockpit error: Uncaught TypeError: id.startsWith is not a function (react-dom.production.min.js:63) — fixed 2026-06-22 (QuickAdd onClose got a React event from the scrim onClick; added `typeof id === "string"` guard in app.jsx:234). Deploy pending.
-- [ ] REMOVE the badges from the Daily Weekly again!! The completed, need attention, deal deadlines is so stupid
-- [ ] Deliverable Drop Down Menu: Still shows the deals in a double format (very annoying)
+- [x] Is the latest version live on /cockpit a regression? It shows again: Daily Weekly with 3 badges on top "need attention / deal deadline / completed " that nobody asked for — fixed 2026-06-21 (removed 3 mtg-stat badges from view-week.jsx; toggle kept), DEPLOYED + verified live 2026-06-23
+- [ ] Every section looks different and I flagged this already multiple times: Cockpit start with Roman, date, week on grey background. Weekly Meeting shows Daily standup in a white box, below upcoming deals. WOrkstream shows deliverables, table board and then filter. Timeline shows filter and range and show next it. Agent looks completely different- [ ] 
+- [x] Cockpit error: Uncaught TypeError: id.startsWith is not a function (react-dom.production.min.js:63) — fixed 2026-06-22 (QuickAdd onClose got a React event from the scrim onClick; added `typeof id === "string"` guard in app.jsx:234). DEPLOYED + verified live 2026-06-23.
+- [x] REMOVE the badges from the Daily Weekly again!! The completed, need attention, deal deadlines is so stupid — DEPLOYED + verified live 2026-06-23 (badges absent from live view-week.jsx)
+- [ ] Adding a task lags and then the task gets added twice
+- [x] In timelines the Edit button is not working — fixed + deployed 2026-06-23 (app.jsx rendered <TimelineView> without openDeliv, so the ✎ called undefined)
+- [ ] Dealroom ONepager mouse: add the content - still not in!
+- [x] Deliverable Drop Down Menu: Still shows the deals in a double format (very annoying) — fixed + deployed 2026-06-23 (dropdown now grouped by "Space › Workstream" so the workstream is visible; quick-add.jsx + task-drawer.jsx)
 - [ ] update of the updates local MOUSE onepager into the online dealroom
 - [ ] Add a personal todo list (only seen by the one who logged in: roman just sees his personal with his crednetials, Flo just sees his)
-- [ ] Deliverable can have an earlier deadline that the tasks beneath it. There should either be a warning on the task beneath the deliverable or some other way to showcase this
-- [ ] WEEKLY Meeting: Only show the deliverables, if they are relevant subtasks due in the coming 7 days
+- [x] Deliverable can have an earlier deadline that the tasks beneath it. There should either be a warning on the task beneath the deliverable or some other way to showcase this — fixed + deployed 2026-06-23 (⚠ "after target" badge in week rows + warning block in task drawer when task.due > deliverable.target)
+- [x] WEEKLY Meeting: Only show the deliverables, if they are relevant subtasks due in the coming 7 days — fixed + deployed 2026-06-23 (personFocus skips deliverables with no subtask due within 7 days)
 - [ ] Blockers / Decision seems a very useless view currently, it is just a stack of 100 todos 
-- [ ] Filter: Should be in the top row next to ACTIVITY
-- [ ] EDIT and ADD button should be next ot the text on the deliverable (like with the EQUITY PARTNER space) - why is it now on the right?
+- [x] Filter: Should be in the top row next to ACTIVITY — fixed + deployed 2026-06-23 (Filter button moved to topbar next to Activity on Workstreams/Timeline; FilterBar gained hideToggle)
+- [x] EDIT and ADD button should be next ot the text on the deliverable (like with the EQUITY PARTNER space) - why is it now on the right? — fixed + deployed 2026-06-23 (Deliverables view: ✎ + new + button now sit right after the deliverable name, date pushed right)
 
 
 

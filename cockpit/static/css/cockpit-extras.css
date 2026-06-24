@@ -275,8 +275,9 @@
 .task-history-row { display: flex; align-items: baseline; gap: 6px; padding: 5px 0; border-top: 1px solid #f4f7f8; font-size: 12px; }
 .task-history-label { flex: 1; color: #475569; }
 
-/* Hierarchical numbering prefix (workstreams + deliverables, display-only) */
-.num-prefix { font-size: 12px; font-weight: 700; color: var(--muted); margin-right: 6px; }
+/* Hierarchical numbering prefix (workstreams + deliverables, display-only)
+   ONE rule used identically in view-table, view-timeline, view-week. */
+.num-prefix { font-family: 'Inter', system-ui, sans-serif; font-size: 12px; font-weight: 700; color: var(--ink-2); margin-right: 5px; letter-spacing: 0; }
 
 /* Cross-deliverable / cross-workstream drag-and-drop */
 .drop-target { background: var(--cyan-50); outline: 2px solid var(--cyan-light); outline-offset: -2px; border-radius: var(--radius); transition: background .12s; }
@@ -285,14 +286,61 @@
 .deliv-h { cursor: grab; }
 .deliv-h:active { cursor: grabbing; }
 
-/* Workstreams — blocked-by nested rows (hidden until hover) */
-.trow-group .prereq-row { display: none; background: transparent; border-top: none !important; padding-top: 0 !important; padding-bottom: 3px; }
-.trow-group:hover .prereq-row { display: grid; grid-template-columns: minmax(240px, 1fr) 62px 84px; gap: 10px; align-items: center; padding: 3px 14px; }
+/* Workstreams — blocked-by nested rows: hidden until you hover the parent task */
+.prereq-row { display: grid; grid-template-columns: minmax(240px, 1fr) 62px 84px; gap: 10px; align-items: center; padding: 3px 14px; background: transparent; border-top: none !important; padding-top: 0 !important; padding-bottom: 3px; }
+.trow-hovergroup .prereq-row { display: none; }
+.trow-hovergroup:hover .prereq-row { display: grid; }
+/* wrapping each task row in .trow-hovergroup makes every .trow a :first-child;
+   restore the per-row separators the base .trow:first-child rule would strip */
+.tbl .trow-hovergroup > .trow { border-top: 1px solid var(--line); }
+.tbl .trow-hovergroup:first-child > .trow { border-top: none; }
+.deliv-body .trow-hovergroup > .trow { border-top-color: #f4f7f8; }
 .prereq-txt { display: flex; align-items: center; gap: 5px; padding-left: 24px; cursor: pointer; }
 .prereq-txt:hover .prereq-name { color: #0891B2; text-decoration: underline dotted; text-underline-offset: 2px; }
 .prereq-connector { color: #94a3b8; font-size: 13px; flex-shrink: 0; line-height: 1; }
 .prereq-label { font-size: 10.5px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
 .prereq-name { font-size: 12px; color: #94a3b8; }
+
+/* ===== Shared action buttons — edit (✎) and add (+) =====
+   ONE definition used identically in view-table (.deliv-h), view-timeline (.gantt-label),
+   and view-week (.wk-deliv-head). Do NOT add per-view overrides.
+   Placement: edit then add, sitting immediately after the deliverable name (flex flow),
+   before any progress bar or due date. flex-shrink:0 prevents squishing.
+   Visibility: visible at low opacity always; full opacity on parent hover or self focus.
+*/
+.rep-act {
+  background: none;
+  border: 1px solid #d8e2e6;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1;
+  padding: 2px 7px;
+  color: #0891B2;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .12s, background .12s, color .12s, border-color .12s;
+  flex-shrink: 0;
+  margin-left: 2px;
+}
+.rep-act:hover, .rep-act:focus-visible {
+  background: #e8f7fb;
+  border-color: #0891B2;
+  color: #0891B2;
+  opacity: 1;
+  pointer-events: auto;
+  outline: none;
+}
+.rep-act--edit::after { content: "✎"; }
+.rep-act--add::after { content: "+"; font-weight: 700; font-size: 14px; }
+/* Hover-reveal (same pattern as +1d): hidden until the parent row is hovered or a button is keyboard-focused */
+.trow:hover .rep-act,
+.ws-band:hover .rep-act,
+.wk-deliv-head:hover .rep-act,
+.gantt-label:hover .rep-act,
+.deliv-h:hover .rep-act { opacity: 1; pointer-events: auto; }
+/* Always show — never fully hidden (opacity 0 caused "hidden until scroll" complaint) */
 
 /* Workstreams — inline date range on deliverable rows */
 .deliv-dates { font-size: 11px; color: var(--muted); margin-left: 8px; white-space: nowrap; }

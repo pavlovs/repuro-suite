@@ -1350,6 +1350,11 @@ def get_conn() -> sqlite3.Connection:
         if _conn is not None:
             _conn.close()
 
+        if os.environ.get("DEALROOM_REQUIRE_DB") and not os.path.exists(path):
+            raise RuntimeError(
+                f"DEALROOM_REQUIRE_DB set but DB file missing: {path!r}. "
+                "Refusing to create/seed an empty database (unset DEALROOM_REQUIRE_DB for local dev)."
+            )
         settings.DATA_DIR.mkdir(parents=True, exist_ok=True)
         _check_other_agent_active(settings.DB_PATH)
         conn = sqlite3.connect(path)

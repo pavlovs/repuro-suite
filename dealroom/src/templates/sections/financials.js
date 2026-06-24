@@ -40,10 +40,10 @@ function renderUnifiedGuV() {
   const TEAL_BG = '#e0f5fa';
   const ADJ_BG = '#fef3c7';
 
-  const thS = 'background:'+TEAL+';color:#fff;padding:5px 8px;text-align:right;font-size:12px;font-family:Arial,sans-serif;white-space:nowrap;';
+  const thS = 'background:'+TEAL+';color:#fff;padding:5px 8px;text-align:right;font-size:12px;white-space:nowrap;';
   const thL = thS + 'text-align:left;';
-  const tdR = 'text-align:right;padding:5px 10px;font-size:13px;font-family:Arial,sans-serif;';
-  const tdL = 'text-align:left;padding:5px 12px;font-size:13px;font-family:Arial,sans-serif;';
+  const tdR = 'text-align:right;padding:5px 10px;font-size:13px;';
+  const tdL = 'text-align:left;padding:5px 12px;font-size:13px;';
   const spS = 'width:16px;padding:0;border:none;';
   // border-left applied to first cell after each spacer for visual section dividers
   const secBorderL = 'border-left:2px solid #e2e8f0;';
@@ -233,7 +233,7 @@ function renderUnifiedGuV() {
 
     const commentVal = pnlComments[item.key] || '';
     if (SERVE_MODE) {
-      h += '<td style="'+tdL+'font-size:11px;max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+secBorderL+'" contenteditable="true" data-pnl-key="'+esc(item.key)+'" onblur="(function(el){var allC={};document.querySelectorAll(\'[data-pnl-key]\').forEach(function(e){allC[e.dataset.pnlKey]=e.innerText.trim();});fetch(\'api/update\',{method:\'POST\',headers:{\'Content-Type\':\'application/json\'},body:JSON.stringify({code_name:DATA.deal.code_name,field:\'pnl_row_comments\',value:JSON.stringify(allC)})});return false;})(this)">'+esc(commentVal)+'</td>';
+      h += '<td style="'+tdL+'font-size:11px;max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'+secBorderL+'" contenteditable="true" data-pnl-key="'+esc(item.key)+'" onblur="(function(el){var k=el.dataset.pnlKey;var v=el.innerText.trim();var allC={};document.querySelectorAll(\'[data-pnl-key]\').forEach(function(e){allC[e.dataset.pnlKey]=e.innerText.trim();});allC[k]=v;if(typeof _debouncedSave===\'function\'){_debouncedSave(\'pnl|\'+k,\'api/update\',{code_name:DATA.deal.code_name,field:\'pnl_row_comments\',value:JSON.stringify(allC)});}return false;})(this)">'+esc(commentVal)+'</td>';
     } else {
       h += '<td style="'+tdL+'font-size:11px;max-width:350px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#555;'+secBorderL+'">'+esc(commentVal)+'</td>';
     }
@@ -294,7 +294,7 @@ function renderUnifiedGuV() {
   }
 
   // ── KPI rows (Fix 2+5): inside main tbody, same columns, 13px italic muted ─────
-  const kpiStyle = 'font-style:italic;color:#888;font-size:13px;font-family:Arial,sans-serif;';
+  const kpiStyle = 'font-style:italic;color:#888;font-size:13px;';
   const kpiTdR = 'text-align:right;padding:5px 10px;'+kpiStyle;
   const kpiTdL = 'text-align:left;padding:5px 12px;min-width:200px;'+kpiStyle;
 
@@ -785,9 +785,9 @@ function renderAdjGuV() {
 
   // Column count: label + years + CAGR + Comment
   const nCols = years.length + 3;
-  const thStyle = 'background:'+TEAL+';color:#fff;padding:5px 8px;text-align:right;font-size:11px;font-family:Arial,sans-serif;white-space:nowrap';
-  const tdR = 'text-align:right;padding:3px 8px;font-size:12px;font-family:Arial,sans-serif';
-  const tdL = 'text-align:left;padding:3px 8px;font-size:12px;font-family:Arial,sans-serif';
+  const thStyle = 'background:'+TEAL+';color:#fff;padding:5px 8px;text-align:right;font-size:11px;white-space:nowrap';
+  const tdR = 'text-align:right;padding:3px 8px;font-size:12px;';
+  const tdL = 'text-align:left;padding:3px 8px;font-size:12px;';
 
   let h='<table style="border-collapse:collapse;width:100%"><thead><tr>';
   h+='<th style="'+thStyle+';text-align:left;min-width:200px">P&L in \u20acK</th>';
@@ -846,7 +846,7 @@ function renderAdjGuV() {
   // GF Salary panel
   const p = ctx.params || {};
   h+='<div style="margin-top:16px;padding:10px;background:#f5f5f5;border-radius:4px;font-size:12px">';
-  h+='<div style="font-weight:700;margin-bottom:6px;font-family:Arial,sans-serif">GF-Gehalt Anpassung</div>';
+  h+='<div style="font-weight:700;margin-bottom:6px;">GF-Gehalt Anpassung</div>';
   h+='<div style="display:flex;gap:14px;flex-wrap:wrap">';
   h+='<label>Aktuelles Gehalt/Monat (\u20acK): '+_modelInput('gf_old',p.gf_old_salary_monthly_k,60,"_postModelUpdate({gf_old_salary_monthly_k:+this.value})")+'</label>';
   h+='<label>Faktor: '+_modelInput('gf_bf',p.gf_benefit_factor,50,"_postModelUpdate({gf_benefit_factor:+this.value})")+'</label>';
@@ -871,9 +871,9 @@ function renderAdjGuV() {
 
 function renderAdjDetail(adj, summary, years, thStyle, tdR, tdL) {
   const _TEAL = '#1D7080';
-  thStyle = thStyle || ('background:'+_TEAL+';color:#fff;padding:5px 8px;font-size:11px;font-family:Arial,sans-serif');
-  tdR = tdR || 'text-align:right;padding:3px 8px;font-size:12px;font-family:Arial,sans-serif';
-  tdL = tdL || 'text-align:left;padding:3px 8px;font-size:12px;font-family:Arial,sans-serif';
+  thStyle = thStyle || ('background:'+_TEAL+';color:#fff;padding:5px 8px;font-size:11px;');
+  tdR = tdR || 'text-align:right;padding:3px 8px;font-size:12px;';
+  tdL = tdL || 'text-align:left;padding:3px 8px;font-size:12px;';
 
   const adjDetail = (adj && adj.adjustments_detail) || {};
   const adjTotal  = (adj && adj.adjustments_total)  || {};
@@ -968,10 +968,10 @@ function renderNetDebt() {
   if(!ctx) return '';
   const items = (ctx.params||{}).net_debt_items_json || [];
   const nd = (ctx.params||{}).net_debt || 0;
-  const thStyle = 'background:'+TEAL+';color:#fff;padding:5px 8px;font-size:11px;font-family:Arial,sans-serif';
-  const tdR = 'text-align:right;padding:3px 8px;font-size:12px;font-family:Arial,sans-serif';
-  const tdL = 'text-align:left;padding:3px 8px;font-size:12px;font-family:Arial,sans-serif';
-  const tdKonto = 'text-align:right;padding:3px 8px;font-size:12px;font-family:Arial,sans-serif;color:#555;min-width:48px';
+  const thStyle = 'background:'+TEAL+';color:#fff;padding:5px 8px;font-size:11px;';
+  const tdR = 'text-align:right;padding:3px 8px;font-size:12px;';
+  const tdL = 'text-align:left;padding:3px 8px;font-size:12px;';
+  const tdKonto = 'text-align:right;padding:3px 8px;font-size:12px;color:#555;min-width:48px';
 
   // Figure out date label from items or fallback
   const dateLabel = (items.length && items[0].date) ? items[0].date : '';
@@ -1064,9 +1064,9 @@ function renderBewertungTab() {
   const years = ctx.years || [];
   const summary = (ctx.adj_pnl||{}).summary || {};
   const offers = ctx.offer_history || [];
-  const thStyle = 'background:'+TEAL+';color:#fff;padding:5px 8px;font-size:11px;font-family:Arial,sans-serif;white-space:nowrap';
-  const tdR = 'text-align:right;padding:3px 8px;font-size:12px;font-family:Arial,sans-serif';
-  const tdL = 'text-align:left;padding:3px 8px;font-size:12px;font-family:Arial,sans-serif';
+  const thStyle = 'background:'+TEAL+';color:#fff;padding:5px 8px;font-size:11px;white-space:nowrap';
+  const tdR = 'text-align:right;padding:3px 8px;font-size:12px;';
+  const tdL = 'text-align:left;padding:3px 8px;font-size:12px;';
 
   let h = '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">';
 

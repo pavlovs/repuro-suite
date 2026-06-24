@@ -13,6 +13,7 @@ SCHEMA_VERSION = 9
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
+_locked = None  # _LockedConn wrapper handed to callers
 
 
 def now_iso():
@@ -26,15 +27,91 @@ def default_db_path():
     return Path(__file__).resolve().parent.parent / "data" / "cockpit.db"
 
 
+class _BufferedCursor:
+    """Cursor-like wrapper holding fully-materialized results so fetch* never
+    touches the DB after the lock is released. lastrowid/rowcount preserved."""
+
+    def __init__(self, cursor):
+        self.lastrowid = cursor.lastrowid
+        self.rowcount = cursor.rowcount
+        try:
+            self._rows = cursor.fetchall()
+        except Exception:
+            self._rows = []
+        self._i = 0
+
+    def fetchone(self):
+        if self._i >= len(self._rows):
+            return None
+        row = self._rows[self._i]
+        self._i += 1
+        return row
+
+    def fetchall(self):
+        rows = self._rows[self._i :]
+        self._i = len(self._rows)
+        return rows
+
+    def fetchmany(self, size=None):
+        if size is None:
+            return self.fetchall()
+        rows = self._rows[self._i : self._i + size]
+        self._i += len(rows)
+        return rows
+
+    def __iter__(self):
+        return iter(self.fetchall())
+
+
+class _LockedConn:
+    """Serializes ALL DB access through WRITE_LOCK (re-entrant), so concurrent
+    FastAPI threadpool handlers never touch the shared singleton connection at
+    the same time. Reads run the query AND materialize rows under the lock."""
+
+    def __init__(self, conn):
+        object.__setattr__(self, "_conn", conn)
+
+    def execute(self, *args, **kwargs):
+        with WRITE_LOCK:
+            return _BufferedCursor(self._conn.execute(*args, **kwargs))
+
+    def executemany(self, *args, **kwargs):
+        with WRITE_LOCK:
+            return _BufferedCursor(self._conn.executemany(*args, **kwargs))
+
+    def executescript(self, *args, **kwargs):
+        with WRITE_LOCK:
+            return _BufferedCursor(self._conn.executescript(*args, **kwargs))
+
+    def commit(self):
+        with WRITE_LOCK:
+            return self._conn.commit()
+
+    def rollback(self):
+        with WRITE_LOCK:
+            return self._conn.rollback()
+
+    def close(self):
+        with WRITE_LOCK:
+            return self._conn.close()
+
+    def __getattr__(self, name):
+        return getattr(object.__getattribute__(self, "_conn"), name)
+
+
 def get_conn():
     """Singleton connection to the cockpit DB (path from COCKPIT_DB env or default)."""
-    global _conn, _conn_path
+    global _conn, _conn_path, _locked
     with WRITE_LOCK:
         path = default_db_path()
         if _conn is not None and _conn_path == str(path):
-            return _conn
+            return _locked
         if _conn is not None:
             _conn.close()
+        if os.environ.get("COCKPIT_REQUIRE_DB") and not path.exists():
+            # Production guard: refuse to silently create a fresh master DB on a
+            # wrong/missing path. Local dev (flag unset) keeps auto-creating.
+            raise RuntimeError(f"COCKPIT_DB missing and COCKPIT_REQUIRE_DB set: {path}")
         path.parent.mkdir(parents=True, exist_ok=True)
         conn = sqlite3.connect(str(path), check_same_thread=False)
         conn.row_factory = sqlite3.Row
@@ -50,16 +127,17 @@ def get_conn():
         elif schema_v < SCHEMA_VERSION:
             migrate_db(conn, schema_v)
         _conn, _conn_path = conn, str(path)
-        return conn
+        _locked = _LockedConn(conn)
+        return _locked
 
 
 def close_conn():
     """Tests only — drop the singleton so the next get_conn() re-reads COCKPIT_DB."""
-    global _conn, _conn_path
+    global _conn, _conn_path, _locked
     with WRITE_LOCK:
         if _conn is not None:
             _conn.close()
-        _conn, _conn_path = None, None
+        _conn, _conn_path, _locked = None, None, None
 
 
 def open_readonly(path):

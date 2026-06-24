@@ -217,7 +217,7 @@ function App() {
             </div>
           )}
           {(tab === "table" || tab === "timeline") && filterCount !== null && (
-            <button className={"tb-undo" + (filterCount > 0 ? " active" : "")} onClick={() => setFiltersOpen((o) => !o)} title="Filter">
+            <button className={"tb-filter tb-undo" + (filterCount > 0 ? " active" : "")} onClick={() => setFiltersOpen((o) => !o)} title="Filter">
               <Icon name="filter" size={14} /> Filter{filterCount > 0 ? " (" + filterCount + ")" : ""}
             </button>
           )}

@@ -69,13 +69,13 @@ function BoardView({ grouping, mutate, openTask, filters }) {
       <div className="board-hint">
         {canDrag
           ? <><Icon name="board" size={13} /> Drag a card between columns to change its status. Red cards are <b>blocked</b> by an unfinished prerequisite.</>
-          : <><Icon name="board" size={13} /> Grouped by workstream. Switch grouping to <b>Status</b> in Tweaks to drag cards.</>}
+          : <><Icon name="board" size={13} /> Grouped by workstream. Switch grouping to <b>Status</b> in the toolbar above to drag cards.</>}
       </div>
       <div className="board">
         {columns.map((c) => (
           <div key={c.id} className={"bcol" + (over === c.id ? " over" : "")}
             onDragOver={(e) => { if (canDrag) { e.preventDefault(); setOver(c.id); } }}
-            onDragLeave={() => setOver(null)}
+            onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) setOver(null); }}
             onDrop={() => onDrop(c.id)}>
             <div className="bcol-h">
               <span className="bcol-accent" style={{ background: colAccent(c) }} />

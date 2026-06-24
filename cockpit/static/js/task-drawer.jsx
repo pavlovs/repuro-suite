@@ -62,7 +62,7 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
           onBlur={(e) => { if (e.target.value !== (task.detail || "")) api.save(task, { detail: e.target.value || null }); }} />
 
         {task.ac && <p className="drawer-detail"><b>Done when:</b> {task.ac}</p>}
-        {task.evidence && <p className="drawer-detail drawer-evidence">{task.evidence}</p>}
+        {task.evidence && <div className="drawer-detail drawer-evidence">{renderMarkdown(task.evidence)}</div>}
 
         {r === "red" && (
           <div className="drawer-block">
@@ -253,7 +253,7 @@ function DelivDrawer({ deliv, onClose, mutate, openTask }) {
   if (!deliv) return null;
 
   const ws = byWs[deliv.ws];
-  const deal = deliv.deal ? { codename: deliv.deal } : null;
+  const deal = deliv.deal || null;
   const tasks = TASKS.filter((t) => t.d === deliv.id);
   const openTasks = tasks.filter((t) => t.status !== "done");
   const doneTasks = tasks.filter((t) => t.status === "done");

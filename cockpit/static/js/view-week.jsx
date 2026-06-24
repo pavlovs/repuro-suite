@@ -42,8 +42,9 @@ function MeetingView({ mutate, openTask }) {
   // NOT tasks blocked by the other person / a prerequisite (that's just sequencing).
   const seen = new Set();
   const claim = (list) => { const out = list.filter((t) => !seen.has(t.id)); out.forEach((t) => seen.add(t.id)); return out; };
-  // Decisions needed: someone owes input, it needs both of us, or it's an approval gate
-  const decisions = claim(live.filter((t) => t.inputFrom || t.execution === "together" || t.kind === "approval"));
+  // Decisions needed: ONLY a real decision (approval gate) or a task explicitly requesting someone's input.
+  // NOT execution==="together" — that's just collaborative work and dumped the whole todo list here.
+  const decisions = claim(live.filter((t) => t.inputFrom || t.kind === "approval"));
   // Waiting on external: the ball is with a counterparty / advisor / investor
   const waiting = claim(live.filter((t) => t.status === "waiting"));
   const attentionN = decisions.length + waiting.length;
@@ -188,10 +189,12 @@ function MeetingView({ mutate, openTask }) {
                         return (
                           <div key={d.id} className="wk-deliv-block">
                             <div className={"wk-deliv-head" + (urgent ? " at-risk" : "")}>
+                              {d.displayNum && <span className="num-prefix">{d.displayNum}</span>}
                               <span className="wk-deliv-name tc-click" onClick={() => mtgEditDeliv(d)}>{shortName(d)}</span>
-                              <button className="deliv-edit" title="edit deliverable" onClick={() => mtgEditDeliv(d)}>✎</button>
-                              <button className="deliv-edit mtg-add-btn" title="add task to this deliverable"
-                                onClick={() => window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } }))}>+</button>
+                              <button className="rep-act rep-act--edit" title="edit deliverable" onClick={(e) => { e.stopPropagation(); mtgEditDeliv(d); }} />
+                              <button className="rep-act rep-act--add" title="add task to this deliverable"
+                                onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />
+                              <span className="deliv-sp" />
                               <span className="wk-deliv-prog">
                                 <span className="prog-bar" style={{width:60}}><span style={{ width: pct + "%", background: d.wsObj ? d.wsObj.color : "#94a3b8" }} /></span>
                               </span>
@@ -342,7 +345,12 @@ function DragList({ items, onReorder, renderItem }) {
 
 function WeekRow({ t, mutate, openTask, showWs = true, showDate = true, dragHandlers = null }) {
   const ws = wsOf(t);
-  const isOverdue = t.due && daysUntil(t.due) < 0;
+  // optimistic due so +1d updates the row instantly; bumpRef guards against double-bump while the save+refetch settles
+  const [optimisticDue, setOptimisticDue] = React.useState(null);
+  const effDue = optimisticDue !== null ? optimisticDue : t.due;
+  const dueTask = optimisticDue !== null ? { ...t, due: optimisticDue } : t;
+  const bumpRef = React.useRef(false);
+  const isOverdue = effDue && daysUntil(effDue) < 0;
   const dateVisible = showDate || isOverdue;
   // Bug 1 fix: optimistic local state so checkmark flips instantly (no waiting for server round-trip)
   const [optimisticDone, setOptimisticDone] = React.useState(null);
@@ -359,6 +367,20 @@ function WeekRow({ t, mutate, openTask, showWs = true, showDate = true, dragHand
   }
   // Reset optimistic state when server data arrives (t.status changed)
   React.useEffect(() => { setOptimisticDone(null); }, [t.status]);
+  // Clear the optimistic due once the server round-trip lands the new value
+  React.useEffect(() => { setOptimisticDue(null); }, [t.due]);
+  async function bumpTomorrow(e) {
+    e.stopPropagation();
+    if (bumpRef.current) return;            // ignore repeat clicks until this bump settles
+    bumpRef.current = true;
+    const next = addDays(effDue, 1);
+    setOptimisticDue(next);                 // immediate UI update
+    try {
+      const ok = await api.save(t, { due: next });
+      if (ok === false) setOptimisticDue(null); // save returns false on non-throwing failure — revert
+    } catch (_) { setOptimisticDue(null); }     // revert on thrown error (e.g. 409 conflict)
+    finally { bumpRef.current = false; }
+  }
   const dragging = dragHandlers && dragHandlers["data-dragging"] === "true";
   const dragOver = dragHandlers && dragHandlers["data-drag-over"] === "true";
   const extraClass = (dragging ? " dragging" : "") + (dragOver ? " drag-over" : "");
@@ -385,7 +407,11 @@ function WeekRow({ t, mutate, openTask, showWs = true, showDate = true, dragHand
           Waiting: {PEOPLE[t.inputFrom] ? PEOPLE[t.inputFrom].name : t.inputFrom}
         </span>
       )}
-      {t.status === "waiting" ? <WaitingChip t={t} /> : (dateVisible && <DueChip t={t} />)}
+      {!isDone && effDue && t.status !== "waiting" && (
+        <button className="bump-btn" title="Move due date to tomorrow"
+          onClick={bumpTomorrow}>+1d</button>
+      )}
+      {t.status === "waiting" ? <WaitingChip t={t} /> : (dateVisible && <DueChip t={dueTask} />)}
     </div>
   );
 }
@@ -473,10 +499,13 @@ function WeekView({ person, mutate, openTask, embedded }) {
 
   // Decisions & waiting (issue 30): decisions needed + items waiting on someone external.
   // NOT tasks blocked by the other person / a prerequisite — that's just sequencing.
-  const decisions = live.filter((t) => t.inputFrom || t.execution === "together" || t.kind === "approval");
+  // ONLY a real decision (approval gate) or a task explicitly requesting input — NOT execution==="together".
+  const decisions = live.filter((t) => t.inputFrom || t.kind === "approval");
   const waitingShared = live.filter((t) => t.status === "waiting" && !decisions.includes(t)); // dedup: a task shows under one group only
   const sharedN = decisions.length + waitingShared.length;
-  const [sharedOpen, setSharedOpen] = React.useState(false);
+  // Switchable right column (Roman's request): only ever 2 boxes side by side — Due Today | one of Tomorrow/Personal/Blocked
+  const personalOpen = (typeof PERSONAL !== "undefined" ? PERSONAL : []).filter((t) => t.status !== "done");
+  const [rightTab, setRightTab] = React.useState("tomorrow");
   const [delivOpen, setDelivOpen] = React.useState({});
 
   return (
@@ -497,12 +526,51 @@ function WeekView({ person, mutate, openTask, embedded }) {
         </div>
 
         <div className="card wk-col">
-          <div className="wk-h">Tomorrow<span className="wk-n">{upNext.length}</span></div>
+          <div className="wk-h wk-h--seg">
+            <div className="seg wk-rseg">
+              {[["tomorrow", "Tomorrow", upNext.length], ["personal", "Personal", personalOpen.length], ["blocked", "Blocked", sharedN]].map((opt) => (
+                <button key={opt[0]} className={rightTab === opt[0] ? "on" : ""} onClick={() => setRightTab(opt[0])}>
+                  {opt[1]}{opt[2] > 0 && <span className="wk-n">{opt[2]}</span>}
+                </button>
+              ))}
+            </div>
+          </div>
 
-          <DragList items={upNext} onReorder={(items) => { setUpNextLocal(items); persistReorder(items); }}
-            renderItem={(t, h) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} showDate={false} dragHandlers={h} />} />
+          {rightTab === "tomorrow" && (
+            <React.Fragment>
+              <DragList items={upNext} onReorder={(items) => { setUpNextLocal(items); persistReorder(items); }}
+                renderItem={(t, h) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} showDate={false} dragHandlers={h} />} />
+              {!upNext.length && <div className="empty">nothing due tomorrow</div>}
+            </React.Fragment>
+          )}
 
-          {!upNext.length && <div className="empty">nothing due tomorrow</div>}
+          {rightTab === "personal" && <PersonalTodos bare mutate={mutate} openTask={openTask} />}
+
+          {rightTab === "blocked" && (
+            <React.Fragment>
+              {decisions.length > 0 && <div className="wk-grp">Decisions needed</div>}
+              {decisions.map((t) => (
+                <div key={t.id} className="wkrow">
+                  <div className="wkrow-txt tc-click" onClick={() => openTask && openTask(t.id)}>
+                    <span className="wkrow-main">{t.text}</span>
+                    {t.inputFrom && <span className="wkrow-sub">input from {PEOPLE[t.inputFrom] ? PEOPLE[t.inputFrom].name : t.inputFrom}</span>}
+                  </div>
+                  <OwnerStack owners={t.owners} size={18} />
+                </div>
+              ))}
+              {waitingShared.length > 0 && <div className="wk-grp">Waiting on external</div>}
+              {waitingShared.map((t) => (
+                <div key={t.id} className="wkrow">
+                  <div className="wkrow-txt tc-click" onClick={() => openTask && openTask(t.id)}>
+                    <span className="wkrow-main">{t.text}</span>
+                    <span className="wkrow-sub">with {(t.waiting && t.waiting.party) || "—"}</span>
+                  </div>
+                  <OwnerStack owners={t.owners} size={18} />
+                </div>
+              ))}
+              {!sharedN && <div className="empty">nothing blocked — no decisions or waits</div>}
+            </React.Fragment>
+          )}
         </div>
       </div>
 
@@ -518,6 +586,11 @@ function WeekView({ person, mutate, openTask, embedded }) {
                 <div className="wk-deliv-head" style={{cursor:"pointer"}} onClick={() => setDelivOpen((o) => ({...o, [d.id]: !isOpen}))}>
                   <span className={"caret" + (isOpen ? " open" : "")}><Icon name="chevron" size={12} /></span>
                   <span className="wk-deliv-name">{d.name}</span>
+                  <button className="rep-act rep-act--edit" title="edit deliverable"
+                    onClick={(e) => { e.stopPropagation(); editDeliv(d); }} />
+                  <button className="rep-act rep-act--add" title="add task to this deliverable"
+                    onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />
+                  <span className="deliv-sp" />
                   <span className="wk-deliv-prog">
                     <span className="prog-bar" style={{width:50}}><span style={{ width: (d.s.total ? d.s.done / d.s.total * 100 : 0) + "%", background: d.ws ? d.ws.color : "var(--brand)" }} /></span>
                   </span>
@@ -528,16 +601,6 @@ function WeekView({ person, mutate, openTask, embedded }) {
                     <DragList items={openTasks} onReorder={(items) => persistReorder(items)}
                       renderItem={(t, h) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} showWs={false} dragHandlers={h} />} />
                     {!openTasks.length && <div className="empty">all tasks done</div>}
-                    <div style={{display:"flex",gap:6,marginTop:4}}>
-                      <button className="btn ghost" style={{fontSize:11,padding:"2px 8px"}}
-                        onClick={() => window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } }))}>
-                        <Icon name="plus" size={11} /> add task
-                      </button>
-                      <button className="btn ghost" style={{fontSize:11,padding:"2px 8px"}}
-                        onClick={() => editDeliv(d)}>
-                        ✎ edit deliverable
-                      </button>
-                    </div>
                   </div>
                 )}
               </div>
@@ -548,49 +611,6 @@ function WeekView({ person, mutate, openTask, embedded }) {
       </div>
 
       <AgentQueue openTask={openTask} />
-
-      {sharedN > 0 && (
-        <div className="wk-shared-section">
-          <button className="wk-shared-toggle" onClick={() => setSharedOpen(!sharedOpen)}>
-            <span className={"caret" + (sharedOpen ? " open" : "")}><Icon name="chevron" size={13} /></span>
-            <span>Decisions &amp; waiting</span>
-            <span className="wk-n">{sharedN}</span>
-          </button>
-          <div className="wk-shared-hint">Decisions needed and items waiting on someone else</div>
-          {sharedOpen && (
-            <div className="wk-shared-body">
-              {decisions.length > 0 && (
-                <React.Fragment>
-                  <div className="wk-grp">Decisions needed</div>
-                  {decisions.map((t) => (
-                    <div key={t.id} className="wkrow">
-                      <div className="wkrow-txt tc-click" onClick={() => openTask && openTask(t.id)}>
-                        <span className="wkrow-main">{t.text}</span>
-                        {t.inputFrom && <span className="wkrow-sub">input from {PEOPLE[t.inputFrom] ? PEOPLE[t.inputFrom].name : t.inputFrom}</span>}
-                      </div>
-                      <OwnerStack owners={t.owners} size={18} />
-                    </div>
-                  ))}
-                </React.Fragment>
-              )}
-              {waitingShared.length > 0 && (
-                <React.Fragment>
-                  <div className="wk-grp">Waiting on external</div>
-                  {waitingShared.map((t) => (
-                    <div key={t.id} className="wkrow">
-                      <div className="wkrow-txt tc-click" onClick={() => openTask && openTask(t.id)}>
-                        <span className="wkrow-main">{t.text}</span>
-                        <span className="wkrow-sub">with {(t.waiting && t.waiting.party) || "—"}</span>
-                      </div>
-                      <OwnerStack owners={t.owners} size={18} />
-                    </div>
-                  ))}
-                </React.Fragment>
-              )}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

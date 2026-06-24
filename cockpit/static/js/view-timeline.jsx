@@ -148,8 +148,11 @@ function TimelineView({ openTask, openDeliv, mutate, filtersOpen, setFiltersOpen
                               {d.displayNum && <span className="num-prefix">{d.displayNum}</span>}
                               <span className="gantt-name">{d.name}</span>
                               {d.deal && <span className="gantt-deal">{d.deal.codename}</span>}
-                              <button className="deliv-edit" title="edit deliverable"
-                                onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }}>✎</button>
+                              <button className="rep-act rep-act--edit" title="edit deliverable"
+                                onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }} />
+                              <button className="rep-act rep-act--add" title="add task to this deliverable"
+                                onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />
+                              <span className="deliv-sp" />
                               <span className="gantt-prog-inline" title={s.done + " of " + s.total + " done"}>
                                 <span className="gantt-prog-bar"><span style={{ width: pct + "%", background: RDOT[s.readiness] }} /></span>
                               </span>

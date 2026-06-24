@@ -8,11 +8,11 @@ function renderOfferNegotiation() {
   const TEAL_BORDER = '#b0dff0';
 
   const thStyle = 'background:' + TEAL + ';color:#fff;padding:5px 10px;font-size:11px;'
-    + 'font-weight:700;text-align:right;white-space:nowrap;font-family:Arial,sans-serif';
+    + 'font-weight:700;text-align:right;white-space:nowrap;';
   const thStyleL = thStyle + ';text-align:left';
-  const tdR = 'padding:5px 10px;font-size:12px;text-align:right;font-family:Arial,sans-serif;'
+  const tdR = 'padding:5px 10px;font-size:12px;text-align:right;'
     + 'border-bottom:1px solid #e9ecef';
-  const tdL = 'padding:5px 10px;font-size:12px;text-align:left;font-family:Arial,sans-serif;'
+  const tdL = 'padding:5px 10px;font-size:12px;text-align:left;'
     + 'border-bottom:1px solid #e9ecef';
 
   const mock = {
@@ -93,26 +93,26 @@ function renderOfferNegotiation() {
 
   h += '<div>';
   h += '<div style="font-size:11px;color:#6c757d;margin-bottom:2px;">Current EV (' + mock.scenario + ' scenario)</div>';
-  h += '<div style="font-size:22px;font-weight:700;color:' + TEAL + ';font-family:Arial,sans-serif;">'
+  h += '<div style="font-size:22px;font-weight:700;color:' + TEAL + ';">'
     + fmtM(mock.current_ev_m) + '</div>';
   h += '</div>';
 
   h += '<div>';
   h += '<div style="font-size:11px;color:#6c757d;margin-bottom:2px;">Seller Ask</div>';
-  h += '<div style="font-size:22px;font-weight:700;color:#374151;font-family:Arial,sans-serif;">'
+  h += '<div style="font-size:22px;font-weight:700;color:#374151;">'
     + fmtM(mock.seller_ask_m) + '</div>';
   h += '</div>';
 
   h += '<div>';
   h += '<div style="font-size:11px;color:#6c757d;margin-bottom:2px;">Gap</div>';
-  h += '<div style="font-size:22px;font-weight:700;color:#b91c1c;font-family:Arial,sans-serif;">'
+  h += '<div style="font-size:22px;font-weight:700;color:#b91c1c;">'
     + fmtM(mock.gap_m)
     + ' <span style="font-size:14px;font-weight:600;color:#b91c1c;">(' + fmtPct(mock.gap_pct) + ')</span></div>';
   h += '</div>';
 
   h += '<div>';
   h += '<div style="font-size:11px;color:#6c757d;margin-bottom:2px;">Status</div>';
-  h += '<div style="font-size:14px;font-weight:700;color:#374151;font-family:Arial,sans-serif;">'
+  h += '<div style="font-size:14px;font-weight:700;color:#374151;">'
     + mock.status
     + ' <span style="font-size:12px;font-weight:400;color:#6c757d;">' + mock.status_date + '</span></div>';
   h += '<div style="font-size:12px;margin-top:4px;color:#374151;">'
@@ -127,7 +127,7 @@ function renderOfferNegotiation() {
     + 'letter-spacing:.5px;margin-bottom:8px;">Offer Round Ledger</div>';
 
   h += '<div style="overflow-x:auto;margin-bottom:20px;">';
-  h += '<table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;">';
+  h += '<table style="border-collapse:collapse;width:100%;">';
   h += '<thead><tr>';
   h += '<th style="' + thStyleL + ';min-width:40px">Rnd</th>';
   h += '<th style="' + thStyleL + ';min-width:80px">Date</th>';
@@ -161,7 +161,7 @@ function renderOfferNegotiation() {
     + 'letter-spacing:.5px;margin-bottom:8px;">Negotiation Issue List</div>';
 
   h += '<div style="overflow-x:auto;margin-bottom:20px;">';
-  h += '<table style="border-collapse:collapse;width:100%;font-family:Arial,sans-serif;">';
+  h += '<table style="border-collapse:collapse;width:100%;">';
   h += '<thead><tr>';
   h += '<th style="' + thStyleL + ';min-width:30px">#</th>';
   h += '<th style="' + thStyleL + ';min-width:160px">Issue</th>';

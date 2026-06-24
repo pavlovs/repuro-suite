@@ -198,6 +198,8 @@
           DELIVERABLES.push({
             id: d.id, ws: w.id, name: d.name, target: d.target_date || null, version: d.version,
             displayNum: wsNum + "." + delivNum,
+            status: d.status || "open",
+            startDate: d.start_date || null,
             deal: dealCode ? { codename: dealCode, stage: w.deal_stage || stageOf[dealCode] || "?" } : null,
           });
           liveTasks.forEach(function (t) { pushTask(mapTask(t, d.id)); });
@@ -413,8 +415,9 @@
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
       conflictReload(r);
-      if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return; }
+      if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return false; }
       await refreshFromServer(); // dependents' computed fields move too
+      return true;
     },
     async create(fields) {
       var body = toServerFields({}, fields);

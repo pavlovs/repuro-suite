@@ -116,13 +116,13 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
     const blocked = readiness(t) === "red";
     const prereqs = blocked ? blockingPrereqs(t) : [];
     return (
-      <React.Fragment>
+      <div className="trow-hovergroup">
         <div className={"trow" + (t.status === "done" ? " done" : "") + extraClass} {...(dragHandlers || {})}>
           <span className="tc-txt tc-click" onClick={() => openTask(t.id)} title="open task">
             <span className="tc-main">{t.text}</span>
             {blocked && <span className="tc-blocked">Blocked</span>}
-            <button className="deliv-edit tc-edit" title="edit task name / due date"
-              onClick={(e) => { e.stopPropagation(); editTask(t); }}>✎</button>
+            <button className="rep-act rep-act--edit tc-edit" title="edit task name / due date"
+              onClick={(e) => { e.stopPropagation(); editTask(t); }} />
           </span>
           <span><OwnerStack owners={t.owners} size={22} /></span>
           <span><DueChip t={t} /></span>
@@ -138,7 +138,7 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
             <span></span>
           </div>
         ))}
-      </React.Fragment>
+      </div>
     );
   };
 
@@ -175,6 +175,13 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
                     <span className="ws-ico" style={{ background: w.color }}><Icon name={w.icon} size={14} /></span>
                     {w.displayNum && <span className="num-prefix">{w.displayNum}</span>}
                     <span className="ws-name">{w.name}</span>
+                    <button className="rep-act rep-act--edit" title="Rename workstream" onClick={(e) => { e.stopPropagation(); editWs(w); }} />
+                    <button className="rep-act rep-act--add" title="add a deliverable (milestone) to this workstream"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { type: "deliverable", ws: w.id } }));
+                      }} />
+                    <span className="deliv-sp" />
                     {w.deal && w.dealStage && (
                       <span className="ws-stage" data-active={w.visibility === "expanded" ? "true" : "false"}
                         title={"Deal stage — click to change"}
@@ -183,19 +190,12 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
                         {STAGE_LABEL[w.dealStage] || w.dealStage}
                       </span>
                     )}
-                    <button className="deliv-edit" title="Rename workstream" onClick={(e) => { e.stopPropagation(); editWs(w); }}>✎</button>
                     {flat && delivs[0] && (
                       <button className="ws-band-target" title="deliverable target — click to edit"
                         onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(delivs[0].id); }}>
                         {delivs[0].target ? "target " + fdate(delivs[0].target) : "set target"} ✎
                       </button>
                     )}
-                    <button className="ws-band-target" style={{ marginLeft: "auto", border: "1px dashed var(--line)", color: "var(--muted)" }}
-                      title="add a deliverable (milestone) to this workstream"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { type: "deliverable", ws: w.id } }));
-                      }}>+ deliverable</button>
                   </div>
                   {wsOpen[w.id] && (flat
                     ? (delivs[0] ? (() => {
@@ -237,17 +237,18 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
                             <span className={"caret" + (open[d.id] ? " open" : "")}><Icon name="chevron" size={14} /></span>
                             {d.displayNum && <span className="num-prefix">{d.displayNum}</span>}
                             <span className="deliv-name">{d.name}</span>
-                            <button className="deliv-edit" title="rename / set target date"
-                              onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }}>✎</button>
-                            <button className="deliv-add" title="add task"
-                              onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }}>+</button>
+                            <button className="rep-act rep-act--edit" title="rename / set target date"
+                              onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }} />
+                            <button className="rep-act rep-act--add" title="add task"
+                              onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />
+                            <span className="deliv-sp" />
                             {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")}>{du < 0 ? "overdue " : "due "}{fdate(d.target)}</span>}
                           </div>
                           {(open[d.id] !== false) && (
                             <div className="deliv-body">
                               <DragList items={tasks} onReorder={(items) => api.reorder(items.map((t) => t.id))}
                                 renderItem={(t, h) => <TRow key={t.id} t={t} dragHandlers={h} />} />
-                              {!tasks.length && <div className="trow"><span></span><span className="empty">no matching tasks</span></div>}
+                              {!tasks.length && <div className="trow"><span className="tc-txt empty">no matching tasks</span><span></span><span></span></div>}
                             </div>
                           )}
                         </div>
@@ -322,19 +323,15 @@ function DeliverableView({ mutate, openTask, openDeliv }) {
                   <div className="wk-deliv-head" style={{ cursor: "pointer" }} onClick={() => toggle(d.id + "-" + id)}>
                     <span className={"caret" + (isOpen ? " open" : "")}><Icon name="chevron" size={12} /></span>
                     <span className="wk-deliv-name">{d.name}</span>
-                    <button className="deliv-edit" title="rename / set target date"
-                      onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }}>✎</button>
-                    <button className="deliv-edit" title="add task to this deliverable"
-                      onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }}>+</button>
+                    <button className="rep-act rep-act--edit" title="rename / set target date"
+                      onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }} />
+                    <button className="rep-act rep-act--add" title="add task to this deliverable"
+                      onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />
                     {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")} style={{ fontSize: 11 }}>{fdate(d.target)}</span>}
                   </div>
                   {isOpen && (
                     <div style={{ marginTop: 4 }}>
                       {personTasks.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} showWs={false} />)}
-                      <button className="btn ghost" style={{ fontSize: 11, padding: "2px 8px", marginTop: 2 }}
-                        onClick={() => window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } }))}>
-                        <Icon name="plus" size={11} /> add task
-                      </button>
                     </div>
                   )}
                 </div>

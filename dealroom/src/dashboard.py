@@ -12,6 +12,7 @@ import base64
 import http.server
 import json
 import os
+import threading
 import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1879,6 +1880,9 @@ def _start_server(html: str, conn, code_name: str | None, port: int) -> None:
             except Exception:
                 pass
 
+    # Single lock guards all access to the shared conn across threads.
+    _conn_lock = threading.Lock()
+
     _ONEPAGER_SAVE_FIELDS = {
         "onepager_title",
         "onepager_headline",
@@ -1956,27 +1960,29 @@ def _start_server(html: str, conn, code_name: str | None, port: int) -> None:
                 self._json_response({"error": "not available in investor view"}, 403)
                 return
 
-            if parsed.path == "/api/model-context":
-                from src.valuation import build_model_context
+            with _conn_lock:
+                if parsed.path == "/api/model-context":
+                    from src.valuation import build_model_context
 
-                deal_code = qs.get("deal", [None])[0] or code_name
-                scenario = qs.get("scenario", ["base"])[0]
-                if deal_code:
-                    deal_row = conn.execute(
-                        "SELECT domain, code_name FROM deals WHERE code_name = ? COLLATE NOCASE",
-                        (deal_code,),
-                    ).fetchone()
-                    if deal_row:
-                        domain = deal_row["domain"] or deal_row["code_name"].lower()
-                        ctx = build_model_context(conn, domain, scenario)
-                        self._json_response(ctx)
-                        return
-                self._json_response({"error": "deal not found"}, 404)
-                return
+                    deal_code = qs.get("deal", [None])[0] or code_name
+                    scenario = qs.get("scenario", ["base"])[0]
+                    if deal_code:
+                        deal_row = conn.execute(
+                            "SELECT domain, code_name FROM deals WHERE code_name = ? COLLATE NOCASE",
+                            (deal_code,),
+                        ).fetchone()
+                        if deal_row:
+                            domain = deal_row["domain"] or deal_row["code_name"].lower()
+                            ctx = build_model_context(conn, domain, scenario)
+                            self._json_response(ctx)
+                            return
+                    self._json_response({"error": "deal not found"}, 404)
+                    return
 
             if parsed.path == "/api/data":
                 deal = self._parse_deal()
-                fresh = build_dashboard_data(conn, deal)
+                with _conn_lock:
+                    fresh = build_dashboard_data(conn, deal)
                 if investor:
                     fresh = _sanitize_investor(fresh)
                 body = json.dumps(fresh, ensure_ascii=False, default=str).encode()
@@ -1988,20 +1994,22 @@ def _start_server(html: str, conn, code_name: str | None, port: int) -> None:
 
             elif parsed.path == "/api/financials":
                 deal = self._parse_deal()
-                deal_row = conn.execute(
-                    "SELECT * FROM deals WHERE code_name = ?", (deal,)
-                ).fetchone()
-                if not deal_row:
-                    self._json_response({"error": "deal not found"}, 404)
-                    return
-                entity = qs.get("entity", ["consolidated"])[0]
-                domain = _domain_for(deal_row)
-                fin = _build_unified_financials(conn, domain, entity=entity)
+                with _conn_lock:
+                    deal_row = conn.execute(
+                        "SELECT * FROM deals WHERE code_name = ?", (deal,)
+                    ).fetchone()
+                    if not deal_row:
+                        self._json_response({"error": "deal not found"}, 404)
+                        return
+                    entity = qs.get("entity", ["consolidated"])[0]
+                    domain = _domain_for(deal_row)
+                    fin = _build_unified_financials(conn, domain, entity=entity)
                 self._json_response(fin)
 
             else:
                 deal = self._parse_deal()
-                data = build_dashboard_data(conn, deal)
+                with _conn_lock:
+                    data = build_dashboard_data(conn, deal)
                 if investor:
                     data = _sanitize_investor(data)
                 page = _build_html(
@@ -2059,8 +2067,9 @@ def _start_server(html: str, conn, code_name: str | None, port: int) -> None:
                 if not domain:
                     self._json_response({"error": "domain required"}, 400)
                     return
-                save_model_params(conn, domain, params, scenario)
-                ctx = build_model_context(conn, domain, scenario)
+                with _conn_lock:
+                    save_model_params(conn, domain, params, scenario)
+                    ctx = build_model_context(conn, domain, scenario)
                 self._json_response(ctx)
                 return
 
@@ -2080,15 +2089,16 @@ def _start_server(html: str, conn, code_name: str | None, port: int) -> None:
                 if not domain:
                     self._json_response({"error": "domain required"}, 400)
                     return
-                params = load_model_params(conn, domain, scenario) or {}
-                tiers = params.get("earnout_tiers_json", [])
-                if isinstance(tiers, str):
-                    tiers = json.loads(tiers)
-                tiers = list(tiers or [])
-                tiers.append(tiers[-1] if tiers else 0)
-                params["earnout_tiers_json"] = tiers
-                save_model_params(conn, domain, params, scenario)
-                ctx = build_model_context(conn, domain, scenario)
+                with _conn_lock:
+                    params = load_model_params(conn, domain, scenario) or {}
+                    tiers = params.get("earnout_tiers_json", [])
+                    if isinstance(tiers, str):
+                        tiers = json.loads(tiers)
+                    tiers = list(tiers or [])
+                    tiers.append(tiers[-1] if tiers else 0)
+                    params["earnout_tiers_json"] = tiers
+                    save_model_params(conn, domain, params, scenario)
+                    ctx = build_model_context(conn, domain, scenario)
                 self._json_response(ctx)
                 return
 
@@ -2109,18 +2119,19 @@ def _start_server(html: str, conn, code_name: str | None, port: int) -> None:
                 if not domain:
                     self._json_response({"error": "domain required"}, 400)
                     return
-                params = load_model_params(conn, domain, scenario) or {}
-                tiers = params.get("earnout_tiers_json", [])
-                if isinstance(tiers, str):
-                    tiers = json.loads(tiers)
-                tiers = list(tiers or [])
-                if tiers and 0 <= index < len(tiers):
-                    tiers.pop(index)
-                elif tiers:
-                    tiers.pop()
-                params["earnout_tiers_json"] = tiers
-                save_model_params(conn, domain, params, scenario)
-                ctx = build_model_context(conn, domain, scenario)
+                with _conn_lock:
+                    params = load_model_params(conn, domain, scenario) or {}
+                    tiers = params.get("earnout_tiers_json", [])
+                    if isinstance(tiers, str):
+                        tiers = json.loads(tiers)
+                    tiers = list(tiers or [])
+                    if tiers and 0 <= index < len(tiers):
+                        tiers.pop(index)
+                    elif tiers:
+                        tiers.pop()
+                    params["earnout_tiers_json"] = tiers
+                    save_model_params(conn, domain, params, scenario)
+                    ctx = build_model_context(conn, domain, scenario)
                 self._json_response(ctx)
                 return
 
@@ -2136,7 +2147,8 @@ def _start_server(html: str, conn, code_name: str | None, port: int) -> None:
                 if not domain:
                     self._json_response({"error": "domain required"}, 400)
                     return
-                ctx = build_model_context(conn, domain, scenario)
+                with _conn_lock:
+                    ctx = build_model_context(conn, domain, scenario)
                 self._json_response(ctx)
                 return
 
@@ -2148,7 +2160,8 @@ def _start_server(html: str, conn, code_name: str | None, port: int) -> None:
                 key = body.get("key", "portfolio_comments")
                 text = body.get("value", "")
                 if key in ("portfolio_comments", "portfolio_pipeline_comments"):
-                    _save_portfolio_meta(conn, key, text)
+                    with _conn_lock:
+                        _save_portfolio_meta(conn, key, text)
                 self._json_response({"ok": True})
                 return
 
@@ -2206,26 +2219,28 @@ def _start_server(html: str, conn, code_name: str | None, port: int) -> None:
                 value = 1 if value else 0
             # Special handling: deal_stage also updates stage_entered_at
             if field == "deal_stage":
-                conn.execute(
-                    "UPDATE deals SET deal_stage = ?, stage_entered_at = ? WHERE code_name = ?",
-                    (
-                        value,
-                        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                        code,
-                    ),
-                )
-                conn.commit()
+                with _conn_lock:
+                    conn.execute(
+                        "UPDATE deals SET deal_stage = ?, stage_entered_at = ? WHERE code_name = ?",
+                        (
+                            value,
+                            datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            code,
+                        ),
+                    )
+                    conn.commit()
                 self._json_response({"ok": True})
                 return
-            conn.execute(
-                f"UPDATE deals SET {field} = ? WHERE code_name = ?", (value, code)
-            )
-            if field in ("onepager_q1", "onepager_q3", "onepager_q4"):
+            with _conn_lock:
                 conn.execute(
-                    "UPDATE deals SET onepager_edited_at = ? WHERE code_name = ?",
-                    (datetime.now(timezone.utc).isoformat(), code),
+                    f"UPDATE deals SET {field} = ? WHERE code_name = ?", (value, code)
                 )
-            conn.commit()
+                if field in ("onepager_q1", "onepager_q3", "onepager_q4"):
+                    conn.execute(
+                        "UPDATE deals SET onepager_edited_at = ? WHERE code_name = ?",
+                        (datetime.now(timezone.utc).isoformat(), code),
+                    )
+                conn.commit()
             resp = json.dumps({"ok": True}).encode()
             self.send_response(200)
             self.send_header("Content-Type", "application/json")

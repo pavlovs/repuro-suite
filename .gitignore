@@ -67,6 +67,12 @@ dealroom/data/deals/
 dealroom/AD_Docs/
 dealroom/EXAMPLE_LIVE_DEAL_FOLDER/
 
+# Backups / scratch artifacts (never code, never deploy)
+*.db.bak-*
+cockpit/static_backup/
+suite/static/Repuro Suite.html
+boardroom/review/proposal-fresh-*.html
+
 # One-off scripts (not core pipeline)
 lead-pipeline/scripts/ba9_*.py
 lead-pipeline/scripts/apply_*.py

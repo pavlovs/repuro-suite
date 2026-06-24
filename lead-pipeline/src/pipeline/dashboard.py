@@ -569,6 +569,10 @@ def _build_html(
 
     release_notes_json = json.dumps(_parse_latest_changelog(), ensure_ascii=False)
 
+    # BASE_PATH is injected by supervisord (e.g. "/allex"). Caddy strips the
+    # prefix before proxying, so the browser must include it in every API call.
+    api_base = os.environ.get("BASE_PATH", "").rstrip("/")
+
     html = (
         template.replace("__DATA_JSON__", data_json)
         .replace("__SERVE_MODE_JS__", "true" if serve_mode else "false")
@@ -579,6 +583,7 @@ def _build_html(
         .replace("__REGION_MAPPING_JSON__", region_mapping_json)
         .replace("__LETTER_TEMPLATE__", letter_template_js)
         .replace("__RELEASE_NOTES_JSON__", release_notes_json)
+        .replace("__API_BASE__", api_base)
     )
     return html
 
@@ -915,8 +920,16 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
             logger.exception("export-briefmarken error: %s", exc)
             self._json_error(500, "Internal server error")
 
+    _MAX_BODY_BYTES = 10_485_760  # 10 MB general cap
+
     def _read_body(self) -> dict:
-        length = int(self.headers.get("Content-Length", 0))
+        raw = self.headers.get("Content-Length", "")
+        if not raw or not raw.strip().lstrip("-").isdigit():
+            return {}
+        length = int(raw)
+        if length < 0 or length > self._MAX_BODY_BYTES:
+            self._json_error(413, "Request body too large or invalid Content-Length")
+            return None  # type: ignore[return-value]
         body = self.rfile.read(length) if length > 0 else b"{}"
         return json.loads(body.decode("utf-8"))
 
@@ -1127,7 +1140,8 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
         db_path = self.__class__._db_path
         try:
             with get_connection(db_path) as conn:
-                domains = [
+                # Collect candidate domain IDs first (pre-UPDATE snapshot).
+                candidates = [
                     r[0]
                     for r in conn.execute(
                         "SELECT domain FROM company_records "
@@ -1136,13 +1150,30 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
                         (batch,),
                     ).fetchall()
                 ]
-                if domains:
+                if not candidates:
+                    domains = []
+                else:
+                    # UPDATE only the rows that were still unsent at SELECT time.
+                    # Use an IN clause over the explicit candidate set so concurrent
+                    # requests cannot audit rows they didn't actually change.
+                    placeholders = ",".join("?" * len(candidates))
                     conn.execute(
-                        "UPDATE company_records SET outreach_sent_at = ? "
-                        "WHERE briefaktion = ? AND approved_for_sendout = 1 "
-                        "AND (outreach_sent_at IS NULL OR outreach_sent_at = '')",
-                        (sent_at, batch),
+                        f"UPDATE company_records SET outreach_sent_at = ? "
+                        f"WHERE domain IN ({placeholders}) "
+                        f"AND (outreach_sent_at IS NULL OR outreach_sent_at = '')",
+                        [sent_at] + candidates,
                     )
+                    # Re-query to find exactly which rows were changed by THIS request
+                    # (rowcount is unreliable across concurrent connections in WAL mode).
+                    domains = [
+                        r[0]
+                        for r in conn.execute(
+                            f"SELECT domain FROM company_records "
+                            f"WHERE domain IN ({placeholders}) "
+                            f"AND outreach_sent_at = ?",
+                            candidates + [sent_at],
+                        ).fetchall()
+                    ]
                     for domain in domains:
                         log_activity(
                             conn, domain, actor, "outreach_sent_at", "", sent_at
@@ -1167,7 +1198,14 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
             from src.pipeline.export_pdf import export_pdf_cmd
 
             domain_filter: list[str] | None = None
-            content_length = int(self.headers.get("Content-Length", 0))
+            _PDF_MAX_BODY = 1_048_576  # 1 MB cap for export-pdf
+            raw_cl = self.headers.get("Content-Length", "")
+            content_length = int(raw_cl) if raw_cl.strip().lstrip("-").isdigit() else 0
+            if content_length < 0 or content_length > _PDF_MAX_BODY:
+                self._json_error(
+                    413, "Request body too large or invalid Content-Length"
+                )
+                return
             if content_length > 0:
                 import json as _json
 

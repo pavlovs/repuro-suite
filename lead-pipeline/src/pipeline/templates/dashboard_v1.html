@@ -1084,6 +1084,7 @@ const EMBEDDED_DATA = __DATA_JSON__;
 const HUBSPOT_PORTAL_ID = __HUBSPOT_PORTAL_ID__;
 const REGION_MAPPING = __REGION_MAPPING_JSON__;
 const LETTER_TEMPLATE = `__LETTER_TEMPLATE__`;
+const API_BASE = '__API_BASE__';
 
 let DATA = null;
 let VIEW = null;
@@ -1134,7 +1135,7 @@ const BA_FILTER_TABS = new Set(['performance', 'leads', 'outreach']);
 async function initData() {
   if (SERVE_MODE) {
     try {
-      const resp = await fetch('/api/data', {signal: AbortSignal.timeout(3000)});
+      const resp = await fetch(API_BASE + '/api/data', {signal: AbortSignal.timeout(3000)});
       if (resp.ok) DATA = await resp.json();
       else DATA = EMBEDDED_DATA;
     } catch (e) {
@@ -1151,7 +1152,7 @@ async function initData() {
 async function refreshData() {
   if (!SERVE_MODE) return;
   try {
-    const resp = await fetch('/api/data', {signal: AbortSignal.timeout(5000)});
+    const resp = await fetch(API_BASE + '/api/data', {signal: AbortSignal.timeout(5000)});
     if (resp.ok) {
       DATA = await resp.json();
       renderAll();
@@ -1534,7 +1535,7 @@ async function exportPDF() {
   btn.textContent = 'Generating PDF...';
   btn.style.opacity = '0.7';
   try {
-    const resp = await fetch('/api/export-pdf', {method: 'POST'});
+    const resp = await fetch(API_BASE + '/api/export-pdf', {method: 'POST'});
     if (!resp.ok) {
       const errText = await resp.text();
       throw new Error(errText);
@@ -1802,7 +1803,7 @@ function passWithOwner(domain) {
 async function resolveParent(domain, parentName, btn) {
   btn.disabled = true; btn.textContent = 'Resolving...';
   try {
-    const resp = await fetch('/api/resolve-parent/' + domain, {
+    const resp = await fetch(API_BASE + '/api/resolve-parent/' + domain, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({parent_name: parentName})
@@ -1845,7 +1846,7 @@ async function retryResolve(domain, retryBtn) {
   if (!name) return;
   retryBtn.disabled = true; retryBtn.textContent = 'Resolving...';
   try {
-    const resp = await fetch('/api/resolve-parent/' + domain, {
+    const resp = await fetch(API_BASE + '/api/resolve-parent/' + domain, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({parent_name: name})
@@ -1870,7 +1871,7 @@ async function retryResolve(domain, retryBtn) {
 async function reEnrich(domain, btn) {
   btn.disabled = true; btn.textContent = 'Enriching...';
   try {
-    const resp = await fetch('/api/re-enrich/' + domain, {method:'POST'});
+    const resp = await fetch(API_BASE + '/api/re-enrich/' + domain, {method:'POST'});
     const data = await resp.json();
     if (data.ok) {
       btn.textContent = data.detail;
@@ -1984,7 +1985,7 @@ function renderSReview() {
 async function inlinePatch(domain, payload) {
   if (!SERVE_MODE) return;
   try {
-    const resp = await fetch('/api/company/' + encodeURIComponent(domain), {
+    const resp = await fetch(API_BASE + '/api/company/' + encodeURIComponent(domain), {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload),
@@ -2768,7 +2769,7 @@ async function saveWriteback() {
   };
   const fb = document.getElementById('wb-feedback');
   try {
-    const resp = await fetch('/api/company/' + encodeURIComponent(domain), {
+    const resp = await fetch(API_BASE + '/api/company/' + encodeURIComponent(domain), {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload),
@@ -2845,7 +2846,7 @@ async function batchApprove() {
   if (!SERVE_MODE) { alert('Server not running.'); return; }
   const domains = [...selectedDomains];
   try {
-    const resp = await fetch('/api/batch', {
+    const resp = await fetch(API_BASE + '/api/batch', {
       method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({domains, updates: {approved_for_sendout: 1}}),
@@ -2921,7 +2922,7 @@ async function submitAddLead() {
   fb.textContent = 'Adding…';
   fb.className = 'save-feedback';
   try {
-    const resp = await fetch('/api/ingest-domain', {
+    const resp = await fetch(API_BASE + '/api/ingest-domain', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({domain}),

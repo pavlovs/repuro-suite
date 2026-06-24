@@ -71,5 +71,5 @@ function Palette({ open, onClose, openTask, onJump }) {
     </div>
   );
 }
-const NAV_ICONS = { overview: "cockpit", week: "week", table: "table", relations: "relations", timeline: "timeline", agents: "bolt" };
+const NAV_ICONS = { overview: "cockpit", week: "week", table: "table", timeline: "timeline", agents: "bolt" };
 window.Palette = Palette;

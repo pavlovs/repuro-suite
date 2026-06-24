@@ -45,6 +45,7 @@ def sync_deal_mirror(conn):
         }
 
     now = db.now_iso()
+    upstream_codes = {code_name for code_name, _, _ in rows if code_name}
     with db.WRITE_LOCK:
         for code_name, stage, note in rows:
             if not code_name:
@@ -56,6 +57,14 @@ def sync_deal_mirror(conn):
                      stage=excluded.stage, note=excluded.note, synced_at=excluded.synced_at""",
                 (code_name, stage, note, now),
             )
+        # Drop mirror rows for deals no longer present upstream — same transaction
+        # as the upserts so the mirror exactly reflects the source set.
+        existing_mirror = [
+            r[0] for r in conn.execute("SELECT codename FROM deal_mirror").fetchall()
+        ]
+        for codename in existing_mirror:
+            if codename not in upstream_codes:
+                conn.execute("DELETE FROM deal_mirror WHERE codename=?", (codename,))
         # Auto-create M&A projects for deals without a matching workstream (§4.6)
         mna = conn.execute("SELECT id FROM spaces WHERE slug='mna'").fetchone()
         if mna:
@@ -86,15 +95,9 @@ def sync_deal_mirror(conn):
                     )
                 existing_deals.add(code_name.lower())
                 existing_names.add(code_name.lower())
-            # Normalize deal-linked workstream names to match codename
-            for row in conn.execute(
-                "SELECT id, name, deal_codename FROM workstreams "
-                "WHERE deal_codename IS NOT NULL AND name != deal_codename"
-            ).fetchall():
-                conn.execute(
-                    "UPDATE workstreams SET name=? WHERE id=?",
-                    (row["deal_codename"], row["id"]),
-                )
+            # Linkage is via deal_codename; the workstream name is set only at
+            # creation/linking above. Do NOT normalize names on every sync —
+            # that clobbered manual renames.
         conn.commit()
     return {"ok": True, "count": len(rows), "error": None, "synced_at": now}
 

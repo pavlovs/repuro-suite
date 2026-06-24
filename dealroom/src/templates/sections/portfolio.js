@@ -1,5 +1,38 @@
 // ─── Portfolio ───────────────────────────────────────────────────────────────
 
+// ─── Shared debounced save helper ────────────────────────────────────────────
+// Usage: _debouncedSave(key, url, payload)
+// - Debounces 500ms per key; cancels any pending call for the same key.
+// - Sets save indicator to Saving…/Saved ✓/Error.
+// - Does nothing if not in SERVE_MODE.
+const _saveTimers = {};
+const _savePending = {};
+function _debouncedSave(key, url, payload) {
+  if (!SERVE_MODE) return;
+  if (_saveTimers[key]) clearTimeout(_saveTimers[key]);
+  _savePending[key] = true;
+  const ind = document.getElementById('saveInd');
+  if (ind) { ind.textContent = 'Saving…'; ind.className = 'save-indicator saving'; }
+  _saveTimers[key] = setTimeout(function() {
+    delete _saveTimers[key];
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    }).then(function(r) {
+      delete _savePending[key];
+      if (ind) {
+        if (r.ok) { ind.textContent = 'Saved ✓'; ind.className = 'save-indicator saved'; }
+        else      { ind.textContent = 'Error';   ind.className = 'save-indicator error'; }
+        setTimeout(function() { ind.className = 'save-indicator'; }, 2500);
+      }
+    }).catch(function() {
+      delete _savePending[key];
+      if (ind) { ind.textContent = 'Error'; ind.className = 'save-indicator error'; }
+    });
+  }, 500);
+}
+
 // Harvey ball SVG: 0=empty, 1=quarter, 2=half, 3=three-quarter, 4=full (global — used by cycleFit too)
 function harveyBall(v) {
   const r=9, cx=11, cy=11;
@@ -189,17 +222,7 @@ function renderPortfolio() {
         if (!text) {
           pcEl.innerHTML = '<span style="color:#94a3b8;font-style:italic">Click to add portfolio update notes…</span>';
         }
-        const ind = document.getElementById('saveInd');
-        if (ind) { ind.textContent='Saving…'; ind.className='save-indicator saving'; }
-        fetch('api/portfolio-comments',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({value:text})})
-        .then(r=>{
-          if(ind){
-            if(r.ok){ind.textContent='Saved ✓';ind.className='save-indicator saved';}
-            else{ind.textContent='Error';ind.className='save-indicator error';}
-            setTimeout(()=>{ind.className='save-indicator';},2500);
-          }
-        }).catch(()=>{if(ind){ind.textContent='Error';ind.className='save-indicator error';}});
+        _debouncedSave('portfolio_comments', 'api/portfolio-comments', {key:'portfolio_comments', value:text});
       });
     }
   }
@@ -212,10 +235,7 @@ function renderPortfolio() {
       pipEl.querySelectorAll('li').forEach(li => { const t=li.textContent.trim(); if(t) lines.push(t); });
       if (lines.length === 0) { const raw = pipEl.innerText.trim(); if (raw) lines.push(...raw.split('\n').filter(l=>l.trim())); }
       const text = lines.join('\n');
-      fetch('api/portfolio-comments', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({key:'portfolio_pipeline_comments', value:text})
-      });
+      _debouncedSave('portfolio_pipeline_comments', 'api/portfolio-comments', {key:'portfolio_pipeline_comments', value:text});
       if (lines.length > 0) {
         pipEl.innerHTML = '<ul class="comment-bullets">' + lines.map(l => '<li>'+esc(l)+'</li>').join('') + '</ul>';
       }
@@ -264,14 +284,7 @@ function renderPortfolio() {
         }
         wrap.removeAttribute('contenteditable');
         if (!field || !code) return;
-        ind.textContent='Saving…'; ind.className='save-indicator saving';
-        fetch('api/update',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({code_name:code,field,value})})
-        .then(r=>{
-          if(r.ok){ind.textContent='Saved ✓';ind.className='save-indicator saved';}
-          else{ind.textContent='Error';ind.className='save-indicator error';}
-          setTimeout(()=>{ind.className='save-indicator';},2500);
-        }).catch(()=>{ind.textContent='Error';ind.className='save-indicator error';});
+        _debouncedSave(code+'|'+field, 'api/update', {code_name:code, field, value});
       });
       wrap.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();wrap.blur();}});
     });
@@ -299,14 +312,7 @@ function renderPortfolio() {
         opt.closest('.stage-dropdown-menu').classList.remove('open');
         // Update the row's data-stage for filtering
         wrap.closest('tr').dataset.stage = value;
-        ind.textContent='Saving…'; ind.className='save-indicator saving';
-        fetch('api/update',{method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({code_name:code,field:'deal_stage',value})})
-        .then(r=>{
-          if(r.ok){ind.textContent='Saved ✓';ind.className='save-indicator saved';}
-          else{ind.textContent='Error';ind.className='save-indicator error';}
-          setTimeout(()=>{ind.className='save-indicator';},2500);
-        }).catch(()=>{ind.textContent='Error';ind.className='save-indicator error';});
+        _debouncedSave(code+'|deal_stage', 'api/update', {code_name:code, field:'deal_stage', value});
       });
     });
     // Close dropdown when clicking outside

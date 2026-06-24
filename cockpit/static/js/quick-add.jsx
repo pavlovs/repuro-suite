@@ -31,6 +31,12 @@ function QuickAdd({ open, onClose, prefill }) {
       });
     }
   }, [open]);
+  React.useEffect(() => {
+    if (!open) return;
+    const onEsc = (e) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, [open]);
   if (!open) return null;
 
   const toggleOwner = (p) => setF((s) => ({ ...s, owners: s.owners.includes(p) ? s.owners.filter((x) => x !== p) : [...s.owners, p] }));
@@ -50,10 +56,10 @@ function QuickAdd({ open, onClose, prefill }) {
     busyRef.current = true; setBusy(true);
     try {
       const t = await api.create(fields);
-      if (t) onClose(t.id);
-    } finally {
-      busyRef.current = false; setBusy(false);
-    }
+      if (t) { onClose(t.id); return; } // guard stays true; useEffect resets on re-open
+    } catch (_) {}
+    // Only reset guard on failure — success path closes the modal and useEffect resets on re-open
+    busyRef.current = false; setBusy(false);
   };
 
   const submitDeliv = async () => {
@@ -68,46 +74,27 @@ function QuickAdd({ open, onClose, prefill }) {
         const ok = await showModal("No target date set", [
           {label: "This deliverable won't appear on the timeline. Click OK to continue anyway.", type: "select", options: [{value: "yes", label: "Continue without a target date"}], value: "yes"},
         ]);
-        if (ok === null) return;
+        if (ok === null) { busyRef.current = false; setBusy(false); return; }
       }
       const created = await api.createDeliv(wsId, f.text.trim(), f.target || null);
-      if (created) onClose(created.id);
-    } finally {
-      busyRef.current = false; setBusy(false);
-    }
+      if (created) { onClose(created.id); return; }
+    } catch (_) {}
+    busyRef.current = false; setBusy(false);
   };
 
-  const submitPersonal = async () => {
-    if (busyRef.current) return;
-    if (!f.text.trim()) return showToast("Todo text required", "err");
-    const code = PRINCIPAL && PRINCIPAL.id === "ff" ? "FF" : "RD";
-    busyRef.current = true; setBusy(true);
-    try {
-      const t = await api.create({ text: f.text.trim(), kind: "personal", owners: [code], execution: "me" });
-      if (t) onClose(); // close without an id → don't open the task drawer for a quick personal todo
-    } finally {
-      busyRef.current = false; setBusy(false);
-    }
-  };
-
-  const submit = mode === "deliverable" ? submitDeliv : mode === "personal" ? submitPersonal : submitTask;
+  const submit = mode === "deliverable" ? submitDeliv : submitTask;
 
   return (
     <div className="qa-scrim" onClick={onClose}>
-      <div className="qa-modal" onClick={(e) => e.stopPropagation()}>
+      <div className="qa-modal" role="dialog" aria-modal="true" aria-label="New item" onClick={(e) => e.stopPropagation()}>
         <div className="qa-type-toggle">
           <button className={mode === "task" ? "on" : ""} onClick={() => setMode("task")}><Icon name="check" size={13} />Task</button>
           <button className={mode === "deliverable" ? "on" : ""} onClick={() => setMode("deliverable")}><Icon name="timeline" size={13} />Deliverable</button>
-          <button className={mode === "personal" ? "on" : ""} onClick={() => setMode("personal")}><Icon name="pin" size={13} />Personal</button>
         </div>
-        {mode === "personal" && (
-          <input className="qa-input" autoFocus placeholder="Private todo — only you see it" value={f.text}
-            onChange={(e) => setF({ ...f, text: e.target.value })} onKeyUp={(e) => e.key === "Enter" && submit()} />
-        )}
         {mode === "task" && (
           <React.Fragment>
             <input className="qa-input" autoFocus placeholder="What needs to happen?" value={f.text}
-              onChange={(e) => setF({ ...f, text: e.target.value })} onKeyUp={(e) => e.key === "Enter" && submit()} />
+              onChange={(e) => setF({ ...f, text: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }} />
             <div className="qa-row">
               <label>Deliverable
                 <select value={f.d} onChange={(e) => setF({ ...f, d: e.target.value })}>
@@ -179,7 +166,7 @@ function QuickAdd({ open, onClose, prefill }) {
         {mode === "deliverable" && (
           <React.Fragment>
             <input className="qa-input" autoFocus placeholder="Deliverable name (milestone)" value={f.text}
-              onChange={(e) => setF({ ...f, text: e.target.value })} onKeyUp={(e) => e.key === "Enter" && submit()} />
+              onChange={(e) => setF({ ...f, text: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }} />
             <div className="qa-row">
               <label>Workstream
                 <select value={f.ws} onChange={(e) => setF({ ...f, ws: e.target.value })}>

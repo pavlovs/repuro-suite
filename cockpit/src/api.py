@@ -501,6 +501,29 @@ def _get_task(conn, num):
     return row
 
 
+def _guard_personal(row, principal_id):
+    """Personal todos are private to their creator. Any mutation by a non-creator
+    is forbidden. Caller passes a task row and the requesting principal id."""
+    if row["kind"] == "personal" and row["created_by"] != principal_id:
+        raise HTTPException(403, "personal todo belongs to another user")
+
+
+# Private body fields of a personal todo — never written verbatim into audit_log,
+# so deleted personal tasks (unclassifiable at read time) leave no leaked body.
+_PERSONAL_PRIVATE_FIELDS = ("text", "detail")
+
+
+def _redact_personal_audit(payload, kind):
+    """Return a copy of an audit before/after dict with personal-todo body fields
+    redacted. Pass-through for non-personal tasks and falsy payloads."""
+    if kind != "personal" or not payload:
+        return payload
+    return {
+        k: ("[redacted]" if k in _PERSONAL_PRIVATE_FIELDS else v)
+        for k, v in payload.items()
+    }
+
+
 def _insert_task(conn, actor, fields):
     """Caller validated. Returns new integer id."""
     now = db.now_iso()
@@ -535,7 +558,13 @@ def _insert_task(conn, actor, fields):
         f"INSERT INTO tasks ({names}) VALUES ({','.join('?' * len(cols))})",
         tuple(cols.values()),
     )
-    db.audit(conn, actor, "task_create", models.task_id(cur.lastrowid), after=cols)
+    db.audit(
+        conn,
+        actor,
+        "task_create",
+        models.task_id(cur.lastrowid),
+        after=_redact_personal_audit(cols, cols.get("kind")),
+    )
     return cur.lastrowid
 
 
@@ -558,7 +587,17 @@ def _update_task(conn, actor, num, fields, expected_version=None, action="task_u
     setters = ", ".join(f"{k}=?" for k in updates) + ", version=version+1"
     conn.execute(f"UPDATE tasks SET {setters} WHERE id=?", (*updates.values(), num))
     before = {k: row[k] for k in fields if k in row.keys()}
-    db.audit(conn, actor, action, models.task_id(num), before=before, after=fields)
+    eff_kind = (
+        "personal" if "personal" in (row["kind"], fields.get("kind")) else row["kind"]
+    )
+    db.audit(
+        conn,
+        actor,
+        action,
+        models.task_id(num),
+        before=_redact_personal_audit(before, eff_kind),
+        after=_redact_personal_audit(fields, eff_kind),
+    )
     return conn.execute("SELECT * FROM tasks WHERE id=?", (num,)).fetchone()
 
 
@@ -641,16 +680,24 @@ def _scrub_personal(tasks, viewer):
     ]
 
 
+def _scrub_state_personal(st, viewer):
+    """Strip personal tasks not owned by `viewer` from an assembled-state dict,
+    in place, across standalone tasks and every deliverable. Apply before any
+    rendering (export, etc.) so private todos never leak to another principal."""
+    st["standalone_tasks"] = _scrub_personal(st.get("standalone_tasks", []), viewer)
+    for space in st.get("spaces", []):
+        for ws in space.get("workstreams", []):
+            for d in ws.get("deliverables", []):
+                d["tasks"] = _scrub_personal(d.get("tasks", []), viewer)
+    return st
+
+
 @app.get("/api/state")
 def state(p=Depends(principal)):
     s = assemble_state(db.get_conn())
     s["principal"] = p
     # Server-side privacy: filter personal todos to the authenticated viewer.
-    s["standalone_tasks"] = _scrub_personal(s.get("standalone_tasks", []), p["id"])
-    for space in s.get("spaces", []):
-        for ws in space.get("workstreams", []):
-            for d in ws.get("deliverables", []):
-                d["tasks"] = _scrub_personal(d.get("tasks", []), p["id"])
+    _scrub_state_personal(s, p["id"])
     return s
 
 
@@ -702,6 +749,7 @@ def patch_task(tid: str, payload: dict = Body(...), p=Depends(principal)):
         payload["deliverable_id"] = dnum
     _validate_task_fields(conn, payload)
     with db.WRITE_LOCK:
+        _guard_personal(_get_task(conn, num), p["id"])
         _update_task(conn, p["id"], num, payload, expected_version=version)
         conn.commit()
     _broadcast(p["id"])
@@ -1095,6 +1143,7 @@ def delete_task(tid: str, p=Depends(human_only)):
     num = _tid(tid)
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
+        _guard_personal(row, p["id"])
         ref = models.task_id(num)
         for other in conn.execute(
             "SELECT id, prereqs, version FROM tasks WHERE prereqs LIKE ?",
@@ -1108,7 +1157,11 @@ def delete_task(tid: str, p=Depends(human_only)):
         conn.execute("DELETE FROM idempotency WHERE task_id=?", (num,))
         conn.execute("DELETE FROM tasks WHERE id=?", (num,))
         db.audit(
-            conn, p["id"], "task_delete", ref, before={k: row[k] for k in row.keys()}
+            conn,
+            p["id"],
+            "task_delete",
+            ref,
+            before=_redact_personal_audit({k: row[k] for k in row.keys()}, row["kind"]),
         )
         conn.commit()
     _broadcast(p["id"])
@@ -1205,6 +1258,7 @@ def approve(tid: str, p=Depends(human_only)):
     num = _tid(tid)
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
+        _guard_personal(row, p["id"])
         if row["status"] != "in_review":
             raise HTTPException(409, f"task is {row['status']}, not in_review")
         _update_task(conn, p["id"], num, {"status": "done"}, action="task_approve")
@@ -1223,6 +1277,7 @@ def reject(tid: str, payload: dict = Body(default={}), p=Depends(human_only)):
     comment = payload.get("comment", "")
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
+        _guard_personal(row, p["id"])
         if row["status"] != "in_review":
             raise HTTPException(409, f"task is {row['status']}, not in_review")
         evidence = (row["evidence"] or "") + f"\nREJECTED ({p['id']}): {comment}"
@@ -1249,6 +1304,9 @@ def export_md(scope: str = Query(default="all"), p=Depends(principal)):
         raise HTTPException(403, "scope=all requires a human principal")
     conn = db.get_conn()
     st = assemble_state(conn)
+    # Privacy: drop personal todos not owned by the requester, for ALL scopes
+    # (incl. scope=all) before scope filtering and rendering.
+    _scrub_state_personal(st, p["id"])
     st = _filter_scope(st, scope)
     return mdio.render_export(st, scope)
 
@@ -1448,20 +1506,52 @@ def activity_log(entity: str | None = Query(default=None), p=Depends(principal))
         rows = conn.execute(
             "SELECT * FROM audit_log ORDER BY at DESC LIMIT 50"
         ).fetchall()
-    return {
-        "entries": [
+
+    # Privacy: an audit entry whose entity is a personal todo not created by the
+    # viewer must not expose its body. Classify each task-entity row against the
+    # live task; entries we can identify as another user's personal todo are
+    # redacted. Rows whose task no longer exists can't be classified — but
+    # personal-task bodies are no longer written into audit_log (see _audit_task),
+    # so those legacy rows carry no private body for new personal todos.
+    personal_owner = {}  # entity ref -> created_by, for kind='personal' tasks
+
+    def _is_other_personal(entity):
+        if not entity or not entity.startswith("t-"):
+            return False
+        if entity not in personal_owner:
+            try:
+                _, n = _safe_ref(entity)
+                trow = conn.execute(
+                    "SELECT kind, created_by FROM tasks WHERE id=?", (n,)
+                ).fetchone()
+            except Exception:
+                trow = None
+            personal_owner[entity] = (
+                trow["created_by"] if trow and trow["kind"] == "personal" else False
+            )
+        owner = personal_owner[entity]
+        return owner is not False and owner != p["id"]
+
+    entries = []
+    for r in rows:
+        redacted = _is_other_personal(r["entity"])
+        entries.append(
             {
                 "id": r["id"],
                 "timestamp": r["at"],
                 "actor": r["actor"],
                 "action": r["action"],
                 "entity": r["entity"],
-                "before": json.loads(r["before"]) if r["before"] else None,
-                "after": json.loads(r["after"]) if r["after"] else None,
+                "before": None
+                if redacted
+                else (json.loads(r["before"]) if r["before"] else None),
+                "after": None
+                if redacted
+                else (json.loads(r["after"]) if r["after"] else None),
+                **({"redacted": True} if redacted else {}),
             }
-            for r in rows
-        ]
-    }
+        )
+    return {"entries": entries}
 
 
 # --------------------------------------------------------------------------
@@ -1487,22 +1577,18 @@ VALID_DEAL_STAGES = {
 
 @app.patch("/api/deal/{codename}")
 def patch_deal(codename: str, payload: dict = Body(...), p=Depends(human_only)):
+    """Deal stage/note are MASTERED by DEALRoom (dealroom.db) and mirrored
+    read-only into cockpit's deal_mirror. Writing them here is silently lost on
+    the next sync, so we refuse and point the caller at the source of truth."""
     conn = db.get_conn()
     row = conn.execute(
         "SELECT * FROM deal_mirror WHERE codename=?", (codename,)
     ).fetchone()
     if not row:
         raise HTTPException(404, "deal not found")
-    allowed = {"stage", "note"}
-    updates = {k: v for k, v in payload.items() if k in allowed}
-    if not updates:
-        raise HTTPException(422, "nothing to update")
-    if "stage" in updates and updates["stage"] not in VALID_DEAL_STAGES:
-        raise HTTPException(422, f"invalid stage: {updates['stage']}")
-    sets = ", ".join(f"{k}=?" for k in updates)
-    vals = list(updates.values()) + [codename]
-    with db.WRITE_LOCK:
-        conn.execute(f"UPDATE deal_mirror SET {sets} WHERE codename=?", vals)
-        conn.commit()
-    _broadcast(p["id"])
-    return {"ok": True, "codename": codename, "updated": updates}
+    raise HTTPException(
+        409,
+        "deal stage/note are mastered by DEALRoom and mirrored read-only here; "
+        "edit them in DEALRoom (dealroom.db) — cockpit mirror edits are "
+        "overwritten on the next sync",
+    )

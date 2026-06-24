@@ -13,16 +13,15 @@ Claude reads this when `/suite-fix` is invoked.
 
 - [ ] Dealroom onepager MOUSE: add the content — still not in (content/data sync, Roman handling separately)
 - [ ] Update the local MOUSE onepager into the online Dealroom (content/data sync)
-- [ ] Cockpit Workstreams: "Blocked By" (the tasks that must finish first) should only unravel when you hover over the respective task
 - [ ] UX: sections in Cockpit still not unified — whitespace between the side-drawer and section content differs (Workstreams starts flush, Weekly Meeting sits further right, etc.). Part of the CSS-unification FR below.
-- [ ] Dealroom resolves to 502
+- [ ] [UX decision] Cockpit Board view: red cards show blocking prereqs inline (`needs · X, Y`, `view-board.jsx:19`). The Workstreams-table fix hover-gates prereqs; Board does not. Apply the same hover-gating to cards, or leave (kanban glanceability)? — Roman's call, not auto-changed.
 
 ---
 ## Open — architecture / from Codex deep review (needs Roman or deferred)
 > Full detail: `suite/ai/codex-reviews/2026-06-23-1758-architecture.md` + `…-frontend.md`
 
 - [ ] [ARCH][high] DEALRoom: child tables keyed by free-text `domain` strand rows on rename — read-only check found REAL orphans in `deal_documents/deal_valuations/deal_questions` (domains `wolf`, `cat`, `blackbird`; Mouse→Everto clean). Migration SQL drafted, NOT executed — **approve cleanup?** (`dealroom/src/db.py`)
-- [ ] [ARCH][medium] DEALRoom: wrong DB path silently creates+seeds a fresh DB — one-line fail-closed guard assessed safe, not implemented — **approve?** (`dealroom/src/db.py:1342`)
+- [ ] [ARCH][medium] DEALRoom: wrong DB path silently creates+seeds a fresh DB — fail-closed guard NOW IMPLEMENTED in code (`DEALROOM_REQUIRE_DB` env guard, committed a4f1815) but INERT: the env var is not set in `suite/fly.toml`/`entrypoint.sh`, so prod is unprotected. **Wire the env var?** (`dealroom/src/db.py`)
 - [ ] [ARCH][medium] Suite: `investor.db` started by supervisord but omitted from Litestream — moot until the investor/boardroom module ships to prod; decide when provisioning Strada access (`suite/litestream.yml`)
 - [ ] [ARCH][low] / Infra (deferred — architecture change): `entrypoint.sh` boot-time `sed` injection of `COCKPIT_BASE_PATH` is fragile. Replace with a `/config.js` endpoint that returns `window.COCKPIT_BASE="/cockpit"` so HTML files become immutable. (`suite/entrypoint.sh`)
 - [ ] [UX][low] ALLEX: blocking `alert()` fallbacks — no toast system exists; would need a new feedback primitive (`lead-pipeline/src/pipeline/templates/dashboard.html`)
@@ -43,3 +42,6 @@ Claude reads this when `/suite-fix` is invoked.
 ---
 ## Resolved
 Deployed fixes are pruned on each `/suite-fix` run. See git history of this file for the full log.
+
+- [x] Dealroom resolves to 502 — fixed 2026-06-24 (missing `import threading` in `dealroom/src/dashboard.py`; backend was crash-looping on `NameError`. Verified live: `localhost:8082 -> 200` post-deploy). a4f1815
+- [x] Cockpit Workstreams "Blocked By" reveals only on hover — fixed 2026-06-24 (`TRow` wrapped in `.trow-hovergroup`; prereq rows `display:none` until parent task hovered; per-row separators preserved). a4f1815

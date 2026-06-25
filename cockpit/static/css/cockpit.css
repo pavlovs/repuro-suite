@@ -8,6 +8,7 @@
   --brand-700: var(--rs-brand-hover, #0e7490);
   --brand-800: var(--rs-brand-dark, #0b5567);
   --cyan: #22d3ee;
+  --brand-50: #e8f7fb;
   --cyan-50: #ecfeff;
   --cyan-100: #cff4fb;
   --cyan-light: #8de8f6;
@@ -126,6 +127,11 @@ button { font-family: inherit; cursor: pointer; }
 .btn.primary:hover { background: var(--brand-700); }
 .btn.ghost { background: #fff; border-color: var(--line); color: var(--brand); }
 .btn.ghost:hover { border-color: var(--cyan-light); color: var(--brand); }
+.btn.approve { background: var(--green); color: #fff; border-color: transparent; }
+.btn.approve:hover { background: #15803d; }
+.btn.reject { background: #fde2e9; color: var(--rose); border-color: transparent; }
+.btn.reject:hover { background: #fcc8d7; }
+.btn.sm { padding: 6px 10px; font-size: 11.5px; border-radius: 7px; }
 
 .person-switch { display: flex; gap: 3px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
 .person-switch button { border: none; background: transparent; border-radius: 8px; padding: 5px 11px; font-size: 12px; font-weight: 700; color: var(--ink-2); display: flex; align-items: center; gap: 6px; }

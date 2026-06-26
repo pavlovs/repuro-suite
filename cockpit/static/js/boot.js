@@ -402,6 +402,22 @@
       if (undoStack.length > 25) undoStack.shift();
       return this._save(t, changes);
     },
+    async bumpDue(t, newDue) {
+      undoStack.push({ taskId: t.id, fields: { due: t.ownDue } });
+      if (undoStack.length > 25) undoStack.shift();
+      var r = await authedFetch("/api/task/" + t.id, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ version: t.version, deadline: newDue }),
+      });
+      conflictReload(r);
+      if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return false; }
+      var updated = await r.json();
+      t.version = updated.version;
+      t.due = newDue;
+      t.ownDue = newDue;
+      refreshFromServer();
+      return true;
+    },
     async _save(t, changes) {
       if (changes.waiting && !changes.status) changes.status = "waiting";
       var body = Object.assign({ version: t.version }, toServerFields(t, changes));

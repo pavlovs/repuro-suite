@@ -13,6 +13,7 @@ primary_region = "fra"
   PIPELINE_DB_PATH = "/data/pipeline.db"
   # DEALROOM
   DEALROOM_DB_PATH = "/data/dealroom.db"
+  DEALROOM_REQUIRE_DB = "1"
   ALLEX_PIPELINE_DB = "/data/pipeline.db"
   # COCKPIT
   COCKPIT_DB = "/data/cockpit.db"

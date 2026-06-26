@@ -371,14 +371,14 @@ function WeekRow({ t, mutate, openTask, showWs = true, showDate = true, dragHand
   React.useEffect(() => { setOptimisticDue(null); }, [t.due]);
   async function bumpTomorrow(e) {
     e.stopPropagation();
-    if (bumpRef.current) return;            // ignore repeat clicks until this bump settles
+    if (bumpRef.current) return;
     bumpRef.current = true;
     const next = addDays(effDue, 1);
-    setOptimisticDue(next);                 // immediate UI update
+    setOptimisticDue(next);
     try {
-      const ok = await api.save(t, { due: next });
-      if (ok === false) setOptimisticDue(null); // save returns false on non-throwing failure — revert
-    } catch (_) { setOptimisticDue(null); }     // revert on thrown error (e.g. 409 conflict)
+      const ok = await api.bumpDue(t, next);
+      if (ok === false) setOptimisticDue(null);
+    } catch (_) { setOptimisticDue(null); }
     finally { bumpRef.current = false; }
   }
   const dragging = dragHandlers && dragHandlers["data-dragging"] === "true";

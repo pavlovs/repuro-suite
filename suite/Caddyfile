@@ -15,6 +15,7 @@
 	# /api/agent/*. See cockpit/ai/SPEC-agent-skills-repo.md §2 (Option B).
 	@needsAuth {
 		not path /healthz
+		not path /diag
 		not {
 			path /cockpit/api/agent/*
 			header Authorization "Bearer *"
@@ -44,6 +45,11 @@
 	handle /api/whoami {
 		header Content-Type "application/json"
 		respond `{"user":"{http.auth.user.id}"}` 200
+	}
+
+	handle /diag {
+		header Content-Type "text/html"
+		respond `<!DOCTYPE html><html><body><h1>Suite Diag</h1><p>Caddy is alive.</p><p><a href="/cockpit/">Cockpit</a> | <a href="/allex/">ALLEX</a> | <a href="/deals/">Deals</a></p></body></html>` 200
 	}
 
 	handle /favicon.ico {
@@ -76,20 +82,24 @@
 	}
 
 	handle_path /allex/* {
+		header Cache-Control "no-cache, no-store, must-revalidate"
 		reverse_proxy localhost:8081
 	}
 
 	handle_path /deals/* {
+		header Cache-Control "no-cache, no-store, must-revalidate"
 		reverse_proxy localhost:8082
 	}
 
 	handle_path /cockpit/* {
+		header Cache-Control "no-cache, no-store, must-revalidate"
 		reverse_proxy localhost:8083 {
 			header_up X-Remote-User {http.auth.user.id}
 		}
 	}
 
 	handle_path /investor/* {
+		header Cache-Control "no-cache, no-store, must-revalidate"
 		reverse_proxy localhost:8084 {
 			header_up X-Remote-User {http.auth.user.id}
 		}

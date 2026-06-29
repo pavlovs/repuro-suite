@@ -7,10 +7,21 @@ import hashlib
 import json
 import os
 import re
+import uuid
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
+from pathlib import Path
 
-from fastapi import Body, Depends, FastAPI, Header, HTTPException, Query
+from fastapi import (
+    Body,
+    Depends,
+    FastAPI,
+    File,
+    Header,
+    HTTPException,
+    Query,
+    UploadFile,
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse  # noqa: F401
 
@@ -67,6 +78,18 @@ async def _sync_loop(interval):
 
 
 app = FastAPI(title="Repuro Cockpit", version="0.1.0", lifespan=lifespan)
+from starlette.middleware.base import BaseHTTPMiddleware
+
+
+class NoCacheStaticMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith("/static/"):
+            response.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return response
+
+
+app.add_middleware(NoCacheStaticMiddleware)
 app.mount(
     "/static",
     StaticFiles(directory=os.path.join(os.path.dirname(__file__), "..", "static")),
@@ -426,6 +449,9 @@ _TASK_FIELDS = {
     "input_from",
     "input_question",
     "start_date",
+    "preview_url",
+    "review_feedback",
+    "review_round",
 }
 _TASK_ENUMS = {
     "kind": models.KINDS,
@@ -1294,6 +1320,112 @@ def reject(tid: str, payload: dict = Body(default={}), p=Depends(human_only)):
         conn.commit()
     _broadcast(p["id"])
     return assemble_task(conn, num)
+
+
+@app.post("/api/task/{tid}/request-changes")
+def request_changes(tid: str, payload: dict = Body(...), p=Depends(human_only)):
+    """Send task back to agent with structured feedback. Unlike reject (which
+    just re-opens), this increments review_round and stores feedback so the
+    next agent run gets it as mandatory context."""
+    conn = db.get_conn()
+    num = _tid(tid)
+    feedback = payload.get("feedback", "")
+    if not feedback.strip():
+        raise HTTPException(422, "feedback is required for request-changes")
+    with db.WRITE_LOCK:
+        row = _get_task(conn, num)
+        _guard_personal(row, p["id"])
+        if row["status"] != "in_review":
+            raise HTTPException(409, f"task is {row['status']}, not in_review")
+        new_round = (row["review_round"] or 0) + 1
+        evidence = (
+            row["evidence"] or ""
+        ) + f"\n\n---\nFEEDBACK R{new_round} ({p['id']}): {feedback}"
+        _update_task(
+            conn,
+            p["id"],
+            num,
+            {
+                "status": "open",
+                "evidence": evidence,
+                "review_feedback": feedback,
+                "review_round": new_round,
+            },
+            action="task_request_changes",
+        )
+        conn.execute(
+            "UPDATE tasks SET claimed_by=NULL, claim_expires_at=NULL WHERE id=?", (num,)
+        )
+        conn.commit()
+    _broadcast(p["id"])
+    return assemble_task(conn, num)
+
+
+# --------------------------------------------------------------------------
+# preview file storage
+_PREVIEW_DIR = (
+    Path(os.environ.get("COCKPIT_DB", "")).parent / "previews"
+    if os.environ.get("COCKPIT_DB")
+    else Path(__file__).resolve().parent.parent / "data" / "previews"
+)
+_MAX_PREVIEW_MB = 50
+
+
+@app.post("/api/task/{tid}/upload-preview", status_code=201)
+def upload_preview(tid: str, file: UploadFile = File(...), p=Depends(principal)):
+    """Store a preview file (PDF, PNG, HTML) for the review UI."""
+    conn = db.get_conn()
+    num = _tid(tid)
+    row = _get_task(conn, num)
+    if not row:
+        raise HTTPException(404, "task not found")
+    ext = Path(file.filename or "preview.pdf").suffix.lower()
+    if ext not in (".pdf", ".png", ".jpg", ".jpeg", ".html"):
+        raise HTTPException(422, f"unsupported preview type: {ext}")
+    task_dir = _PREVIEW_DIR / str(num)
+    task_dir.mkdir(parents=True, exist_ok=True)
+    fname = f"{uuid.uuid4().hex[:12]}{ext}"
+    dest = task_dir / fname
+    size = 0
+    with open(dest, "wb") as f:
+        while chunk := file.file.read(1024 * 1024):
+            size += len(chunk)
+            if size > _MAX_PREVIEW_MB * 1024 * 1024:
+                dest.unlink(missing_ok=True)
+                raise HTTPException(413, f"file exceeds {_MAX_PREVIEW_MB}MB limit")
+            f.write(chunk)
+    preview_url = f"/api/task/{tid}/preview/{fname}"
+    with db.WRITE_LOCK:
+        conn.execute(
+            "UPDATE tasks SET preview_url=?, updated_at=?, version=version+1 WHERE id=?",
+            (preview_url, db.now_iso(), num),
+        )
+        db.audit(
+            conn,
+            p["id"],
+            "preview_upload",
+            models.task_id(num),
+            after={"preview_url": preview_url, "size": size},
+        )
+        conn.commit()
+    return {"url": preview_url, "size": size}
+
+
+@app.get("/api/task/{tid}/preview/{filename}")
+def serve_preview(tid: str, filename: str):
+    """Serve a stored preview file. No auth — previews are non-sensitive."""
+    num = _tid(tid)
+    path = _PREVIEW_DIR / str(num) / filename
+    if not path.is_file():
+        raise HTTPException(404, "preview not found")
+    media = {
+        ".pdf": "application/pdf",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".html": "text/html",
+    }.get(path.suffix.lower(), "application/octet-stream")
+    return FileResponse(path, media_type=media)
 
 
 # --------------------------------------------------------------------------

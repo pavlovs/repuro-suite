@@ -44,6 +44,22 @@
 .qa-type-toggle button.on { background: var(--brand); color: #fff; font-weight: bold; }
 .qa-type-toggle button:not(.on):hover { background: #f0fafc; }
 
+/* deliverable picker — two-level workstream → deliverable */
+.dp { position: relative; }
+.dp-trigger { display: flex; align-items: center; width: 100%; padding: 7px 8px; border: 1px solid var(--line); border-radius: 6px; font: 13px var(--font); color: var(--ink); background: var(--surface); cursor: pointer; text-align: left; }
+.dp-trigger:hover { border-color: var(--brand); }
+.dp-val { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dp-chev { color: var(--muted); margin-left: 6px; font-size: 10px; }
+.dp-drop { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 90; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow-pop); max-height: 260px; overflow-y: auto; }
+.dp-ws { display: flex; align-items: center; gap: 6px; width: 100%; padding: 7px 10px; border: none; border-top: 1px solid var(--line-2); background: var(--surface-2); font: 12px var(--font); font-weight: 700; color: var(--ink-2); cursor: pointer; text-align: left; }
+.dp-ws:hover { background: var(--line-2); }
+.dp-caret { font-size: 9px; width: 12px; text-align: center; transition: transform .15s; }
+.dp-ws-n { margin-left: auto; font-size: 10px; color: var(--faint); }
+.dp-item, .dp-deliv { display: block; width: 100%; padding: 6px 10px; border: none; background: none; font: 12.5px var(--font); color: var(--ink); cursor: pointer; text-align: left; }
+.dp-deliv { padding-left: 28px; }
+.dp-item:hover, .dp-deliv:hover { background: var(--cyan-50); color: var(--brand); }
+.dp-item.on, .dp-deliv.on { background: var(--cyan-50); color: var(--brand); font-weight: 600; }
+
 /* agents lens — how-to panel */
 .ag-howto-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px; margin-top: 12px; }
 .ag-howto-toggle { background: none; border: none; font: 13px var(--font); color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 0; }

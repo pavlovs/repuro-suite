@@ -95,60 +95,108 @@ function renderMarkdown(text) {
    wiping in-flight send-back textarea state). Receives deps as explicit props. */
 function AgentReviewCard(props) {
   var t = props.t, ws = props.ws, openTask = props.openTask, person = props.person;
-  var sbState = React.useState(false);
-  var sbOpen = sbState[0], setSbOpen = sbState[1];
-  var sbTextState = React.useState("");
-  var sbVal = sbTextState[0], setSbVal = sbTextState[1];
+  var fbState = React.useState("");
+  var fbVal = fbState[0], setFbVal = fbState[1];
 
   var evidence = t.evidence && t.evidence.trim() ? t.evidence : null;
+  var hasPreview = !!t.previewUrl;
+  var roundLabel = t.reviewRound > 0 ? "Round " + (t.reviewRound + 1) : null;
+
+  /* Parse AC into checklist items if present */
+  var acItems = null;
+  if (t.ac) {
+    acItems = t.ac.split(/[;\n]/).map(function(s) { return s.trim(); }).filter(Boolean);
+  }
 
   return (
-    <div className="ag-rev-card">
-      <div className="ag-rev-head">
-        {t.lane && <span className={"ag-lane-chip ag-lane-" + t.lane}>{t.lane}</span>}
-        {t.dealCode && <span className="ag-rev-deal">{t.dealCode}</span>}
-        {ws && <span className="ag-rev-ws">{ws.name}</span>}
+    <div className="ag-rev-card ag-rev-card--v2">
+      {/* ---- Verdict bar (full width, top) ---- */}
+      <div className="ag-rev-verdict">
+        <div className="ag-rev-verdict-left">
+          <span className="ag-rev-badge ag-rev-badge--review">
+            <Icon name="bolt" size={12} /> In Review
+          </span>
+          {roundLabel && <span className="ag-rev-round">{roundLabel}</span>}
+          {t.lane && <span className={"ag-lane-chip ag-lane-" + t.lane}>{t.lane}</span>}
+          {t.dealCode && <span className="ag-rev-deal">{t.dealCode}</span>}
+          {ws && <span className="ag-rev-ws">{ws.name}</span>}
+        </div>
         <span className="ag-rev-id">{t.id}</span>
       </div>
-      <div className="ag-rev-title" onClick={function() { openTask(t.id); }}>{t.text}</div>
-      {t.ac && <div className="ag-rev-ac"><b>Done when:</b> {t.ac}</div>}
-      <div className="ag-rev-evlabel">Result / evidence</div>
-      {evidence
-        ? <div className="ag-rev-ev">{renderMarkdown(evidence)}</div>
-        : <div className="ag-rev-noev">No evidence posted yet.</div>}
 
-      {/* Inline send-back panel — stays mounted, no modal, real textarea */}
-      {sbOpen && (
-        <div className="ag-sb-panel">
-          <label className="ag-sb-label">What should the agent do differently?</label>
-          <textarea
-            className="ag-sb-textarea"
-            rows={9}
-            placeholder="Describe the issue and what to change…"
-            value={sbVal}
-            onChange={function(e) { setSbVal(e.target.value); }}
-            autoFocus
-          />
-          <div className="ag-sb-actions">
-            <button className="btn" onClick={function() { setSbOpen(false); setSbVal(""); }}>Cancel</button>
-            <button className="btn reject" onClick={function() {
-              api.verdict(t, "reject", sbVal.trim());
-              setSbOpen(false); setSbVal("");
-            }}>Send back</button>
-          </div>
+      <div className="ag-rev-title" onClick={function() { openTask(t.id); }}>{t.text}</div>
+
+      {/* AC checklist */}
+      {acItems && (
+        <div className="ag-rev-ac-list">
+          <span className="ag-rev-ac-label">Acceptance criteria</span>
+          {acItems.map(function(item, i) {
+            return <div key={i} className="ag-rev-ac-item"><Icon name="check" size={11} /> {item}</div>;
+          })}
         </div>
       )}
 
-      <div className="ag-rev-actions">
-        <button className="btn approve" onClick={function() {
-          var initials = HANDOVER_INITIALS[person] || person;
-          api.save(t, { owners: [initials] }).then(function(ok) {
-            if (ok !== false) api.verdict(t, "approve");
-          });
-        }}><Icon name="check" size={14} /> Approve</button>
-        {!sbOpen && (
-          <button className="btn reject" onClick={function() { setSbOpen(true); }}>Send back</button>
+      {/* ---- Split: left (summary) + right (preview) ---- */}
+      <div className={hasPreview ? "ag-rev-split" : "ag-rev-split ag-rev-split--full"}>
+        <div className="ag-rev-left">
+          <div className="ag-rev-evlabel">Summary &amp; evidence</div>
+          {evidence
+            ? <div className="ag-rev-ev">{renderMarkdown(evidence)}</div>
+            : <div className="ag-rev-noev">No evidence posted yet.</div>}
+        </div>
+
+        {hasPreview && (
+          <div className="ag-rev-right">
+            <div className="ag-rev-evlabel">Artifact preview</div>
+            <div className="ag-rev-preview-wrap">
+              {t.previewUrl.match(/\.pdf$/i)
+                ? <object data={t.previewUrl} type="application/pdf" className="ag-rev-pdf">
+                    <a href={t.previewUrl} target="_blank" rel="noreferrer">Open PDF</a>
+                  </object>
+                : <img src={t.previewUrl} className="ag-rev-img" alt="Preview" />}
+            </div>
+            <a href={t.previewUrl} target="_blank" rel="noreferrer" className="ag-rev-open-link">
+              <Icon name="arrow" size={12} /> Open in browser
+            </a>
+          </div>
         )}
+      </div>
+
+      {/* ---- Feedback bar (full width, bottom) ---- */}
+      <div className="ag-rev-feedback">
+        <textarea
+          className="ag-rev-fb-text"
+          rows={3}
+          placeholder="Commentary / feedback for the agent…"
+          value={fbVal}
+          onChange={function(e) { setFbVal(e.target.value); }}
+        />
+        <div className="ag-rev-fb-actions">
+          <button className="btn approve" onClick={function() {
+            var initials = HANDOVER_INITIALS[person] || person;
+            api.save(t, { owners: [initials] }).then(function(ok) {
+              if (ok !== false) api.verdict(t, "approve", fbVal.trim() || undefined);
+            });
+            setFbVal("");
+          }}><Icon name="check" size={14} /> Approve</button>
+          <button className="btn ag-btn-changes" onClick={function() {
+            if (!fbVal.trim()) { showToast("Add feedback before requesting changes", "err"); return; }
+            api.requestChanges(t, fbVal.trim());
+            setFbVal("");
+          }}><Icon name="bolt" size={14} /> Request Changes</button>
+          <button className="btn reject" onClick={function() {
+            api.verdict(t, "reject", fbVal.trim() || undefined);
+            setFbVal("");
+          }}>Reject</button>
+          <button className="btn ag-btn-escalate" onClick={function() {
+            api.save(t, { execution: "together" }).then(function(ok) {
+              if (ok !== false) {
+                api.verdict(t, "reject", "[ESCALATED] " + (fbVal.trim() || "Needs human pair-work"));
+              }
+            });
+            setFbVal("");
+          }}>Escalate</button>
+        </div>
       </div>
     </div>
   );

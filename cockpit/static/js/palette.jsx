@@ -13,7 +13,7 @@ function Palette({ open, onClose, openTask, onJump }) {
   const dealHits = needle ? DELIVERABLES.filter((d) =>
     d.deal ? (hit(d.deal.codename) || hit(d.name)) : hit(d.name)
   ).slice(0, 5) : [];
-  const views = [["overview", "Cockpit"], ["week", "Weekly Meeting"], ["table", "Workstreams"],
+  const views = [["overview", "Cockpit"], ["week", "Meeting"], ["table", "Workstreams"],
     ["timeline", "Timeline"], ["agents", "Agents"]]
     .filter(([, l]) => !needle || hit(l));
 

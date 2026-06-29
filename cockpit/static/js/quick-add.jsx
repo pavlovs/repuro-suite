@@ -10,6 +10,55 @@ const PLAYBOOK_STEPS = [
   "Signing / notary",
 ];
 
+function DelivPicker({ value, onChange }) {
+  const [open, setOpen] = React.useState(false);
+  const [expanded, setExpanded] = React.useState(new Set());
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", h);
+    return () => document.removeEventListener("mousedown", h);
+  }, [open]);
+  const selected = value ? DELIVERABLES.find((d) => d.id === value) : null;
+  const toggle = (wsId, e) => {
+    e.stopPropagation();
+    setExpanded((prev) => { const n = new Set(prev); n.has(wsId) ? n.delete(wsId) : n.add(wsId); return n; });
+  };
+  return (
+    <div className="dp" ref={ref}>
+      <button type="button" className="dp-trigger" onClick={() => setOpen(!open)}>
+        <span className="dp-val">{selected ? selected.name : "(standalone)"}</span>
+        <span className="dp-chev">{open ? "▾" : "▸"}</span>
+      </button>
+      {open && (
+        <div className="dp-drop">
+          <button type="button" className={"dp-item" + (!value ? " on" : "")} onClick={() => { onChange(""); setOpen(false); }}>(standalone)</button>
+          {SPACES.map((s) => (wsPerSpace[s.id] || []).map((w) => {
+            const wsDelivs = DELIVERABLES.filter((d) => d.ws === w.id);
+            if (!wsDelivs.length) return null;
+            const isExp = expanded.has(w.id);
+            return (
+              <React.Fragment key={w.id}>
+                <button type="button" className={"dp-ws" + (isExp ? " open" : "")} onClick={(e) => toggle(w.id, e)}>
+                  <span className="dp-caret">{isExp ? "▾" : "▸"}</span>
+                  <span>{w.name}</span>
+                  <span className="dp-ws-n">{wsDelivs.length}</span>
+                </button>
+                {isExp && wsDelivs.map((d) => (
+                  <button key={d.id} type="button" className={"dp-deliv" + (value === d.id ? " on" : "")} onClick={() => { onChange(d.id); setOpen(false); }}>
+                    {d.name}
+                  </button>
+                ))}
+              </React.Fragment>
+            );
+          }))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function QuickAdd({ open, onClose, prefill }) {
   const initType = (prefill && prefill.type) || "task";
   const [mode, setMode] = React.useState(initType);
@@ -97,18 +146,7 @@ function QuickAdd({ open, onClose, prefill }) {
               onChange={(e) => setF({ ...f, text: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submit(); } }} />
             <div className="qa-row">
               <label>Deliverable
-                <select value={f.d} onChange={(e) => setF({ ...f, d: e.target.value })}>
-                  <option value="">(standalone)</option>
-                  {SPACES.map((s) => (wsPerSpace[s.id] || []).map((w) => {
-                    const wsDelivs = DELIVERABLES.filter((d) => d.ws === w.id);
-                    if (!wsDelivs.length) return null;
-                    return (
-                      <optgroup key={w.id} label={s.name + " › " + w.name}>
-                        {wsDelivs.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                      </optgroup>
-                    );
-                  }))}
-                </select>
+                <DelivPicker value={f.d} onChange={(v) => setF({ ...f, d: v })} />
               </label>
               <label>Due
                 <input type="date" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} />

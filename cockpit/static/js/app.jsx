@@ -23,7 +23,7 @@ function RepuroMark({ size = 30 }) {
 
 const NAV = [
   { id: "overview", label: "Cockpit", icon: "cockpit", crumb: "Intelligence overview" },
-  { id: "week", label: "Weekly Meeting", icon: "week", crumb: "Weekly meeting focus" },
+  { id: "week", label: "Meeting", icon: "week", crumb: "Meeting focus" },
   { id: "table", label: "Workstreams", icon: "table", crumb: "All work — table or board" },
   { id: "timeline", label: "Timeline", icon: "timeline", crumb: "Milestones & windows" },
   { id: "agents", label: "Agents", icon: "bolt", crumb: "Claude works · you approve" },
@@ -228,7 +228,7 @@ function App() {
         </header>
 
         <main className="main">
-          <div className={"view" + (tab === "timeline" || tab === "table" ? " view-wide" : "")}>
+          <div className={"view" + (tab === "timeline" || tab === "table" || tab === "week" ? " view-wide" : "")}>
             {tab === "overview" && <OverviewView person={person} onJump={setTab} openTask={openTask} mutate={mutate} />}
             {tab === "week" && <MeetingView mutate={mutate} openTask={openTask} />}
             {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} openDeliv={openDeliv} person={person} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}

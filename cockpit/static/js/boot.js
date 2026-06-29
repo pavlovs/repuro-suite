@@ -263,6 +263,9 @@
       execution: (t.execution === "agent_supervised" || t.execution === "agent_auto") ? "agent" : t.execution,
       executionRaw: t.execution,
       ac: t.acceptance_criteria || null, evidence: t.evidence || null,
+      previewUrl: t.preview_url || null,
+      reviewFeedback: t.review_feedback || null,
+      reviewRound: t.review_round || 0,
       claimed_by: t.claimed_by || null, claim_expires_at: t.claim_expires_at || null,
       created_by: t.created_by || null,
       lane: t.created_by === "rd" ? "RC" : (t.created_by === "ff" ? "FC" : null),
@@ -459,6 +462,15 @@
       var r = await authedFetch("/api/task/" + t.id + "/" + action, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify(action === "reject" ? { comment: comment || "" } : {}),
+      });
+      conflictReload(r);
+      if (!r.ok) { showToast("Failed: " + (await r.text()).slice(0, 200), "err"); return; }
+      await refreshFromServer();
+    },
+    async requestChanges(t, feedback) {
+      var r = await authedFetch("/api/task/" + t.id + "/request-changes", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ feedback: feedback }),
       });
       conflictReload(r);
       if (!r.ok) { showToast("Failed: " + (await r.text()).slice(0, 200), "err"); return; }

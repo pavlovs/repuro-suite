@@ -13,10 +13,11 @@ Claude reads this when `/suite-fix` is invoked.
 
 - [ ] Dealroom onepager MOUSE: add the content — still not in (content/data sync, Roman handling separately)
 - [ ] Update the local MOUSE onepager into the online Dealroom (content/data sync)
-- [ ] UX: sections in Cockpit still not unified — whitespace between the side-drawer and section content differs (Workstreams starts flush, Weekly Meeting sits further right, etc.). Part of the CSS-unification FR below.
-- [ ] [UX decision] Cockpit Board view: red cards show blocking prereqs inline (`needs · X, Y`, `view-board.jsx:19`). The Workstreams-table fix hover-gates prereqs; Board does not. Apply the same hover-gating to cards, or leave (kanban glanceability)? — Roman's call, not auto-changed.
+- [x] UX: sections in Cockpit still not unified — fixed 2026-06-26. Meeting view now uses `view-wide` (no max-width centering), content left-edge matches Workstreams/Timeline
+- [x] [UX decision] Cockpit Board view: hover-gated prereqs — fixed 2026-06-26. `.tcard-need` hidden by default, revealed on card hover (matches Workstreams table pattern)
 - [ ] AGents: How to setup & run is hidden beneath, same as recently updated. if there is a long queue, those section are difficult to see. Maybe separate Agents into Agents Workflow and Agents Review and have its own section? Something like this?
-- [ ] When you add a task make the deliverable only show the workstreams and then when you click on the wokrstream show the deliverables underneath so that the list is not so big
+- [x] When you add a task make the deliverable only show the workstreams and then when you click on the wokrstream show the deliverables underneath — fixed 2026-06-26. Custom two-level picker: workstreams → click to expand → deliverables
+- [x] Instead of Weekly Meeting call it Meeting — fixed 2026-06-26. NAV + palette updated
 
 ---
 ## Open — architecture / from Codex deep review (needs Roman or deferred)
@@ -50,3 +51,4 @@ Deployed fixes are pruned on each `/suite-fix` run. See git history of this file
 - [x] +1d slow/broken — fixed 2026-06-26. Added `api.bumpDue` fast path: parses PATCH response, updates version in-place, fires `refreshFromServer` in background. Rapid clicks now work.
 - [x] Dead `view-relations.jsx` removed — 2026-06-26 (10.6KB, not in JSX_FILES, CSS already cleaned in prior session)
 - [x] DEALROOM_REQUIRE_DB wired in fly.toml — 2026-06-26 (env guard was implemented but inert; now active in prod)
+- [x] Cockpit blank white page (all modules) — fixed 2026-06-29. Vendor scripts (React/ReactDOM/Babel) had no cache-bust params; browser cached broken responses from prior cold starts. Added `?v=1` to vendor tags, bumped boot.js to `?v=5`, added `NoCacheStaticMiddleware` setting `Cache-Control: no-cache` on `/static/`. 4e68197

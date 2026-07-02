@@ -1,8 +1,8 @@
 # Spec: Investor View — Section Split
 
-**Status**: APPROVED (Option B — per-deal split)
+**Status**: IMPLEMENTED 2026-07-02 (Option B — per-deal split)
 **Date**: 2026-07-01
-**File**: `boardroom/static/index.html` (1,605 lines)
+**File**: `boardroom/templates/` + assembly in `src/api.py` — replaces the static index.html monolith (1,731 lines at split time), kept as `boardroom/static/index.html.pre-split.bak`
 
 ---
 
@@ -223,15 +223,21 @@ Acknowledged:
 
 ## Migration checklist
 
-1. [ ] Git-tag current working state
-2. [ ] Create `templates/` directory structure (sections/ + deals/)
-3. [ ] Extract shell-top and shell-bottom from index.html
-4. [ ] Extract ACT 1, ACT 3, ACT 4 into section files
-5. [ ] Extract ACT 2 shell (toggle + view switch)
-6. [ ] Extract each deal's content across all 5 views into per-deal files with section markers
-7. [ ] Extract overview comparison content into `_overview.html`
-8. [ ] Write assembly code in api.py
-9. [ ] **Diff check**: assembled HTML output vs original index.html — must produce identical DOM
-10. [ ] Keep `static/index.html` as `.bak` for one weekly cycle
-11. [ ] Browser verification: all 4 acts render, agenda nav, deal tabs, view switch, decision links, portfolio sum
-12. [ ] First weekly update using new structure — confirm editing workflow
+1. [x] Git-tag current working state — tag `investor-pre-split-2026-07-02`
+2. [x] Create `templates/` directory structure (sections/ + deals/)
+3. [x] Extract shell-top and shell-bottom from index.html
+4. [x] Extract ACT 1, ACT 3, ACT 4 into section files
+5. [x] Extract ACT 2 shell (toggle + view switch)
+6. [x] Extract each deal's content into per-deal files with section markers — **4 views** (ONEPAGER/SCORECARD/SU/VALUATION); DD view was removed in v15, so no DD marker
+7. [x] Extract overview comparison content into `_overview.html`
+8. [x] Write assembly code in api.py — placeholder substitution (`{{ONEPAGER}}` etc. in act2-shell.html) instead of rebuilding vgroup wrappers in Python: vgroup lines stay verbatim in the template, which is what makes byte-identity possible
+9. [x] **Diff check**: assembled output is **byte-identical** to original index.html (158,889 bytes, incl. BOM + CRLF) — verified both at function level and via TestClient `GET /`
+10. [x] `static/index.html` renamed to `static/index.html.pre-split.bak` (rollback: rename back + revert `index()` to FileResponse, or `git checkout investor-pre-split-2026-07-02`)
+11. [x] Verification: `GET /` returns 200 text/html, byte-identical body ⇒ render/JS/anchors identical by construction; all 18 deal/view anchor IDs present exactly once
+12. [ ] First weekly update using new structure — confirm editing workflow (candidate: apply pending `review/proposal-fresh-v16.html` changes through templates/)
+
+## Implementation notes (2026-07-02)
+
+- File line counts as built: shell-top 497, act1 67, act2-shell 51, act3 58, act4 58, shell-bottom 189, _overview 104, fox 181, mantis 187, mouse 177, cat 184.
+- Templates are UTF-8 (BOM in shell-top.html only) with CRLF endings; `_tpl()` reads with `newline=""` — do not let editors/git normalize line endings if byte-parity with the .bak matters (DOM parity is unaffected either way).
+- Suite Dockerfile does `COPY boardroom/ /app/boardroom/` — templates ship automatically, no deploy config change needed.

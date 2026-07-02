@@ -1,0 +1,51 @@
+  <!-- ============ ACT 2 — LIVE DEALS ============ -->
+  <section class="act" id="act2">
+    <div class="section-band section-band--accent">
+      <span class="band-no">02</span>
+      <span class="band-title">Live deals</span>
+    </div>
+    <div class="slide-body">
+
+      <div class="deal-toggle">
+        <button class="deal-tab active" data-deal="overview"><span>Overview</span></button>
+        <button class="deal-tab" data-deal="fox"><span>Fox</span><span class="tco">· Com2Med</span></button>
+        <button class="deal-tab" data-deal="mantis"><span>Mantis</span><span class="tco">· Endoberatung GmbH</span></button>
+        <button class="deal-tab" data-deal="mouse"><span>Mouse</span><span class="tco">· Everto / Landgraf HLL</span></button>
+        <button class="deal-tab" data-deal="cat"><span>Cat</span><span class="tco">· Medizin &amp; Service</span></button>
+      </div>
+
+      <!-- layer 2 — view switch -->
+      <div class="view-switch">
+        <button class="view-tab active" data-view="scorecard">LOI Scorecard</button>
+        <button class="view-tab" data-view="onepager">1-pager</button>
+        <button class="view-tab" data-view="su">Sources &amp; Uses</button>
+        <button class="view-tab" data-view="valuation">Valuation</button>
+      </div>
+
+      <!-- ============ VIEW GROUP — 1-PAGER (per-deal panels) ============ -->
+      <div class="vgroup" data-vg="onepager">
+
+{{ONEPAGER}}
+      </div><!-- /vgroup onepager -->
+
+      
+      
+      <div class="cdd-wrap vgroup active" data-vg="scorecard">
+
+{{SCORECARD}}
+      </div>
+
+      <!-- ============ VIEW GROUP — SOURCES & USES ============ -->
+      <div class="vgroup" data-vg="su">
+
+{{SU}}
+              </div>
+      <!-- ============ VIEW GROUP — VALUATION ============ -->
+      <div class="vgroup" data-vg="valuation">
+
+{{VALUATION}}
+      </div><!-- /vgroup valuation -->
+
+    </div>
+  </section>
+

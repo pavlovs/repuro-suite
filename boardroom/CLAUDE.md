@@ -9,6 +9,14 @@ Module folder is `boardroom/` on disk; product/route/auth-user = `investor`.
 FastAPI + SQLite (`/data/investor.db`, journal DELETE) on :8084 → suite Caddy `/investor/*`
 with X-Remote-User auth. Investor sees only approved, published `publications`; never a live DB.
 
+## Investor view HTML — edit templates/, never a monolith
+`GET /` is assembled at request time from `templates/` (shell + `sections/act*.html` +
+`deals/{fox,mantis,mouse,cat,_overview}.html`) by `_assemble_page()` in `src/api.py`.
+Weekly edits go into the small per-deal/per-act files — see the edit map in
+`SPEC-investor-split.md`. Deal files hold one fragment per view behind
+`<!-- ONEPAGER/SCORECARD/SU/VALUATION -->` markers. The old monolith
+(`static/index.html.pre-split.bak`) is rollback-only — do NOT edit it.
+
 ## Hard rules (inherit suite + cockpit CLAUDE.md, plus)
 - **Permission is the product.** `investor` principal: 403 outside `/investor/*` (Caddy CEL),
   and reads only `status='published'` publications — never drafts, never live DBs.

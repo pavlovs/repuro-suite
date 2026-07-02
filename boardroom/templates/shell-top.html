@@ -1,0 +1,497 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Investor View</title>
+<style>
+/* ============================================================================
+   REPURO CI — UNIFIED DESIGN SYSTEM
+   Inlined verbatim from context/repuro-ci.css (:root tokens + base + the
+   design-system section: type scale, .card/.tile, .btn, .badge, .section-band,
+   spacing/radius vars). v7 uses ONLY var(--ci-*) + these classes — no raw hex
+   except inside the verbatim Dealroom .portfolio-table.
+   ========================================================================== */
+:root {
+  /* ---- CI core palette (exact, from repuro-ci.md) ---- */
+  --ci-brand:    #0891B2;  /* primary brand anchor — header fills; white text on it */
+  --ci-accent1:  #22D3EE;  /* accent (black text) */
+  --ci-accent2:  #8DE8F6;  /* light cyan — section/group bands (black text) */
+  --ci-alert:    #E11D48;  /* signal/alert — sparingly (white text) */
+  --ci-warning:  #EAB308;  /* warning / highlight (black text) */
+  --ci-accent5:  #A855F7;  /* accent (black text) */
+  --ci-white:    #FFFFFF;
+  --ci-black:    #000000;
+
+  /* ---- Font (CI doc = Arial for documents/slides). ---- */
+  --ci-font: Arial, Helvetica, "Segoe UI", sans-serif;
+
+  /* ---- Derived neutrals ---- */
+  --ci-ink:      #000000;
+  --ci-text:     rgba(0,0,0,.74);
+  --ci-muted:    rgba(0,0,0,.54);
+  --ci-line:     rgba(0,0,0,.12);
+  --ci-surface:  #FFFFFF;
+  --ci-canvas:   #F1FAFC;
+
+  /* ---- Suite pipeline-STAGE semantic colors (badges only) ---- */
+  --stage-meeting_concluded:    #EAB308;
+  --stage-valuation_rfi:        #3B82F6;
+  --stage-indicative_offer:     #6366F1;
+  --stage-loi_signed:           #A855F7;
+  --stage-due_diligence:        #059669;
+  --stage-contract_negotiation: #0D9488;
+  --stage-closed:               #065F46;
+  --stage-loi_negotiation:      #D97706;
+  --stage-on_hold:              #6B7280;
+  --stage-dead:                 #E11D48;
+
+  /* spacing scale */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px;
+  /* radii */
+  --radius: 12px; --radius-sm: 8px; --radius-pill: 999px;
+  /* type scale */
+  --fs-h1: 30px; --fs-h2: 22px; --fs-h3: 17px; --fs-h4: 14px;
+  --fs-body: 14.5px; --fs-sm: 12.5px; --fs-label: 11px; --fs-display: 28px;
+  --lh-tight: 1.18; --lh-normal: 1.55;
+}
+
+html, body { font-family: var(--ci-font); color: var(--ci-text); background: var(--ci-canvas); }
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:auto}
+body{font-size:var(--fs-body);font-weight:400;line-height:1.5;-webkit-font-smoothing:antialiased}
+
+/* ---- Typography (design system) ---- */
+h1, .h1 { font-size: var(--fs-h1); font-weight: 800; line-height: var(--lh-tight); color: var(--ci-ink); letter-spacing: -.01em; margin: 0; }
+h2, .h2 { font-size: var(--fs-h2); font-weight: 700; line-height: var(--lh-tight); color: var(--ci-ink); margin: 0; }
+h3, .h3 { font-size: var(--fs-h3); font-weight: 700; line-height: 1.3; color: var(--ci-ink); margin: 0; }
+h4, .h4 { font-size: var(--fs-h4); font-weight: 700; line-height: 1.3; color: var(--ci-ink); margin: 0; }
+p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-normal); color: var(--ci-text); margin: 0; }
+.text-sm { font-size: var(--fs-sm); color: var(--ci-muted); }
+.label { font-size: var(--fs-label); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ci-muted); }
+.figure { font-size: var(--fs-display); font-weight: 800; line-height: 1.05; color: var(--ci-ink); font-variant-numeric: tabular-nums; }
+.muted { color: var(--ci-muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---- Section band ("slide" header) — brand / accent alternating ---- */
+.section-band { padding: var(--sp-4) var(--sp-5); display: flex; align-items: center; gap: var(--sp-5); border-radius: var(--radius) var(--radius) 0 0; }
+.section-band--brand  { background: var(--ci-brand);   color: var(--ci-white); }
+.section-band--accent { background: var(--ci-accent2); color: var(--ci-black); }
+.section-band .band-no { font-size: 34px; font-weight: 800; line-height:1; letter-spacing:-.02em; opacity: 1; flex-shrink:0; font-variant-numeric:tabular-nums; }
+.src-chip{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+.src-chip.src-ba{background:var(--ci-brand)}
+.src-chip.src-bk{background:var(--ci-accent1)}
+.section-band .band-title { font-size: 30px; font-weight: 800; letter-spacing:-.02em; line-height:1.05; }
+.section-band .band-date  { font-size: 30px; font-weight: 800; letter-spacing:-.02em; line-height:1.05; opacity:.5; }
+@media(max-width:680px){
+  .section-band{flex-wrap:wrap;gap:10px;padding:16px 18px}
+  .section-band .band-title{font-size:24px}
+  .section-band .band-date{font-size:24px}
+}
+
+/* ---- Card / tile ---- */
+.card { background: var(--ci-surface); border: 1px solid var(--ci-line); border-radius: var(--radius); padding: var(--sp-5); }
+.card--flush { padding: 0; overflow: hidden; }
+.tile { background: var(--ci-surface); border: 1px solid var(--ci-line); border-radius: var(--radius-sm); padding: var(--sp-4); }
+
+/* ---- Buttons ---- */
+.btn { font-family: var(--ci-font); font-size: var(--fs-body); font-weight: 600; line-height: 1; padding: 9px 16px; border-radius: var(--radius-sm); border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: var(--sp-2); transition: background .12s, color .12s; }
+.btn--primary { background: var(--ci-brand); color: var(--ci-white); }
+.btn--primary:hover { background: color-mix(in srgb, var(--ci-brand) 85%, var(--ci-black)); }
+.btn--ghost { background: transparent; color: var(--ci-brand); border-color: var(--ci-line); }
+.btn--ghost:hover { background: var(--ci-canvas); }
+.btn--sm { padding: 6px 12px; font-size: var(--fs-sm); }
+.btn--done { background: var(--ci-accent2); color: var(--ci-ink); border-color: var(--ci-accent2); cursor: default; }
+
+/* ---- Badges / pills ---- */
+.badge { display: inline-flex; align-items: center; font-size: var(--fs-label); font-weight: 600; padding: 3px 9px; border-radius: var(--radius-pill); line-height: 1.4; }
+.badge--brand  { background: rgba(8,145,178,.12); color: var(--ci-brand); }
+.badge--muted  { background: rgba(0,0,0,.06);     color: var(--ci-muted); }
+.badge--alert  { background: rgba(225,29,72,.12);  color: var(--ci-alert); }
+.badge--stage { background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); }
+
+/* ---- Dividers ---- */
+.hr { border: none; border-top: 1px solid var(--ci-line); margin: var(--sp-4) 0; }
+
+/* ============================================================================
+   PAGE SHELL
+   ========================================================================== */
+.wrap{max-width:1440px;margin:0 auto;padding:0 26px 80px}
+@media(max-width:1480px){.wrap{max-width:100%}}
+
+/* topbar — brand bar with WHITE wordmark + Strada wordmark */
+.topbar{background:var(--ci-brand);color:var(--ci-white);position:sticky;top:0;z-index:26}
+.topbar-in{margin:0;padding:16px 26px;display:flex;align-items:center;gap:18px}
+.topbar img.logo{height:30px;display:block}
+/* co-brand lockup: [Repuro logo] × STRADA */
+.cobrand{display:flex;align-items:center;gap:14px}
+.cobrand .x{font-size:18px;font-weight:400;opacity:.7;line-height:1}
+/* Strada logo — black source rendered white to sit on the brand bar */
+.topbar img.strada-logo{height:38px;filter:brightness(0) invert(1)}
+.topbar .room-tag{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.18);padding:3px 9px;border-radius:20px}
+.topbar .meta{margin-left:auto;text-align:right;font-size:12.5px;line-height:1.45;opacity:.92}
+.topbar .meta b{display:block;font-size:14.5px;font-weight:700;opacity:1}
+
+/* agenda rail */
+.callbar{position:sticky;top:70px;z-index:25;background:rgba(255,255,255,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--ci-line)}
+.callbar-in{max-width:1180px;margin:0 auto;padding:9px 26px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.agenda-item{display:flex;align-items:center;gap:8px;border:1px solid var(--ci-line);background:var(--ci-surface);border-radius:9px;padding:7px 13px;cursor:pointer;font-size:13px;font-weight:600;color:var(--ci-muted);transition:all .14s;font-family:inherit}
+.agenda-item:hover{border-color:var(--ci-brand);color:var(--ci-ink)}
+.agenda-item.active{background:var(--ci-brand);border-color:var(--ci-brand);color:var(--ci-white)}
+.agenda-item .n{display:inline-flex;width:18px;height:18px;border-radius:50%;background:var(--ci-canvas);color:var(--ci-muted);align-items:center;justify-content:center;font-size:11px;font-weight:700}
+.agenda-item.active .n{background:rgba(255,255,255,.25);color:var(--ci-white)}
+
+/* ============================================================================
+   SLIDE SYSTEM
+   ========================================================================== */
+.act{padding-top:34px;scroll-margin-top:120px}
+.slide-body{ background:var(--ci-surface);border:1px solid var(--ci-line);border-top:none; border-radius:0 0 14px 14px; padding:26px 30px; }
+@media(max-width:680px){ .slide-body{padding:20px 16px} }
+
+.sub-heading{font-size:17px;font-weight:700;color:var(--ci-ink);letter-spacing:-.01em;margin-bottom:14px}
+.eyebrow{font-size:var(--fs-h3);font-weight:700;color:var(--ci-ink);letter-spacing:-.01em;margin-bottom:14px}
+.key{font-size:30px;font-weight:800;color:var(--ci-ink);letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.hairline{height:1px;background:var(--ci-line);border:none;margin:24px 0}
+
+/* ---------- ACT 1: this week ---------- */
+/* tiles */
+.changed-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:6px}
+.changed-tile{display:grid;grid-template-columns:26px 1fr;column-gap:14px;row-gap:3px;align-items:start}
+.changed-tile .cnum{grid-row:1 / span 2;display:inline-flex;width:26px;height:26px;flex-shrink:0;border-radius:7px;background:var(--ci-brand);color:var(--ci-white);align-items:center;justify-content:center;font-size:13px;font-weight:800}
+.changed-tile .ttl{font-size:15px;font-weight:700;color:var(--ci-ink);line-height:1.25}
+.changed-tile .sub{font-size:13.5px;color:var(--ci-text);line-height:1.55}
+.changed-tile .sub ul{margin:4px 0 0;padding-left:18px;list-style:disc}
+.changed-tile .sub li{margin-bottom:2px}
+.dec-link{color:inherit;text-decoration:underline;text-decoration-color:var(--ci-brand);text-underline-offset:2px;cursor:pointer}
+.dec-link:hover{color:var(--ci-brand)}
+.dd-cost-table{border-collapse:collapse;font-size:12.5px;font-family:var(--ci-font);margin-top:16px}
+.dd-cost-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 12px;text-align:right}
+.dd-cost-table thead th:first-child{text-align:left}
+.dd-cost-table thead th:nth-child(2){text-align:left}
+.dd-cost-table tbody td{padding:6px 12px;border-bottom:1px solid var(--ci-line);text-align:right;font-variant-numeric:tabular-nums}
+.dd-cost-table tbody td:first-child{text-align:left;font-weight:600;color:var(--ci-ink)}
+.dd-cost-table tbody td:nth-child(2){text-align:left;color:var(--ci-muted);font-size:11.5px}
+.dd-cost-table .dd-cat td{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ci-muted);padding:10px 12px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
+.dd-cost-table .dd-tot td{font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);padding:8px 12px;background:var(--ci-canvas)}
+/* ---------- ACT 2: live deals ---------- */
+.deal-toggle{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap}
+.deal-tab{display:flex;align-items:center;gap:9px;border:1px solid var(--ci-line);background:var(--ci-surface);border-radius:11px;padding:10px 18px;cursor:pointer;font-size:14.5px;font-weight:700;color:var(--ci-muted);transition:all .14s;font-family:inherit}
+.deal-tab:hover{border-color:var(--ci-brand);color:var(--ci-ink)}
+.deal-tab.active{background:var(--ci-brand);border-color:var(--ci-brand);color:var(--ci-white)}
+.deal-tab .tco{font-size:12.5px;font-weight:500;opacity:.85}
+.deal-tab.active .tco{opacity:.92}
+.deal-panel{display:none}
+.deal-panel.active{display:block}
+/* layer 2 — view switch (segmented control: LOI Scorecard / 1-pager / Valuation) */
+.view-switch{display:inline-flex;gap:4px;background:var(--ci-canvas);border:1px solid var(--ci-line);border-radius:11px;padding:4px;margin-bottom:22px}
+.view-tab{font-family:inherit;font-size:13px;font-weight:700;color:var(--ci-muted);background:transparent;border:1px solid transparent;border-radius:8px;padding:8px 17px;cursor:pointer;transition:background .14s,color .14s}
+.view-tab:hover{color:var(--ci-ink)}
+.view-tab.active{background:var(--ci-surface);color:var(--ci-brand);border:1px solid var(--ci-line)}
+.vgroup{display:none}
+.vgroup.active{display:block}
+.val-deal{display:none}
+.val-deal.active{display:block}
+.su-deal{display:none}
+.su-deal.active{display:block}
+.ddi-deal{display:none}
+.ddi-deal.active{display:block}
+.val-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
+@media(max-width:760px){.val-grid{grid-template-columns:1fr}}
+.val-layout{display:grid;grid-template-columns:1fr minmax(260px,0.45fr);gap:24px;align-items:start;margin-top:10px}
+@media(max-width:900px){.val-layout{grid-template-columns:1fr}}
+.eo-panel{border:1px solid var(--ci-line);border-radius:var(--radius-sm);overflow:hidden}
+.eo-panel .eo-head{background:var(--ci-canvas);padding:10px 14px;font-size:13px;font-weight:700;color:var(--ci-ink);border-bottom:1px solid var(--ci-line)}
+.eo-panel .eo-body{padding:10px 14px}
+.eo-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:5px 0;border-bottom:1px solid var(--ci-line);font-size:12.5px;color:var(--ci-text)}
+.eo-row:last-child{border-bottom:none}
+.eo-row .el{color:var(--ci-text)}
+.eo-row .ev{font-weight:600;color:var(--ci-ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.eo-row.eo-total{font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);border-bottom:none;padding-top:8px;margin-top:2px}
+.eo-row.eo-total .el{color:var(--ci-ink)}
+.eo-note{font-size:11px;color:var(--ci-muted);margin-top:8px;line-height:1.45}
+.deal-top{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;margin-bottom:6px}
+.deal-top .dname{font-size:20px;font-weight:800;color:var(--ci-ink);letter-spacing:-.01em}
+.deal-top .op-stage{padding:3px 11px;border-radius:12px;font-size:11px;font-weight:600;color:var(--ci-white);background:var(--stage-loi_signed)}
+.deal-top .op-days{font-size:12px;color:var(--ci-muted)}
+.deal-headline-txt{font-size:14px;font-style:italic;color:var(--ci-ink);margin-bottom:14px}
+.keystrip{display:flex;flex-wrap:wrap;gap:28px;padding:12px 0 16px}
+.keystrip .ks{display:flex;flex-direction:column;gap:4px}
+.keystrip .ks .kl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ci-muted)}
+.keystrip .ks .kv{font-size:22px;font-weight:800;color:var(--ci-ink);letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
+.keystrip .ks .kv.brand{color:var(--ci-brand)}
+.onepager-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:4px}
+@media(max-width:760px){.onepager-grid{grid-template-columns:1fr}}
+.op-quadrant{background:var(--ci-surface);border:1px solid var(--ci-line);border-radius:10px;overflow:hidden}
+.op-quadrant-header{background:var(--ci-brand);color:var(--ci-white);padding:8px 13px;font-size:13.5px;font-weight:700;font-family:var(--ci-font)}
+.op-quadrant-body{padding:11px 14px;font-size:13.5px;line-height:1.45;font-family:var(--ci-font);color:var(--ci-text)}
+/* dealroom Q2 Financials & Valuation table (1:1) */
+.op-fin-wrap{overflow-x:auto}
+.op-fin-table{width:100%;min-width:520px;border-collapse:collapse;font-size:11.5px;font-family:var(--ci-font)}
+.op-fin-table thead th.op-fin-ct{background:rgba(8,145,178,.72);font-style:italic}
+.op-fin-table tr.op-fin-bold td:first-child{color:var(--ci-ink)}
+.op-fin-table thead th{background:var(--ci-brand);color:#fff;font-weight:600;font-size:10.5px;padding:4px 7px;text-align:right;border-bottom:2px solid #1D7080;white-space:nowrap}
+.op-fin-table thead th.op-fin-label{text-align:left;min-width:104px}
+.op-fin-table tbody td{padding:4px 7px;text-align:right;border-bottom:1px solid rgba(0,0,0,0.06);white-space:nowrap;font-variant-numeric:tabular-nums}
+.op-fin-table tbody td:first-child{text-align:left;color:var(--ci-muted);font-size:11px}
+.op-fin-table tr.op-fin-bold td{font-weight:700;color:var(--ci-ink)}
+.op-fin-table tr.op-fin-highlight td{font-weight:600;color:#000;background:var(--ci-accent2)}
+.op-fin-table tr.op-fin-highlight td:first-child{color:#000}
+.op-fin-table tr.op-fin-spacer td{padding:2px 0;border:none}
+.op-fin-table tr.op-fin-kpi td{font-size:10.5px;color:#475569;border:none;padding:1px 7px;font-style:italic}
+.op-fin-table thead th.op-fin-bp{background:#EAB308;color:#fff}
+.op-fin-table td.op-fin-bp-cell{background:#fef9e7}
+.op-fin-table tr.op-fin-highlight td.op-fin-bp-cell{background:var(--ci-accent2)}
+.op-fin-table th.op-fin-sep,.op-fin-table td.op-fin-sep{width:5px;min-width:5px;max-width:5px;padding:0;border:none;background:transparent}
+/* hide Avg. 24-25 column + its leading separator to prevent truncation */
+.op-fin-table th:nth-child(5),.op-fin-table td:nth-child(5),
+.op-fin-table th:nth-child(6),.op-fin-table td:nth-child(6){display:none}
+.op-quadrant-body ul{margin:0;padding-left:15px}
+.op-quadrant-body li{margin-bottom:5px}
+.op-quadrant-body ul li strong{font-weight:700;color:var(--ci-ink)}
+.fin-row{display:flex;justify-content:space-between;align-items:baseline;padding:4px 0;border-bottom:1px solid var(--ci-line);font-size:12.5px}
+.fin-row:last-child{border-bottom:none}
+.fin-row .fl{color:var(--ci-text)}
+.fin-row .fv{font-weight:700;color:var(--ci-ink);font-variant-numeric:tabular-nums}
+.fin-row.hl .fv{color:var(--ci-brand)}
+.col-h{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ci-muted);font-weight:700;margin-bottom:7px}
+.bridge{margin-top:8px}
+.bridge-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:7px 0 5px}
+.bridge-bar span{height:100%}
+.bridge-leg{display:flex;gap:10px;flex-wrap:wrap;font-size:10.5px;color:var(--ci-muted)}
+.bridge-leg i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+.op-footnote{font-size:11px;color:var(--ci-muted);padding-top:12px;margin-top:14px;border-top:1px solid var(--ci-line)}
+.rf-wrap{margin-top:20px}
+.rf-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 30px}
+@media(max-width:760px){.rf-grid{grid-template-columns:1fr}}
+.flag{display:flex;gap:10px;padding:9px 0;border-top:1px solid var(--ci-line);align-items:flex-start}
+.flag .sev{font-size:9px;font-weight:800;letter-spacing:.04em;padding:3px 7px;border-radius:5px;flex-shrink:0;margin-top:1px}
+.sev-h{background:rgba(225,29,72,.12);color:var(--ci-alert)}
+.sev-m{background:var(--ci-canvas);color:var(--ci-muted)}
+.flag .ft{font-size:12.5px;color:var(--ci-text);line-height:1.45}
+.flag .ft b{color:var(--ci-ink)}
+.nodd{font-size:13.5px;color:var(--ci-text);line-height:1.5}
+.nodd b{color:var(--ci-ink)}
+
+/* ---------- ACT 3: pipeline ---------- */
+/* Sourcing funnel — left to right descending columns; conversion vs previous step */
+.funnel{display:flex;align-items:stretch;gap:14px;max-width:860px;margin:16px 0 6px}
+.fn-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px}
+.fn-bartrack{width:100%;height:158px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px}
+.fn-bar{width:70%;height:var(--h);min-height:6px;background:var(--ci-brand);border-radius:6px 6px 0 0}
+.fn-bar--stage{background:var(--stage-loi_signed)}
+.fn-v{font-size:24px;font-weight:800;color:var(--ci-ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1}
+.fn-l{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ci-muted);text-align:center;line-height:1.25}
+.fn-sub{font-size:12px;color:var(--ci-muted);text-align:center;line-height:1.2;min-height:1.2em}
+.fn-sub b{color:var(--ci-ink);font-weight:800;font-size:16px;font-variant-numeric:tabular-nums}
+
+/* portfolio table — VERBATIM dealroom (raw hex allowed here only) */
+.portfolio-wrap{overflow-x:auto}
+.portfolio-table{border-collapse:collapse;font-family:var(--ci-font);font-size:clamp(13px,0.85vw,15px);table-layout:fixed;width:100%;min-width:900px}
+.portfolio-table col.c-code{width:6%}
+.portfolio-table col.c-rev{width:6%}
+.portfolio-table col.c-ebitda{width:6%}
+.portfolio-table col.c-pct{width:5%}
+.portfolio-table col.c-emp{width:4%}
+.portfolio-table col.c-desc{width:24%}
+.portfolio-table col.c-ev{width:6%}
+.portfolio-table col.c-mul{width:5%}
+.portfolio-table col.c-stage{width:10%}
+.portfolio-table col.c-comment{width:28%}
+.portfolio-table thead tr{background:#0891B2}
+.portfolio-table th{padding:7px 8px;font-size:clamp(13px,0.85vw,15px);font-weight:700;color:#fff;font-family:inherit;white-space:normal;vertical-align:middle;line-height:1.3}
+.portfolio-table th.r{text-align:right}
+.portfolio-table th.c{text-align:center}
+.portfolio-table td{padding:5px 8px;border-bottom:1px solid #ddeef2;vertical-align:middle;overflow:hidden;line-height:1.4}
+.portfolio-table td.stage-cell{overflow:visible;position:relative}
+.portfolio-table tbody tr:nth-child(even){background:#f4fafc}
+.portfolio-table tbody tr:hover{background:#e0f5fa}
+.portfolio-table td.r{text-align:right}
+.portfolio-table td.text-cell{vertical-align:middle;overflow:hidden;padding-top:7px;text-align:left}
+.clamp3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.portfolio-table td.code-cell{font-weight:700;cursor:pointer;white-space:nowrap;text-align:center}
+.portfolio-table td.code-cell:hover{color:#0891B2}
+.portfolio-table tfoot tr{background:none}
+.portfolio-table tfoot td{padding:6px 8px;font-weight:700;color:#0891B2;border-top:2px solid #0891B2;font-family:inherit;font-size:inherit}
+.portfolio-table tfoot td.r{text-align:right}
+.stage-dropdown-trigger{cursor:pointer;padding:2px 4px;font-size:inherit;font-weight:600;display:inline-flex;align-items:center;gap:5px;user-select:none;color:#334155;background:none}
+.stage-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.stage-dot--on_hold{background:var(--stage-on_hold)}
+.stage-dot--dead{background:var(--stage-dead)}
+.portfolio-table td.num-b{text-align:right;font-weight:700}
+.portfolio-table td.ctr{text-align:center}
+.comment-bullets{list-style:disc;margin:0;padding:0 0 0 16px;font-size:inherit;line-height:1.5}
+.comment-bullets li{margin-bottom:2px}
+.comment-cell-wrap{min-height:24px;outline:none}
+.stage-filter{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.stage-filter label{font-size:11px;font-weight:700;color:var(--ci-muted);text-transform:uppercase;letter-spacing:0.5px}
+.stage-filter .filter-btn{padding:4px 12px;border-radius:12px;font-size:11.5px;font-weight:600;border:1px solid var(--ci-line);background:var(--ci-surface);color:var(--ci-muted);cursor:pointer;transition:all 0.15s;font-family:inherit}
+.stage-filter .filter-btn:hover{border-color:var(--ci-brand);color:var(--ci-brand)}
+.stage-filter .filter-btn.active{background:var(--ci-brand);color:var(--ci-white);border-color:var(--ci-brand)}
+
+/* ---------- footer / provenance ---------- */
+.note{font-size:12px;color:var(--ci-muted);margin:16px 2px 0;line-height:1.55}
+.note b{color:var(--ci-text)}
+.lock{margin-right:4px}
+.foot{margin-top:40px;padding-top:18px;border-top:1px solid var(--ci-line);font-size:11.5px;color:var(--ci-muted);display:flex;gap:18px;flex-wrap:wrap}
+.foot b{color:var(--ci-text)}
+
+/* ---------- LOI SCORECARD ---------- */
+.cdd-wrap{margin-top:0}
+.cdd-deal{display:none}
+.cdd-deal.active{display:block}
+/* header coefficient stats: score · multiple · value */
+.cdd2-stats{display:flex;align-items:flex-end;gap:28px}
+.cdd2-stat{display:flex;flex-direction:column;gap:4px;text-align:right}
+.cdd2-stat .st-l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ci-muted)}
+.cdd2-stat .st-v{font-size:21px;font-weight:700;color:var(--ci-ink);font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-.01em}
+.cdd2-stat .st-v small{font-size:12px;font-weight:600;color:var(--ci-muted)}
+.cdd2-stat.score .st-v{color:var(--ci-brand)}
+/* table — flat, low-chroma */
+.cdd2-table{max-width:920px;border-collapse:collapse;font-family:var(--ci-font);table-layout:fixed}
+.cdd2-table col.cc-crit{width:26%}.cdd2-table col.cc-val{width:104px}.cdd2-table col.cc-sc{width:50px}.cdd2-table col.cc-cmt{width:auto}
+.cdd2-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 14px;text-align:left}
+.cdd2-table thead th.c{text-align:center}
+.cdd2-cat-row td{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ci-muted);padding:10px 14px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
+.cdd2-cat-row .cat-score{font-size:10.5px;color:var(--ci-ink);font-variant-numeric:tabular-nums;letter-spacing:0;margin-left:6px}
+.cdd2-total td{padding:10px 14px;font-size:14px;font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);background:var(--ci-canvas)}
+.cdd2-total td.cat-sub{text-align:center;font-variant-numeric:tabular-nums;font-size:15px}
+.cdd2-table tbody td{padding:8px 16px;border-bottom:1px solid var(--ci-line);vertical-align:middle;line-height:1.45}
+.cdd2-crit{font-weight:600;color:var(--ci-ink);font-size:14px}
+.cdd2-cmt{font-size:13px;color:var(--ci-text);line-height:1.45}
+.cdd2-cmt ul{margin:0;padding-left:14px;list-style:disc}.cdd2-cmt li{margin-bottom:2px}
+.cdd2-val{font-weight:600;font-size:13px;color:var(--ci-ink);font-variant-numeric:tabular-nums;text-align:center;white-space:nowrap}
+.cdd2-score{font-weight:700;font-size:15px;color:var(--ci-ink);font-variant-numeric:tabular-nums;text-align:center;display:block}
+.cdd-ko{display:inline;font-size:8.5px;font-weight:700;color:var(--ci-muted);background:rgba(0,0,0,.05);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle;letter-spacing:.03em;white-space:nowrap}
+.cdd2-legend{font-size:11px;color:var(--ci-muted);margin-top:10px;line-height:1.5}
+.cdd2-empty{display:flex;align-items:flex-start;gap:13px;padding:18px 20px;border:1px dashed var(--ci-line);border-radius:10px;background:var(--ci-canvas);font-size:13px;color:var(--ci-text);line-height:1.5}
+.cdd2-empty .ic{flex-shrink:0;width:30px;height:30px;border-radius:8px;background:var(--ci-surface);border:1px solid var(--ci-line);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--ci-muted);font-weight:700}
+.cdd2-empty b{color:var(--ci-ink)}
+@media(max-width:760px){.cdd2-table col.cc-cmt{width:0}.cdd2-cmt{display:none}.cdd2-table .cc-cmt-cell{display:none}}
+
+/* ---------- ACT 4: timeline ---------- */
+.ms-timeline{position:relative;padding:0 0 0 30px}
+.ms-timeline::before{content:'';position:absolute;left:9px;top:12px;bottom:12px;width:2px;background:var(--ci-line)}
+.ms-node{position:relative;display:grid;grid-template-columns:62px 1fr auto;gap:0 16px;align-items:center;padding:9px 0}
+.ms-node::before{content:'';position:absolute;left:-25px;top:50%;width:10px;height:10px;border-radius:50%;background:var(--ci-surface);border:2.5px solid var(--ci-muted);transform:translateY(-50%);z-index:1}
+.ms-node.ms-next::before{border-color:var(--ci-brand);background:var(--ci-brand)}
+.ms-node.ms-closing::before{border-color:var(--ci-accent5);background:var(--ci-accent5)}
+.ms-node-date{font-size:13px;font-weight:700;color:var(--ci-ink);font-variant-numeric:tabular-nums}
+.ms-node-name{font-size:13.5px;font-weight:600;color:var(--ci-text)}
+.ms-node-owner{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:var(--radius-pill);background:var(--ci-canvas);color:var(--ci-muted);text-transform:uppercase;letter-spacing:.04em}
+
+/* ---------- ACT 5: DD items ---------- */
+.dd-deal{margin-bottom:24px}
+.dd-deal:last-child{margin-bottom:0}
+.dd-deal-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.dd-deal-head .dd-name{font-size:16px;font-weight:700;color:var(--ci-ink)}
+.dd-deal-head .dd-stage{font-size:10px;font-weight:600;color:var(--ci-white);padding:2px 9px;border-radius:10px}
+.dd-table{width:100%;border-collapse:collapse;font-family:var(--ci-font);font-size:12.5px}
+.dd-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 12px;text-align:left}
+.dd-table thead th:last-child{text-align:center;width:80px}
+.dd-table tbody td{padding:8px 12px;border-bottom:1px solid var(--ci-line);vertical-align:top;line-height:1.45}
+.dd-table tbody td:first-child{font-weight:600;color:var(--ci-ink);white-space:nowrap}
+.dd-table tbody td:last-child{text-align:center}
+.degree{display:inline-block;font-size:9px;font-weight:800;letter-spacing:.04em;padding:3px 8px;border-radius:5px}
+.degree--red{background:rgba(225,29,72,.14);color:#DC2626}
+.degree--amber{background:rgba(234,179,8,.18);color:#B45309}
+.degree--yellow{background:rgba(163,190,40,.15);color:#65830C}
+
+/* ---------- Earn-out threshold table (valuation view) ---------- */
+.eo-thresh{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--ci-font)}
+.eo-thresh thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 12px;text-align:right}
+.eo-thresh thead th:first-child{text-align:left}
+.eo-thresh tbody td{padding:6px 12px;text-align:right;border-bottom:1px solid var(--ci-line);font-variant-numeric:tabular-nums}
+.eo-thresh tbody td:first-child{text-align:left}
+.eo-thresh .eo-floor td{color:var(--ci-muted)}
+.eo-thresh .eo-bp{background:rgba(234,179,8,.08)}
+.eo-thresh .eo-bp td{font-weight:700}
+.eo-thresh .eo-max{background:var(--ci-canvas);border-top:2px solid var(--ci-line)}
+.eo-thresh .eo-max td{font-weight:700}
+.eo-thresh .eo-max td:last-child{color:var(--ci-brand)}
+
+/* ---------- S&U table (unified format) ---------- */
+.su-table{border-collapse:collapse;font-size:12.5px;font-family:var(--ci-font)}
+.su-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 12px}
+.su-table thead th:nth-child(odd){text-align:left}
+.su-table thead th:nth-child(even){text-align:right;width:90px}
+.su-table tbody td{padding:5px 12px;border-bottom:1px solid rgba(0,0,0,.06);vertical-align:middle}
+.su-table tbody td:nth-child(even){text-align:right;font-weight:600;color:var(--ci-ink);font-variant-numeric:tabular-nums;white-space:nowrap}
+.su-table tbody td:nth-child(odd){color:var(--ci-text)}
+.su-table tbody tr.su-sec td{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ci-muted);padding:10px 12px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
+.su-table tbody tr.su-tot td{font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);padding:8px 12px;background:var(--ci-canvas)}
+.su-table tbody tr.su-empty td{color:var(--ci-muted)}
+.op-stage--io{background:var(--stage-indicative_offer)}
+.su-layout{display:grid;grid-template-columns:1fr 280px;gap:24px;align-items:start}
+@media(max-width:900px){.su-layout{grid-template-columns:1fr}}
+.su-comment{font-size:12.5px;color:var(--ci-text);line-height:1.55;padding:14px 16px;background:var(--ci-canvas);border:1px solid var(--ci-line);border-radius:var(--radius-sm)}
+.su-comment b{color:var(--ci-ink)}
+.su-comment--overview{margin-top:1.2em}
+.su-drawdown{margin-top:24px}
+.su-drawdown .su-table{max-width:500px;margin-top:12px}
+.su-drawdown .note{max-width:500px}
+.comp-table{max-width:780px;border-collapse:collapse;font-size:12.5px;font-family:var(--ci-font)}
+.comp-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:8px 14px;text-align:center}
+.comp-table thead th:first-child{text-align:left;min-width:200px}
+.comp-table tbody td{padding:7px 14px;border-bottom:1px solid var(--ci-line);text-align:center;font-variant-numeric:tabular-nums}
+.comp-table tbody td:first-child{text-align:left;font-weight:600;color:var(--ci-ink)}
+.comp-table .comp-cat td{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ci-muted);padding:10px 12px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
+.comp-table .comp-tot td{font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);padding:8px 12px;background:var(--ci-canvas)}
+.comp-empty{text-align:center;color:var(--ci-muted);font-size:12px;padding:4px 12px}
+.overview-section{margin-bottom:32px}
+.overview-section h3{margin-bottom:12px}
+.dec-table tr{border-bottom:1px solid var(--ci-line)}
+.dec-num{padding:10px 12px;text-align:center;font-weight:800;color:var(--ci-brand)}
+.dec-title{padding:10px 12px;font-weight:700;color:var(--ci-ink)}
+.dec-comment{padding:10px 12px;color:var(--ci-text);line-height:1.55}
+.dec-comment ul{margin:0;padding-left:16px}
+.dec-rec{padding:10px 12px;color:var(--ci-ink);font-weight:600}
+.fn-v{font-size:24px}
+.fn-l{font-size:13px}
+.fn-sub{font-size:12px}
+.stage-nbo{background:var(--stage-indicative_offer)}
+/* LOI scorecard comparison — +1 font size, wider column spacing (scorecard view only) */
+.cdd-wrap .comp-table{font-size:13.5px}
+.cdd-wrap .comp-table tbody td{padding:7px 18px}
+/* overview S&U — DD cost table and drawdown schedule side by side */
+.su-two-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:start;margin-top:24px}
+@media(max-width:1000px){.su-two-col{grid-template-columns:1fr}}
+.su-two-col .su-drawdown{margin-top:0}
+.su-note-inline{font-style:italic;color:var(--ci-muted)}
+/* inline edit */
+[data-edit-id].editable{cursor:text;border-radius:3px;transition:background 0.15s,outline 0.15s}
+[data-edit-id].editable:hover{background:rgba(0,104,176,0.04)}
+[data-edit-id].editable:focus{outline:2px solid var(--ci-brand);outline-offset:2px;background:rgba(0,104,176,0.06)}
+[data-edit-id].editable.edit-dirty{border-left:3px solid var(--ci-brand);padding-left:4px}
+.edit-toast{position:fixed;bottom:24px;right:24px;background:var(--ci-brand);color:#fff;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:600;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:999}
+.edit-toast.show{opacity:1}
+.edit-toast.err{background:#c0392b}
+.edit-badge{display:inline-block;font-size:9px;background:var(--ci-brand);color:#fff;padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;font-weight:700;letter-spacing:.03em}
+</style>
+</head>
+<body>
+
+<!-- ============ HEADER — simple brand bar ============ -->
+<div class="topbar">
+  <div class="topbar-in">
+    <div class="cobrand">
+      <img class="logo" src="static/img/logo-white.png" alt="Repuro">
+      <span class="x">×</span>
+      <img class="logo strada-logo" src="static/img/strada-white.png" alt="Strada">
+    </div>
+    <div class="meta"><b>Investor View</b>Weekly call · 02 Jul 2026</div>
+  </div>
+</div>
+
+<!-- agenda rail -->
+<div class="callbar">
+  <div class="callbar-in">
+    <button class="agenda-item active" data-go="act1"><span class="n">1</span> This week</button>
+    <button class="agenda-item" data-go="act2"><span class="n">2</span> Live deals</button>
+    <button class="agenda-item" data-go="act3"><span class="n">3</span> Pipeline</button>
+    <button class="agenda-item" data-go="act4"><span class="n">4</span> Timeline</button>
+  </div>
+</div>
+
+<div class="wrap">
+

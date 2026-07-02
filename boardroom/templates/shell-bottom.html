@@ -1,0 +1,189 @@
+
+  <div class="foot">
+    <span><b>Repuro · Kamu Kapital</b> — investor room for Strada</span>
+    <span>Data: Dealroom · Cockpit · Allex</span>
+  </div>
+
+</div>
+
+<script>
+// ---- agenda rail -> jump + active state ----
+var items=[].slice.call(document.querySelectorAll('.agenda-item'));
+function go(id){var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}
+document.querySelectorAll('[data-go]').forEach(function(b){
+  b.addEventListener('click',function(){go(this.getAttribute('data-go'));});
+});
+var acts=['act1','act2','act3','act4'];
+function syncAgenda(){
+  var pos=window.scrollY+150,cur='act1';
+  acts.forEach(function(a){var e=document.getElementById(a);if(e&&e.offsetTop<=pos)cur=a;});
+  items.forEach(function(it){it.classList.toggle('active',it.getAttribute('data-go')===cur);});
+}
+window.addEventListener('scroll',syncAgenda,{passive:true});
+syncAgenda();
+
+// ---- ACT 2 — live-deal toggle ----
+var overviewOnlyViews=['scorecard','su'];
+var allViewTabs=document.querySelectorAll('.view-tab');
+function applyDeal(deal){
+  document.querySelectorAll('.deal-panel').forEach(function(p){
+    p.classList.toggle('active',p.id==='deal-'+deal);
+  });
+  document.querySelectorAll('.cdd-deal').forEach(function(c){
+    c.classList.toggle('active',c.id==='cdd-'+deal);
+  });
+  document.querySelectorAll('.val-deal').forEach(function(c){
+    c.classList.toggle('active',c.id==='val-'+deal);
+  });
+  document.querySelectorAll('.su-deal').forEach(function(c){
+    c.classList.toggle('active',c.id==='su-'+deal);
+  });
+  document.querySelectorAll('.ddi-deal').forEach(function(c){
+    c.classList.toggle('active',c.id==='ddi-'+deal);
+  });
+  var isOverview=(deal==='overview');
+  allViewTabs.forEach(function(vt){
+    var v=vt.getAttribute('data-view');
+    var allowed=isOverview?overviewOnlyViews.indexOf(v)!==-1:true;
+    vt.style.display=allowed?'':'none';
+  });
+  var activeVT=document.querySelector('.view-tab.active');
+  if(activeVT&&activeVT.style.display==='none'){
+    var first=document.querySelector('.view-tab[data-view="scorecard"]');
+    if(first){first.click();}
+  }
+}
+document.querySelectorAll('.deal-tab').forEach(function(tab){
+  tab.addEventListener('click',function(){
+    var deal=this.getAttribute('data-deal');
+    document.querySelectorAll('.deal-tab').forEach(function(t){t.classList.toggle('active',t===tab);});
+    applyDeal(deal);
+  });
+});
+
+// ---- ACT 2 — view switch (LOI Scorecard / 1-pager / Valuation) ----
+document.querySelectorAll('.view-tab').forEach(function(tab){
+  tab.addEventListener('click',function(){
+    var view=this.getAttribute('data-view');
+    document.querySelectorAll('.view-tab').forEach(function(t){t.classList.toggle('active',t===tab);});
+    document.querySelectorAll('.vgroup').forEach(function(g){
+      g.classList.toggle('active',g.getAttribute('data-vg')===view);
+    });
+  });
+});
+
+
+// ---- ACT 3 — stage filter pills (verbatim table) ----
+var ACTIVE_STAGES=['loi_signed','indicative_offer','valuation_rfi','meeting_concluded','due_diligence','contract_negotiation','closed'];
+function applyStageFilter(f){
+  document.querySelectorAll('.portfolio-table tbody tr').forEach(function(tr){
+    var st=tr.getAttribute('data-stage');
+    var show;
+    if(f==='all') show=true;
+    else if(f==='active') show=ACTIVE_STAGES.indexOf(st)!==-1;
+    else show=(st===f);
+    tr.style.display=show?'':'none';
+  });
+  recomputeSum();
+}
+document.querySelectorAll('.stage-filter .filter-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.stage-filter .filter-btn').forEach(function(b){b.classList.toggle('active',b===btn);});
+    applyStageFilter(this.getAttribute('data-filter'));
+  });
+});
+
+function parseDE(s){return parseFloat(String(s).replace(',','.'));}
+function fmtDE(n){return n.toFixed(1);}
+function recomputeSum(){
+  var rev=0,eb=0,emp=0;
+  document.querySelectorAll('.portfolio-table tbody tr').forEach(function(tr){
+    if(tr.style.display==='none') return;
+    var c=tr.children;
+    var r=parseDE(c[1].textContent); if(!isNaN(r)) rev+=r;
+    var e=parseDE(c[2].textContent); if(!isNaN(e)) eb+=e;
+    var m=parseInt(c[4].textContent,10); if(!isNaN(m)) emp+=m;
+  });
+  var sr=document.getElementById('sum-rev'); if(sr) sr.textContent=fmtDE(rev);
+  var se=document.getElementById('sum-ebitda'); if(se) se.textContent=fmtDE(eb);
+  var sm=document.getElementById('sum-emp'); if(sm) sm.textContent=emp;
+}
+applyStageFilter('active');
+
+applyDeal('overview');
+
+// ---- decision jump links ----
+document.querySelectorAll('.dec-link').forEach(function(a){
+  a.addEventListener('click',function(e){
+    e.preventDefault();
+    var id=this.getAttribute('href').replace('#','');
+    var deal,view;
+    if(id.indexOf('cdd-')===0){deal=id.replace('cdd-','');view='scorecard';}
+    else if(id.indexOf('su-')===0){deal=id.replace('su-','');view='su';}
+    else if(id==='dd-costs'){deal='overview';view='su';}
+    if(deal){
+      var dt=document.querySelector('.deal-tab[data-deal="'+deal+'"]');
+      if(dt){dt.click();}
+      var vt=document.querySelector('.view-tab[data-view="'+view+'"]');
+      if(vt){vt.click();}
+      setTimeout(function(){var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});},80);
+    }
+  });
+});
+
+// ---- inline edit (admin-only, persisted to investor.db) ----
+(function(){
+  var toast=document.createElement('div');
+  toast.className='edit-toast';
+  document.body.appendChild(toast);
+  var toastTimer;
+
+  function showToast(msg,isErr){
+    toast.textContent=msg;
+    toast.classList.toggle('err',!!isErr);
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){toast.classList.remove('show');},isErr?3000:1500);
+  }
+
+  fetch('api/whoami').then(function(r){return r.json();}).then(function(who){
+    var isAdmin=who.role==='admin';
+    return fetch('api/inline-edits').then(function(r){return r.json();}).then(function(d){
+      var edits=d.edits||{};
+      var els=document.querySelectorAll('[data-edit-id]');
+      els.forEach(function(el){
+        var eid=el.getAttribute('data-edit-id');
+        if(edits[eid]!==undefined){el.innerHTML=edits[eid];el.classList.add('edit-dirty');}
+      });
+      if(!isAdmin) return;
+      var badge=document.createElement('span');
+      badge.className='edit-badge';
+      badge.textContent='EDIT MODE';
+      var hdr=document.querySelector('.meta b');
+      if(hdr) hdr.parentNode.insertBefore(badge,hdr.nextSibling);
+      els.forEach(function(el){
+        el.setAttribute('contenteditable','true');
+        el.classList.add('editable');
+        var orig=el.innerHTML;
+        el.addEventListener('focus',function(){orig=el.innerHTML;});
+        el.addEventListener('blur',function(){
+          var now=el.innerHTML;
+          if(now===orig) return;
+          var eid=el.getAttribute('data-edit-id');
+          fetch('api/inline-edit',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({edit_id:eid,content:now})
+          }).then(function(r){
+            if(r.ok){showToast('Saved');el.classList.add('edit-dirty');}
+            else{showToast('Save failed',true);}
+          }).catch(function(){showToast('Network error',true);});
+        });
+      });
+    });
+  }).catch(function(e){/* no auth = static view, nothing to do */});
+})();
+
+</script>
+</body>
+</html>

@@ -7,10 +7,11 @@ import hashlib
 import json
 import logging
 import os
+import re
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import assemble as _assemble
@@ -493,9 +494,62 @@ def unpublish_publication(pub_id: int, p=Depends(admin_only)):
     return {"id": pub_id, "status": "archived"}
 
 
+# ---------------------------------------------------------------------------
+# Investor-view page assembly (SPEC-investor-split.md)
+# static/index.html was split into templates/ (shell + per-act sections + per-deal
+# files). Deal files hold one fragment per view behind <!-- ONEPAGER --> etc.
+# markers; act2-shell.html carries {{ONEPAGER}}-style placeholders. Assembly is
+# pure concatenation — output is byte-identical to the pre-split monolith
+# (static/index.html.pre-split.bak).
+
+_TPL = os.path.join(os.path.dirname(__file__), "..", "templates")
+_PAGE_SECTIONS = ("ONEPAGER", "SCORECARD", "SU", "VALUATION")
+_PAGE_DEALS = ("_overview", "fox", "mantis", "mouse", "cat")
+_MARKER_RE = re.compile(r"^<!--\s*(ONEPAGER|SCORECARD|SU|VALUATION)\s*-->\s*$")
+
+
+def _tpl(rel: str) -> str:
+    # newline="" — templates are CRLF; keep bytes exact, no translation
+    with open(os.path.join(_TPL, rel), encoding="utf-8", newline="") as f:
+        return f.read()
+
+
+def _parse_deal(name: str) -> dict:
+    """Split deals/<name>.html on section markers → {SECTION: fragment}."""
+    parts, current, buf = {}, None, []
+    for line in _tpl(f"deals/{name}.html").splitlines(keepends=True):
+        m = _MARKER_RE.match(line)
+        if m:
+            if current:
+                parts[current] = "".join(buf)
+            current, buf = m.group(1), []
+        else:
+            buf.append(line)
+    if current:
+        parts[current] = "".join(buf)
+    return parts
+
+
+def _assemble_page() -> str:
+    deals = [_parse_deal(n) for n in _PAGE_DEALS]
+    act2 = _tpl("sections/act2-shell.html")
+    for sec in _PAGE_SECTIONS:
+        act2 = act2.replace("{{%s}}\r\n" % sec, "".join(d.get(sec, "") for d in deals))
+    return "".join(
+        [
+            _tpl("shell-top.html"),
+            _tpl("sections/act1-thisweek.html"),
+            act2,
+            _tpl("sections/act3-pipeline.html"),
+            _tpl("sections/act4-timeline.html"),
+            _tpl("shell-bottom.html"),
+        ]
+    )
+
+
 @app.get("/")
 def index():
-    return FileResponse(os.path.join(_STATIC, "index.html"), media_type="text/html")
+    return HTMLResponse(_assemble_page())
 
 
 # ---------------------------------------------------------------------------

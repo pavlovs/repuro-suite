@@ -349,11 +349,11 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .cdd2-stat.score .st-v{color:var(--ci-brand)}
 /* table — flat, low-chroma */
 .cdd2-table{max-width:920px;border-collapse:collapse;font-family:var(--ci-font);table-layout:fixed}
-.cdd2-table col.cc-cat{width:38px}.cdd2-table col.cc-crit{width:26%}.cdd2-table col.cc-val{width:104px}.cdd2-table col.cc-sc{width:50px}.cdd2-table col.cc-cmt{width:auto}
+.cdd2-table col.cc-crit{width:26%}.cdd2-table col.cc-val{width:104px}.cdd2-table col.cc-sc{width:50px}.cdd2-table col.cc-cmt{width:auto}
 .cdd2-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 14px;text-align:left}
 .cdd2-table thead th.c{text-align:center}
-.cdd2-cat-cell{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ci-muted);padding:6px 2px;background:var(--ci-canvas);border-right:2px solid var(--ci-line);vertical-align:middle;white-space:nowrap}
-.cdd2-cat-cell .cat-score{font-size:10.5px;color:var(--ci-ink);font-variant-numeric:tabular-nums;letter-spacing:0;margin-left:6px}
+.cdd2-cat-row td{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ci-muted);padding:10px 14px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
+.cdd2-cat-row .cat-score{font-size:10.5px;color:var(--ci-ink);font-variant-numeric:tabular-nums;letter-spacing:0;margin-left:6px}
 .cdd2-total td{padding:10px 14px;font-size:14px;font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);background:var(--ci-canvas)}
 .cdd2-total td.cat-sub{text-align:center;font-variant-numeric:tabular-nums;font-size:15px}
 .cdd2-table tbody td{padding:8px 16px;border-bottom:1px solid var(--ci-line);vertical-align:middle;line-height:1.45}
@@ -820,7 +820,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <div class="op-quadrant-body">
               <ul>
                 <li>Cat is a <strong>specialized medical-equipment provider</strong> — distributing, installing and servicing equipment (barrier systems, surgical lights, sterilization / bedpan units in surgical rooms) for <strong>hospitals &amp; clinics</strong> across Germany</li>
-                <li>Generated <strong>~6.2 M€ revenue at ~0.93 M€ adj. EBITDA (~15%)</strong> in 2025; <strong>revenue CAGR 2023–25 ~15%</strong>; targets ~6.5 M€ revenue / 0.9 M€ EBITDA in 2026</li>
+                <li>Generated <strong>~6.2 M€ revenue at ~0.93 M€ adj. EBITDA (~15%)</strong> in 2025; <strong>revenue CAGR 2023–25 ~39%</strong>; targets ~6.5 M€ revenue / 0.9 M€ EBITDA in 2026</li>
                 <li><strong>Q1-2026: +10% revenue, +14% gross margin</strong> — supporting the sustainability of the 2025 step-up</li>
                 <li>~70% of revenue from <strong>multi-year hospital projects</strong> (~95% of customers), plus ~24% from <strong>high-margin maintenance contracts</strong> (70–75% GM, growing)</li>
                 <li>EV at closing of <strong>3.7 M€ (3.9x 2025 EBITDA)</strong>; with anticipated earn-out total <strong>~5.2 M€ (~5.5x)</strong>; max earn-out tied to a 1.1 M€ EBITDA target¹</li>
@@ -886,7 +886,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
               <tbody>
                 <tr class="comp-cat"><td colspan="5">Financial Quality</td></tr>
                 <tr><td>Size (adj. EBITDA)</td><td>2</td><td>4</td><td>3</td><td>4</td></tr>
-                <tr><td>Historical growth (rev CAGR)</td><td>2</td><td>3</td><td>2</td><td>4</td></tr>
+                <tr><td>Historical growth (rev CAGR 23–25)</td><td>2</td><td>3</td><td>2</td><td>4</td></tr>
                 <tr><td>EBITDA margin</td><td>3</td><td>4</td><td>4</td><td>4</td></tr>
                 <tr><td>Customer concentration (Top 3)</td><td>4</td><td>3</td><td>3</td><td>3</td></tr>
                 <tr><td>Recurring revenue (% share)</td><td>2</td><td>4</td><td>3</td><td>1</td></tr>
@@ -919,22 +919,22 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
           </div>
           <div class="portfolio-wrap">
           <table class="cdd2-table">
-            <colgroup><col class="cc-cat"><col class="cc-crit"><col class="cc-val"><col class="cc-sc"><col class="cc-cmt"></colgroup>
-            <thead><tr><th></th><th>Criterion</th><th class="c">Value</th><th class="c">Score</th><th class="cc-cmt-cell">Assessment</th></tr></thead>
+            <colgroup><col class="cc-crit"><col class="cc-val"><col class="cc-sc"><col class="cc-cmt"></colgroup>
+            <thead><tr><th>Criterion</th><th class="c">Value</th><th class="c">Score</th><th class="cc-cmt-cell">Assessment</th></tr></thead>
             <tbody>
-              <tr><td class="cdd2-cat-cell" rowspan="5">Financial quality <span class="cat-score">13/20</span></td><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">432 K€</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Below platform scale</li><li>Owner-drawings add-back open (KG)</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Historical growth (rev CAGR)</td><td class="cdd2-val">1.7%</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Group rev ~flat over 3y</li><li>MTec +25% offsets MT drag</li></ul></td></tr>
-              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">12.1%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>In-line but no cushion</li><li>Mix shift could improve</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Financial quality <span class="cat-score">13/20</span></td></tr><tr><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">0.36 M€</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Below platform scale</li><li>Owner-drawings add-back open (KG)</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Historical growth (rev CAGR 23–25)</td><td class="cdd2-val">5.8%</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Uneven trend (−8% to +8% p.a.)</li><li>MTec +25% offsets MT drag</li></ul></td></tr>
+              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">10.3%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>In-line but no cushion</li><li>Mix shift could improve</li></ul></td></tr>
               <tr><td class="cdd2-crit">Customer concentration (Top 3)</td><td class="cdd2-val">21.0%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Well diversified</li><li>No single account &gt;10%</li></ul></td></tr>
               <tr><td class="cdd2-crit">Recurring revenue (% share)</td><td class="cdd2-val">~48.0%</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>~Half recurring</li><li>Rest transactional/spot</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="2">Strategic fit <span class="cat-score">7/8</span></td><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Core ambulatory consumables</li><li>Strong distribution overlap</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Strategic fit <span class="cat-score">7/8</span></td></tr><tr><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Core ambulatory consumables</li><li>Strong distribution overlap</li></ul></td></tr>
               <tr><td class="cdd2-crit">USP / differentiation</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Leasing + procurement model</li><li>No hard switching cost</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="1">Value creation <span class="cat-score">3/4</span></td><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Cross-sell into 977 customers</li><li>MT turnaround lever</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="2">Execution risk <span class="cat-score">6/8</span></td><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Successor named internally</li><li>Owners stay 2y post-close</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Value creation <span class="cat-score">3/4</span></td></tr><tr><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Cross-sell into 977 customers</li><li>MT turnaround lever</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Execution risk <span class="cat-score">6/8</span></td></tr><tr><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Successor named internally</li><li>Owners stay 2y post-close</li></ul></td></tr>
               <tr><td class="cdd2-crit">Outlook</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Stable earnings base</li><li>MT drag if turnaround stalls</li></ul></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Total</td><td class="cat-sub">29/40</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Multiple (2025A)</td><td class="cat-sub">4.9x</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Score / Multiple</td><td class="cat-sub">5.9</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="2">Total</td><td class="cat-sub">29/40</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="2">Multiple (2025A)</td><td class="cat-sub">4.9x</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="2">Score / Multiple</td><td class="cat-sub">5.9</td><td class="cc-cmt-cell"></td></tr>
             </tbody>
           </table>
           </div>
@@ -953,22 +953,22 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
           </div>
           <div class="portfolio-wrap">
           <table class="cdd2-table">
-            <colgroup><col class="cc-cat"><col class="cc-crit"><col class="cc-val"><col class="cc-sc"><col class="cc-cmt"></colgroup>
-            <thead><tr><th></th><th>Criterion</th><th class="c">Value</th><th class="c">Score</th><th class="cc-cmt-cell">Assessment</th></tr></thead>
+            <colgroup><col class="cc-crit"><col class="cc-val"><col class="cc-sc"><col class="cc-cmt"></colgroup>
+            <thead><tr><th>Criterion</th><th class="c">Value</th><th class="c">Score</th><th class="cc-cmt-cell">Assessment</th></tr></thead>
             <tbody>
-              <tr><td class="cdd2-cat-cell" rowspan="5">Financial quality <span class="cat-score">18/20</span></td><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">0.8 M€</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Adj. on GF normalisation</li><li>Add-back bridge unverified</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Historical growth (rev CAGR)</td><td class="cdd2-val">~6.9%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Service-led organic growth</li><li>2024 had hospital one-off</li></ul></td></tr>
-              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">~26.0%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Service contracts ~100% GM</li><li>Highest in pipeline</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Financial quality <span class="cat-score">18/20</span></td></tr><tr><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">0.81 M€</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Adj. on GF normalisation</li><li>Add-back bridge unverified</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Historical growth (rev CAGR 23–25)</td><td class="cdd2-val">7.3%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Service-led organic growth</li><li>2024 had hospital one-off</li></ul></td></tr>
+              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">25.6%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Service contracts ~100% GM</li><li>Highest in pipeline</li></ul></td></tr>
               <tr><td class="cdd2-crit">Customer concentration (Top 3)</td><td class="cdd2-val">27.0%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>27% top-3; one hospital = lumpy anchor</li><li>Diversified but project-driven swings</li></ul></td></tr>
               <tr><td class="cdd2-crit">Recurring revenue (% share)</td><td class="cdd2-val">~90.0%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Very sticky contract base</li><li>Multi-year service agreements</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="2">Strategic fit <span class="cat-score">7/8</span></td><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Endoscopy service niche</li><li>Direct roll-up into platform</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Strategic fit <span class="cat-score">7/8</span></td></tr><tr><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Endoscopy service niche</li><li>Direct roll-up into platform</li></ul></td></tr>
               <tr><td class="cdd2-crit">USP / differentiation</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Olympus OEM consent = moat</li><li>Transfer risk on consent clause</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="1">Value creation <span class="cat-score">4/4</span></td><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Contract pricing power</li><li>Cross-sell platform products</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="2">Execution risk <span class="cat-score">5/8</span></td><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Founder-dependent operations</li><li>Succession plan open</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Value creation <span class="cat-score">4/4</span></td></tr><tr><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Contract pricing power</li><li>Cross-sell platform products</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Execution risk <span class="cat-score">5/8</span></td></tr><tr><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Founder-dependent operations</li><li>Succession plan open</li></ul></td></tr>
               <tr><td class="cdd2-crit">Outlook</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Hinges on Olympus consent</li><li>Clause transfer = deal risk</li></ul></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Total</td><td class="cat-sub">34/40</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Multiple (2025A)</td><td class="cat-sub">5.9x</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Score / Multiple</td><td class="cat-sub">5.8</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="2">Total</td><td class="cat-sub">34/40</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="2">Multiple (2025A)</td><td class="cat-sub">5.9x</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="2">Score / Multiple</td><td class="cat-sub">5.8</td><td class="cc-cmt-cell"></td></tr>
             </tbody>
           </table>
           </div>
@@ -987,22 +987,22 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
           </div>
           <div class="portfolio-wrap">
           <table class="cdd2-table">
-            <colgroup><col class="cc-cat"><col class="cc-crit"><col class="cc-val"><col class="cc-sc"><col class="cc-cmt"></colgroup>
-            <thead><tr><th></th><th>Criterion</th><th class="c">Value</th><th class="c">Score</th><th class="cc-cmt-cell">Assessment</th></tr></thead>
+            <colgroup><col class="cc-crit"><col class="cc-val"><col class="cc-sc"><col class="cc-cmt"></colgroup>
+            <thead><tr><th>Criterion</th><th class="c">Value</th><th class="c">Score</th><th class="cc-cmt-cell">Assessment</th></tr></thead>
             <tbody>
-              <tr><td class="cdd2-cat-cell" rowspan="5">Financial quality <span class="cat-score">15/20</span></td><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">~0.6 M€</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Rent add-back = upside</li><li>If confirmed, lifts adj. EBITDA</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Historical growth (rev CAGR)</td><td class="cdd2-val">2.7%</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Low and lumpy revenue</li><li>Equipment-driven, project-based</li></ul></td></tr>
-              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">~16.0%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Strong on service + own products</li><li>Equipment drags blended margin</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Financial quality <span class="cat-score">15/20</span></td></tr><tr><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">0.65 M€</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Rent add-back = upside</li><li>If confirmed, lifts adj. EBITDA</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Historical growth (rev CAGR 23–25)</td><td class="cdd2-val">6.3%</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Low and lumpy revenue</li><li>Equipment-driven, project-based</li></ul></td></tr>
+              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">16.5%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Strong on service + own products</li><li>Equipment drags blended margin</li></ul></td></tr>
               <tr><td class="cdd2-crit">Customer concentration (Top 3)</td><td class="cdd2-val">~35.0%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Volatile year-to-year</li><li>Swings with project wins</li></ul></td></tr>
               <tr><td class="cdd2-crit">Recurring revenue (% share)</td><td class="cdd2-val">25.0%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Thin recurring base</li><li>Equipment sales dominate</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="2">Strategic fit <span class="cat-score">5/8</span></td><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Lab vertical = adjacency</li><li>Not direct bolt-on</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Strategic fit <span class="cat-score">5/8</span></td></tr><tr><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Lab vertical = adjacency</li><li>Not direct bolt-on</li></ul></td></tr>
               <tr><td class="cdd2-crit">USP / differentiation</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Glassblowing + own instruments</li><li>Rare artisan capability</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="1">Value creation <span class="cat-score">3/4</span></td><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Own-products expansion</li><li>Marketing + channel buildout</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="2">Execution risk <span class="cat-score">4/8</span></td><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Owners retiring</li><li>No successor identified</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Value creation <span class="cat-score">3/4</span></td></tr><tr><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Own-products expansion</li><li>Marketing + channel buildout</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Execution risk <span class="cat-score">4/8</span></td></tr><tr><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Owners retiring</li><li>No successor identified</li></ul></td></tr>
               <tr><td class="cdd2-crit">Outlook</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Artisan niche = revenue ceiling</li><li>No platform for scale-driven margin</li></ul></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Total</td><td class="cat-sub">27/40</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Multiple (2025A)</td><td class="cat-sub">4.1x</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Score / Multiple</td><td class="cat-sub">6.6</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="2">Total</td><td class="cat-sub">27/40</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="2">Multiple (2025A)</td><td class="cat-sub">4.1x</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="2">Score / Multiple</td><td class="cat-sub">6.6</td><td class="cc-cmt-cell"></td></tr>
             </tbody>
           </table>
           </div>
@@ -1021,22 +1021,22 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
           </div>
           <div class="portfolio-wrap">
           <table class="cdd2-table">
-            <colgroup><col class="cc-cat"><col class="cc-crit"><col class="cc-val"><col class="cc-sc"><col class="cc-cmt"></colgroup>
-            <thead><tr><th></th><th>Criterion</th><th class="c">Value</th><th class="c">Score</th><th class="cc-cmt-cell">Assessment</th></tr></thead>
+            <colgroup><col class="cc-crit"><col class="cc-val"><col class="cc-sc"><col class="cc-cmt"></colgroup>
+            <thead><tr><th>Criterion</th><th class="c">Value</th><th class="c">Score</th><th class="cc-cmt-cell">Assessment</th></tr></thead>
             <tbody>
-              <tr><td class="cdd2-cat-cell" rowspan="5">Financial quality <span class="cat-score">16/20</span></td><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">938 K€</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>2025 = peak year</li><li>Run-rate nearer 2024 level</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Historical growth (rev CAGR)</td><td class="cdd2-val">21.3%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Tender-driven, not organic</li><li>Lumpy by nature</li></ul></td></tr>
-              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">~15.0%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Outlier high in pipeline</li><li>Sustainable range ~5-9%</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Financial quality <span class="cat-score">16/20</span></td></tr><tr><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">0.93 M€</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>2025 = peak year</li><li>Run-rate nearer 2024 level</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Historical growth (rev CAGR 23–25)</td><td class="cdd2-val">39.3%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Tender-driven, not organic</li><li>Lumpy by nature</li></ul></td></tr>
+              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">15.2%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Outlier high in pipeline</li><li>Sustainable range ~5-9%</li></ul></td></tr>
               <tr><td class="cdd2-crit">Customer concentration (Top 3)</td><td class="cdd2-val">32.3%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>~60% new customers yearly</li><li>No sticky base</li></ul></td></tr>
               <tr><td class="cdd2-crit">Recurring revenue (% share)</td><td class="cdd2-val">~24.0%</td><td><span class="cdd2-score">1</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Mostly project work</li><li>Must re-win each cycle</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="2">Strategic fit <span class="cat-score">6/8</span></td><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Hospital projects</li><li>Not distribution/consumables</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Strategic fit <span class="cat-score">6/8</span></td></tr><tr><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Hospital projects</li><li>Not distribution/consumables</li></ul></td></tr>
               <tr><td class="cdd2-crit">USP / differentiation</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Tender visibility only</li><li>Open tenders = low moat</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="1">Value creation <span class="cat-score">3/4</span></td><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Pricing + overhead leverage</li><li>Backlog covers FY26</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="2">Execution risk <span class="cat-score">6/8</span></td><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>GF-dependent pipeline</li><li>No successor in place</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Value creation <span class="cat-score">3/4</span></td></tr><tr><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Pricing + overhead leverage</li><li>Backlog covers FY26</li></ul></td></tr>
+              <tr class="cdd2-cat-row"><td colspan="4">Execution risk <span class="cat-score">6/8</span></td></tr><tr><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>GF-dependent pipeline</li><li>No successor in place</li></ul></td></tr>
               <tr><td class="cdd2-crit">Outlook</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Hospital reform exposure</li><li>Tender lumpiness risk</li></ul></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Total</td><td class="cat-sub">31/40</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Multiple (2025A)</td><td class="cat-sub">5.5x</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Score / Multiple</td><td class="cat-sub">5.6</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="2">Total</td><td class="cat-sub">31/40</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="2">Multiple (2025A)</td><td class="cat-sub">5.5x</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="2">Score / Multiple</td><td class="cat-sub">5.6</td><td class="cc-cmt-cell"></td></tr>
             </tbody>
           </table>
           </div>

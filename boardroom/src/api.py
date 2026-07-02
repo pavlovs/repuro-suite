@@ -29,9 +29,23 @@ _STATIC = os.path.join(os.path.dirname(__file__), "..", "static")
 
 
 # ---------------------------------------------------------------------------
+_BOOTSTRAP_USERS = [
+    ("rd", "Roman", "RD", "admin"),
+    ("ff", "Florian", "FF", "admin"),
+    ("strada", "Strada", "ST", "investor"),
+]
+
+
 @asynccontextmanager
 async def lifespan(app):
-    db.get_conn()  # ensure schema exists at startup
+    conn = db.get_conn()
+    with db.WRITE_LOCK:
+        for uid, name, initials, role in _BOOTSTRAP_USERS:
+            conn.execute(
+                "INSERT OR IGNORE INTO users (id, name, initials, role) VALUES (?,?,?,?)",
+                (uid, name, initials, role),
+            )
+        conn.commit()
     yield
 
 
@@ -182,6 +196,46 @@ def config():
 def whoami(p=Depends(principal)):
     """Return {id, role} for the calling principal. Readable by admin AND investor."""
     return {"id": p["id"], "role": p["role"]}
+
+
+@app.get("/api/inline-edits")
+def get_inline_edits(p=Depends(principal)):
+    """All inline overrides. Both admin and investor see saved edits."""
+    rows = db.get_conn().execute("SELECT edit_id, content FROM inline_edits").fetchall()
+    return {"edits": {r["edit_id"]: r["content"] for r in rows}}
+
+
+@app.post("/api/inline-edit")
+def post_inline_edit(payload: dict, p=Depends(admin_only)):
+    """Upsert a single inline edit. Admin only. Audited."""
+    edit_id = payload.get("edit_id")
+    content = payload.get("content")
+    if not edit_id or not isinstance(edit_id, str) or len(edit_id) > 64:
+        raise HTTPException(422, "edit_id required (string, max 64 chars)")
+    if content is None or not isinstance(content, str):
+        raise HTTPException(422, "content required (string)")
+    now = db.now_iso()
+    with db.WRITE_LOCK:
+        conn = db.get_conn()
+        old = conn.execute(
+            "SELECT content FROM inline_edits WHERE edit_id=?", (edit_id,)
+        ).fetchone()
+        conn.execute(
+            "INSERT INTO inline_edits (edit_id, content, updated_by, updated_at) "
+            "VALUES (?, ?, ?, ?) ON CONFLICT(edit_id) DO UPDATE SET "
+            "content=excluded.content, updated_by=excluded.updated_by, "
+            "updated_at=excluded.updated_at",
+            (edit_id, content, p["id"], now),
+        )
+        conn.commit()
+    _audit(
+        p["id"],
+        "inline_edit",
+        f"edit:{edit_id}",
+        {"content": old["content"]} if old else None,
+        {"content": content},
+    )
+    return {"ok": True, "edit_id": edit_id}
 
 
 @app.patch("/api/publication/{pub_id}")

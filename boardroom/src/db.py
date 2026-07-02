@@ -10,7 +10,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -48,6 +48,8 @@ def get_conn():
         schema_v = conn.execute("PRAGMA user_version").fetchone()[0]
         if schema_v == 0:
             init_db(conn)
+        elif schema_v < SCHEMA_VERSION:
+            _migrate(conn, schema_v)
         _conn, _conn_path = conn, str(path)
         return conn
 
@@ -107,7 +109,28 @@ CREATE TABLE users (
   token_hash TEXT,
   role       TEXT NOT NULL CHECK(role IN ('admin','investor'))
 );
+CREATE TABLE inline_edits (
+  edit_id    TEXT PRIMARY KEY,
+  content    TEXT NOT NULL,
+  updated_by TEXT NOT NULL,
+  updated_at TEXT NOT NULL
+);
 """
+
+
+def _migrate(conn, from_v):
+    """Incremental schema migration. Called when existing DB is behind SCHEMA_VERSION."""
+    if from_v < 2:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS inline_edits ("
+            "  edit_id TEXT PRIMARY KEY,"
+            "  content TEXT NOT NULL,"
+            "  updated_by TEXT NOT NULL,"
+            "  updated_at TEXT NOT NULL"
+            ")"
+        )
+    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    conn.commit()
 
 
 def init_db(conn=None):

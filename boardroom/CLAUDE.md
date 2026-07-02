@@ -22,3 +22,4 @@ with X-Remote-User auth. Investor sees only approved, published `publications`; 
 - **`investor.db` never committed.** `AUTH_INVESTOR_HASH` is a Fly secret, never in repo.
 - **Milestone loop + suite UI-verification** apply (independent review; 403 matrix verified
   by running it, not by reading code).
+- **English number convention throughout** — dot decimals (`4.9x`, `0.36 M€`), comma thousands (`5,433`), dates as `02 Jul`. Strada reads English. No German formatting anywhere in this document. Do NOT "fix" dot decimals to commas, and do NOT invent per-section format zones.

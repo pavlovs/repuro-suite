@@ -160,7 +160,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .changed-tile{display:grid;grid-template-columns:26px 1fr;column-gap:14px;row-gap:3px;align-items:start}
 .changed-tile .cnum{grid-row:1 / span 2;display:inline-flex;width:26px;height:26px;flex-shrink:0;border-radius:7px;background:var(--ci-brand);color:var(--ci-white);align-items:center;justify-content:center;font-size:13px;font-weight:800}
 .changed-tile .ttl{font-size:15px;font-weight:700;color:var(--ci-ink);line-height:1.25}
-.changed-tile .sub{font-size:13px;color:var(--ci-text);line-height:1.5}
+.changed-tile .sub{font-size:13.5px;color:var(--ci-text);line-height:1.55}
 .changed-tile .sub ul{margin:4px 0 0;padding-left:18px;list-style:disc}
 .changed-tile .sub li{margin-bottom:2px}
 .dec-link{color:inherit;text-decoration:underline;text-decoration-color:var(--ci-brand);text-underline-offset:2px;cursor:pointer}
@@ -275,18 +275,19 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 
 /* ---------- ACT 3: pipeline ---------- */
 /* Sourcing funnel — left to right descending columns; conversion vs previous step */
-.funnel{display:flex;align-items:flex-end;gap:12px;max-width:720px;margin:16px 0 6px}
+.funnel{display:flex;align-items:stretch;gap:14px;max-width:860px;margin:16px 0 6px}
 .fn-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px}
 .fn-bartrack{width:100%;height:158px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px}
 .fn-bar{width:70%;height:var(--h);min-height:6px;background:var(--ci-brand);border-radius:6px 6px 0 0}
-.fn-v{font-size:20px;font-weight:800;color:var(--ci-ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1}
-.fn-l{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ci-muted);text-align:center;line-height:1.25}
-.fn-sub{font-size:11px;color:var(--ci-muted);text-align:center;line-height:1.2;min-height:1.2em}
-.fn-sub b{color:var(--ci-ink);font-weight:800;font-size:15px;font-variant-numeric:tabular-nums}
+.fn-bar--stage{background:var(--stage-loi_signed)}
+.fn-v{font-size:24px;font-weight:800;color:var(--ci-ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1}
+.fn-l{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ci-muted);text-align:center;line-height:1.25}
+.fn-sub{font-size:12px;color:var(--ci-muted);text-align:center;line-height:1.2;min-height:1.2em}
+.fn-sub b{color:var(--ci-ink);font-weight:800;font-size:16px;font-variant-numeric:tabular-nums}
 
 /* portfolio table — VERBATIM dealroom (raw hex allowed here only) */
 .portfolio-wrap{overflow-x:auto}
-.portfolio-table{border-collapse:collapse;font-family:var(--ci-font);font-size:clamp(13px,0.85vw,15px);table-layout:fixed;width:100%}
+.portfolio-table{border-collapse:collapse;font-family:var(--ci-font);font-size:clamp(13px,0.85vw,15px);table-layout:fixed;width:100%;min-width:900px}
 .portfolio-table col.c-code{width:6%}
 .portfolio-table col.c-rev{width:6%}
 .portfolio-table col.c-ebitda{width:6%}
@@ -315,6 +316,10 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .portfolio-table tfoot td.r{text-align:right}
 .stage-dropdown-trigger{cursor:pointer;padding:2px 4px;font-size:inherit;font-weight:600;display:inline-flex;align-items:center;gap:5px;user-select:none;color:#334155;background:none}
 .stage-dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex-shrink:0}
+.stage-dot--on_hold{background:var(--stage-on_hold)}
+.stage-dot--dead{background:var(--stage-dead)}
+.portfolio-table td.num-b{text-align:right;font-weight:700}
+.portfolio-table td.ctr{text-align:center}
 .comment-bullets{list-style:disc;margin:0;padding:0 0 0 16px;font-size:inherit;line-height:1.5}
 .comment-bullets li{margin-bottom:2px}
 .comment-cell-wrap{min-height:24px;outline:none}
@@ -343,20 +348,20 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .cdd2-stat .st-v small{font-size:12px;font-weight:600;color:var(--ci-muted)}
 .cdd2-stat.score .st-v{color:var(--ci-brand)}
 /* table — flat, low-chroma */
-.cdd2-table{max-width:860px;border-collapse:collapse;font-family:var(--ci-font);table-layout:fixed}
-.cdd2-table col.cc-cat{width:38px}.cdd2-table col.cc-crit{width:28%}.cdd2-table col.cc-val{width:66px}.cdd2-table col.cc-sc{width:50px}.cdd2-table col.cc-cmt{width:auto}
-.cdd2-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 10px;text-align:left}
+.cdd2-table{max-width:920px;border-collapse:collapse;font-family:var(--ci-font);table-layout:fixed}
+.cdd2-table col.cc-cat{width:38px}.cdd2-table col.cc-crit{width:26%}.cdd2-table col.cc-val{width:104px}.cdd2-table col.cc-sc{width:50px}.cdd2-table col.cc-cmt{width:auto}
+.cdd2-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 14px;text-align:left}
 .cdd2-table thead th.c{text-align:center}
 .cdd2-cat-cell{writing-mode:vertical-rl;transform:rotate(180deg);text-align:center;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ci-muted);padding:6px 2px;background:var(--ci-canvas);border-right:2px solid var(--ci-line);vertical-align:middle;white-space:nowrap}
 .cdd2-cat-cell .cat-score{font-size:10.5px;color:var(--ci-ink);font-variant-numeric:tabular-nums;letter-spacing:0;margin-left:6px}
-.cdd2-total td{padding:10px 10px;font-size:13px;font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);background:var(--ci-canvas)}
-.cdd2-total td.cat-sub{text-align:center;font-variant-numeric:tabular-nums;font-size:14px}
-.cdd2-table tbody td{padding:8px 12px;border-bottom:1px solid var(--ci-line);vertical-align:middle;line-height:1.45}
-.cdd2-crit{font-weight:600;color:var(--ci-ink);font-size:13px}
-.cdd2-cmt{font-size:12px;color:var(--ci-text);line-height:1.45}
+.cdd2-total td{padding:10px 14px;font-size:14px;font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);background:var(--ci-canvas)}
+.cdd2-total td.cat-sub{text-align:center;font-variant-numeric:tabular-nums;font-size:15px}
+.cdd2-table tbody td{padding:8px 16px;border-bottom:1px solid var(--ci-line);vertical-align:middle;line-height:1.45}
+.cdd2-crit{font-weight:600;color:var(--ci-ink);font-size:14px}
+.cdd2-cmt{font-size:13px;color:var(--ci-text);line-height:1.45}
 .cdd2-cmt ul{margin:0;padding-left:14px;list-style:disc}.cdd2-cmt li{margin-bottom:2px}
-.cdd2-val{font-weight:600;font-size:12px;color:var(--ci-ink);font-variant-numeric:tabular-nums;text-align:right}
-.cdd2-score{font-weight:700;font-size:14px;color:var(--ci-ink);font-variant-numeric:tabular-nums;text-align:center;display:block}
+.cdd2-val{font-weight:600;font-size:13px;color:var(--ci-ink);font-variant-numeric:tabular-nums;text-align:center;white-space:nowrap}
+.cdd2-score{font-weight:700;font-size:15px;color:var(--ci-ink);font-variant-numeric:tabular-nums;text-align:center;display:block}
 .cdd-ko{display:inline;font-size:8.5px;font-weight:700;color:var(--ci-muted);background:rgba(0,0,0,.05);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle;letter-spacing:.03em;white-space:nowrap}
 .cdd2-legend{font-size:11px;color:var(--ci-muted);margin-top:10px;line-height:1.5}
 .cdd2-empty{display:flex;align-items:flex-start;gap:13px;padding:18px 20px;border:1px dashed var(--ci-line);border-radius:10px;background:var(--ci-canvas);font-size:13px;color:var(--ci-text);line-height:1.5}
@@ -435,6 +440,33 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .comp-empty{text-align:center;color:var(--ci-muted);font-size:12px;padding:4px 12px}
 .overview-section{margin-bottom:32px}
 .overview-section h3{margin-bottom:12px}
+.dec-table tr{border-bottom:1px solid var(--ci-line)}
+.dec-num{padding:10px 12px;text-align:center;font-weight:800;color:var(--ci-brand)}
+.dec-title{padding:10px 12px;font-weight:700;color:var(--ci-ink)}
+.dec-comment{padding:10px 12px;color:var(--ci-text);line-height:1.55}
+.dec-comment ul{margin:0;padding-left:16px}
+.dec-rec{padding:10px 12px;color:var(--ci-ink);font-weight:600}
+.fn-v{font-size:24px}
+.fn-l{font-size:13px}
+.fn-sub{font-size:12px}
+.stage-nbo{background:var(--stage-indicative_offer)}
+/* LOI scorecard comparison — +1 font size, wider column spacing (scorecard view only) */
+.cdd-wrap .comp-table{font-size:13.5px}
+.cdd-wrap .comp-table tbody td{padding:7px 18px}
+/* overview S&U — DD cost table and drawdown schedule side by side */
+.su-two-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:start;margin-top:24px}
+@media(max-width:1000px){.su-two-col{grid-template-columns:1fr}}
+.su-two-col .su-drawdown{margin-top:0}
+.su-note-inline{font-style:italic;color:var(--ci-muted)}
+/* inline edit */
+[data-edit-id].editable{cursor:text;border-radius:3px;transition:background 0.15s,outline 0.15s}
+[data-edit-id].editable:hover{background:rgba(0,104,176,0.04)}
+[data-edit-id].editable:focus{outline:2px solid var(--ci-brand);outline-offset:2px;background:rgba(0,104,176,0.06)}
+[data-edit-id].editable.edit-dirty{border-left:3px solid var(--ci-brand);padding-left:4px}
+.edit-toast{position:fixed;bottom:24px;right:24px;background:var(--ci-brand);color:#fff;padding:8px 18px;border-radius:8px;font-size:12px;font-weight:600;opacity:0;transition:opacity 0.3s;pointer-events:none;z-index:999}
+.edit-toast.show{opacity:1}
+.edit-toast.err{background:#c0392b}
+.edit-badge{display:inline-block;font-size:9px;background:var(--ci-brand);color:#fff;padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;font-weight:700;letter-spacing:.03em}
 </style>
 </head>
 <body>
@@ -475,24 +507,24 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
       <div class="changed-grid">
         <div class="tile changed-tile">
           <span class="cnum">1</span>
-          <div class="ttl">Fox &amp; Mantis — DD workshops to close priority gaps before Phase 2 DD</div>
-          <div class="sub"><ul><li>Combined ~1,2 M€ EBITDA secured under signed LOIs; DD advancing on both targets</li><li>Fox: on-site workshop next week — validating co-med carve-out, MD succession, revenue streams</li><li>Mantis: DD focus on distribution margin development, leadership succession quality, top customer relationships</li></ul></div>
+          <div class="ttl" data-edit-id="tile-1-title">Fox &amp; Mantis — DD workshops to close priority gaps before Phase 2 DD</div>
+          <div class="sub" data-edit-id="tile-1-body"><ul><li>Combined ~1.2 M€ EBITDA secured under signed LOIs; DD advancing on both targets</li><li>Fox: On-site workshop next week — validating co-med collaboration, MD succession, revenue streams</li><li>Mantis: DD focus on distribution margin development, leadership succession quality, top customer relationships</li></ul></div>
         </div>
         <div class="tile changed-tile">
           <span class="cnum">2</span>
-          <div class="ttl">Mouse — LOI prepared, sending 02–03.07</div>
-          <div class="sub"><ul><li>Entry into laboratory distribution segment; EV ~2,6 M€ (4,1x incl. earn-out), debt-free</li><li>Owners committed to transition period of up to 2 years</li><li>LOI to be sent this week pending Strada approval (see Decision 1)</li></ul></div>
+          <div class="ttl" data-edit-id="tile-2-title">Mouse — LOI prepared, sending 03 Jul</div>
+          <div class="sub" data-edit-id="tile-2-body"><ul><li>Entry into laboratory distribution segment; EV ~2.6 M€ (4.1x incl. earn-out), debt-free</li><li>Owners committed to transition period of up to 2 years, geographically close to Fox and Holding</li><li>LOI to be sent this week (see <b>Decision 1</b>)</li></ul></div>
         </div>
         <div class="tile changed-tile">
           <span class="cnum">3</span>
-          <div class="ttl">Cat — LOI verbally agreed, signing target this week</div>
-          <div class="sub"><ul><li>LOI verbally agreed after phone call (01 Jul); signing target before seller holiday (04 Jul)</li><li>Key changes vs. previous offer: upfront multiple increased from 3,6x to 3,9x; total anticipated EV multiple unchanged (earn-out threshold +25 K€, earn-out multiplier reduced from 6,0x to 5,5x)</li><li>Annual accounts (JA 2025) expected August; DD planned for August; deal signing planned October</li></ul></div>
+          <div class="ttl" data-edit-id="tile-3-title">Cat — LOI verbally agreed, to be sent before seller holiday</div>
+          <div class="sub" data-edit-id="tile-3-body"><ul><li>LOI verbally agreed after phone call (01 Jul); to be sent before seller holiday (04 Jul) - signing most likely after holidays</li><li>Key changes vs. previous offer: upfront multiple increased from 3.6x to 3.9x; total anticipated EV multiple unchanged (upfront +300 K€, earn-out threshold +25 K€, earn-out multiplier reduced from 6.0x to 5.5x)</li><li>Annual accounts (Annual Report 2025) expected August; DD planned for August; deal signing planned October</li></ul></div>
         </div>
       </div>
 
       <hr class="hairline">
 
-      <div class="eyebrow">Decisions to be made this week</div>
+      <div class="eyebrow">Decisions &amp; Input Required</div>
       <table class="dec-table" style="width:100%;border-collapse:collapse;font-size:13.5px;font-family:var(--ci-font)">
         <thead><tr style="background:var(--ci-brand);color:#fff">
           <th style="padding:8px 12px;text-align:center;width:36px;font-size:12px">#</th>
@@ -503,15 +535,27 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
         <tbody>
           <tr style="border-bottom:1px solid var(--ci-line)">
             <td style="padding:10px 12px;text-align:center;font-weight:800;color:var(--ci-brand)">1</td>
-            <td style="padding:10px 12px;font-weight:700;color:var(--ci-ink)"><a class="dec-link" href="#cdd-mouse">Approve sending Mouse LOI for entry into laboratory distribution segment</a></td>
-            <td style="padding:10px 12px;color:var(--ci-text);line-height:1.55"><ul style="margin:0;padding-left:16px"><li>EV ~2,6 M€ (4,1x), debt-free</li><li>Owners stay up to 2 years</li><li>Laboratory segment = new vertical for platform</li></ul></td>
-            <td style="padding:10px 12px;color:var(--ci-ink);font-weight:600">Send LOI this week</td>
+            <td style="padding:10px 12px;font-weight:700;color:var(--ci-ink)" data-edit-id="dec-1-title"><a class="dec-link" href="#cdd-mouse">Approve sending Mouse LOI for entry into laboratory distribution segment</a></td>
+            <td style="padding:10px 12px;color:var(--ci-text);line-height:1.55" data-edit-id="dec-1-comment"><ul style="margin:0;padding-left:16px"><li>EV ~2.6 M€ (4.1x), debt-free</li><li>Owners stay up to 2 years</li><li>Laboratory segment = new vertical for platform</li></ul></td>
+            <td style="padding:10px 12px;color:var(--ci-ink);font-weight:600" data-edit-id="dec-1-rec">Send LOI this week</td>
           </tr>
           <tr style="border-bottom:1px solid var(--ci-line)">
             <td style="padding:10px 12px;text-align:center;font-weight:800;color:var(--ci-brand)">2</td>
-            <td style="padding:10px 12px;font-weight:700;color:var(--ci-ink)"><a class="dec-link" href="#su-fox">Agree on proposed deal costs of 155 K€</a></td>
-            <td style="padding:10px 12px;color:var(--ci-text);line-height:1.55"><ul style="margin:0;padding-left:16px"><li>Fox: 79 K€ · Mantis: 76 K€</li><li>FDD + LDD + TDD + SPA (Ebner Stolz) = 132 K€</li><li>Customer interviews, notary, structuring = 23 K€</li></ul></td>
-            <td style="padding:10px 12px;color:var(--ci-ink);font-weight:600">Approve proposed budget</td>
+            <td style="padding:10px 12px;font-weight:700;color:var(--ci-ink)" data-edit-id="dec-2-title"><a class="dec-link" href="#dd-costs">Agree on proposed deal costs of 160 K€</a></td>
+            <td style="padding:10px 12px;color:var(--ci-text);line-height:1.55" data-edit-id="dec-2-comment"><ul style="margin:0;padding-left:16px"><li>Fox: 80 K€ · Mantis: 80 K€</li><li>FDD + LDD + TDD + SPA (Ebner Stolz) = 132 K€</li><li>Customer interviews budgeted at ~8–10 K€</li><li>Notary, structuring = 23 K€</li></ul></td>
+            <td style="padding:10px 12px;color:var(--ci-ink);font-weight:600" data-edit-id="dec-2-rec">Approve proposed budget</td>
+          </tr>
+          <tr>
+            <td class="dec-num">3</td>
+            <td class="dec-title" data-edit-id="dec-3-title">Feedback from Sander on investor view</td>
+            <td class="dec-comment" data-edit-id="dec-3-comment"><ul><li>Adjustments to layout, KPIs, content</li><li>Pending Sander's review and comments</li></ul></td>
+            <td class="dec-rec" data-edit-id="dec-3-rec">Incorporate feedback into next version</td>
+          </tr>
+          <tr>
+            <td class="dec-num">4</td>
+            <td class="dec-title" data-edit-id="dec-4-title">Strada IC date + required input</td>
+            <td class="dec-comment" data-edit-id="dec-4-comment"><ul><li>Confirm IC meeting date</li><li>Required deliverables esp. for current DDs (Fox, Mantis)</li></ul></td>
+            <td class="dec-rec" data-edit-id="dec-4-rec">Align on date and input requirements</td>
           </tr>
         </tbody>
       </table>
@@ -540,7 +584,6 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
         <button class="view-tab" data-view="onepager">1-pager</button>
         <button class="view-tab" data-view="su">Sources &amp; Uses</button>
         <button class="view-tab" data-view="valuation">Valuation</button>
-        <button class="view-tab" data-view="dd">DD Items</button>
       </div>
 
       <!-- ============ VIEW GROUP — 1-PAGER (per-deal panels) ============ -->
@@ -554,9 +597,9 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
           <span class="op-days">37d in stage</span>
         </div>
         <div class="keystrip">
-          <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">1,75 M€</span></div>
-          <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0,36 M€</span></div>
-          <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4,9x</span></div>
+          <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">1.75 M€</span></div>
+          <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0.36 M€</span></div>
+          <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4.9x</span></div>
         </div>
 
         <div class="onepager-grid">
@@ -567,8 +610,8 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
                 <li>Fox is a <strong>distribution and service partner</strong> for ambulatory care providers such as doctors, medical facilities, practice founders / operators, health centers, MVZs and ambulant surgery settings</li>
                 <li>Revenue stems from <strong>distributing medical products</strong>, and devices (such as ultrasound) with additional service offering (practice planning, IT, technical service, STK/MTK inspections)</li>
                 <li><strong>LeasyMed</strong> is a newer rental / service offering with positive development and rising rental activity according to management</li>
-                <li>Fox generated <strong>~3,5 M€ revenue</strong> at <strong>0,36 M€ adj. EBITDA (~10%)</strong> in 2025, with <strong>consistent growth</strong> since 2021 (~9% CAGR 2021-2025)</li>
-                <li>EV of <strong>~1,25 M€ at closing</strong>; with the anticipated earn-out (0,5 M€) <strong>~1,75 M€ (4,9x 2025A adj. EBITDA)</strong>, and <strong>~1,9 M€ EV total</strong> incl. the super earn-out (0,15 M€); equity value <strong>1,75 M€</strong></li>
+                <li>Fox generated <strong>~3.5 M€ revenue</strong> at <strong>0.36 M€ adj. EBITDA (~10%)</strong> in 2025, with <strong>consistent growth</strong> since 2021 (~9% CAGR 2021-2025)</li>
+                <li>EV of <strong>~1.25 M€ at closing</strong>; with the anticipated earn-out (0.5 M€) <strong>~1.75 M€ (4.9x 2025A adj. EBITDA)</strong>, and <strong>~1.9 M€ EV total</strong> incl. the super earn-out (0.15 M€); equity value <strong>1.75 M€</strong></li>
                 <li><strong>Co-Med</strong> is the main logistics and procurement backbone of the business, enabling an <strong>asset-light operating model</strong> without own large-scale warehousing</li>
                 <li>Fox could serve as an <strong>attractive add-on</strong> with broad ambulant care customer access, differentiated service capabilities and further digital / service upside</li>
               </ul>
@@ -577,7 +620,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
           <div class="op-quadrant">
             <div class="op-quadrant-header"><span>Financials &amp; Valuation</span></div>
             <div class="op-quadrant-body">
-              <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>3.129</td><td>3.392</td><td>3.500</td><td class="op-fin-sep"></td><td>3.446</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>205</td><td>159</td><td>359</td><td class="op-fin-sep"></td><td>259</td><td class="op-fin-bp-cell">393</td><td class="op-fin-bp-cell">418</td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>-8,0%</td><td>8,4%</td><td>3,2%</td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>6,6%</td><td>4,7%</td><td>10,3%</td><td class="op-fin-sep"></td><td>7,5%</td><td>—</td><td></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>3,5x</td><td class="op-fin-sep"></td><td>4,8x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>1.253</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>4,9x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell">4,5x</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>1.753</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV incl. Super-EO</td><td></td><td></td><td>5,3x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell">4,5x</td><td class="op-fin-sep"></td><td>1.903</td></tr><tr><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td>137</td></tr><tr><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td>(290)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td>1.750</td></tr></tbody></table></div>
+              <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>3,129</td><td>3,392</td><td>3,500</td><td class="op-fin-sep"></td><td>3,446</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>205</td><td>159</td><td>359</td><td class="op-fin-sep"></td><td>259</td><td class="op-fin-bp-cell">393</td><td class="op-fin-bp-cell">418</td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>-8.0%</td><td>8.4%</td><td>3.2%</td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>6.6%</td><td>4.7%</td><td>10.3%</td><td class="op-fin-sep"></td><td>7.5%</td><td>—</td><td></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>3.5x</td><td class="op-fin-sep"></td><td>4.8x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>1,253</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>4.9x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell">4.5x</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>1,753</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV incl. Super-EO</td><td></td><td></td><td>5.3x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell">4.5x</td><td class="op-fin-sep"></td><td>1,903</td></tr><tr><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td>137</td></tr><tr><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td>(290)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td>1,750</td></tr></tbody></table></div>
             </div>
           </div>
           <div class="op-quadrant">
@@ -596,7 +639,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <div class="op-quadrant-header"><span>Process &amp; Status</span></div>
             <div class="op-quadrant-body">
               <ul>
-                <li><strong>Status:</strong> LOI signed; confirmatory DD advancing — on-site workshop scheduled next week to validate co-med carve-out, MD succession, revenue streams</li>
+                <li><strong>Status:</strong> LOI signed; confirmatory DD advancing — on-site workshop scheduled next week to validate co-med collaboration, MD succession, revenue streams</li>
                 <li><strong>Transaction:</strong> Acquiring 100% of shares; Fox approached through proprietary sourcing in 2025; Fox owns 2 Co-Med shares, mid-term dependency to be analyzed</li>
                 <li><strong>Transition:</strong> Current owner / MD to support for 2–3 years; internal successor structure appears to exist; current owner with strong industry network (former president of medical trade industry association in Germany)</li>
                 <li><strong>Due diligence:</strong> Fox appears attractive – however, we will specifically look into customer concentration, revenue split / recurring revenue share, quality of project pipeline, Co-Med dependency and LeasyMed economics</li>
@@ -605,9 +648,11 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
           </div>
         </div>
 
+        <div class="op-footnote">Note: Equity value bridges from Total EV incl. Super-EO (1,903 + 137 net cash − 290 permitted leakage = 1,750).</div>
+
         <div class="rf-wrap">
           <div class="sub-heading">Risks to verify</div>
-          <div class="nodd"><b>DD not yet started — no risk items in system yet.</b><br>Fox carries no DD findings, scorecard or notes in the dealroom (pre-DD). Risk register opens once FDD/LDD/TDD work begins (data room populates to 03 Jul; FDD 17 Jul). No flags are asserted here because none are sourced.</div>
+          <div class="nodd"><b>Phase 1 (confirmatory) DD underway — Ebner Stolz engaged for FDD/LDD/TDD.</b><br>Structured risk items will be added as Phase 1 results become available; current focus areas are listed under Process &amp; Status.</div>
         </div>
       </div>
 
@@ -620,9 +665,9 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
         </div>
         <div class="deal-headline-txt">Mantis is an endoscopy distribution &amp; service specialist with ~25% EBITDA.</div>
         <div class="keystrip">
-          <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">4,78 M€</span></div>
-          <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0,81 M€</span></div>
-          <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5,9x</span></div>
+          <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">4.78 M€</span></div>
+          <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0.81 M€</span></div>
+          <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5.9x</span></div>
         </div>
 
         <div class="onepager-grid">
@@ -631,8 +676,8 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <div class="op-quadrant-body">
               <ul>
                 <li>Mantis is a manufacturer-independent <strong>endoscopy distribution and service specialist</strong> serving gastroenterology practices, MVZs and hospitals, with own technicians plus refurbished-device and reprocessing-machine (RDG-E) offerings</li>
-                <li>Mantis generated <strong>~3,2 M€ revenue at ~0,8 M€ adj. EBITDA (~25%)</strong> in 2025, with 2023-25 revenue CAGR of ~7%</li>
-                <li>EV at closing of <strong>4,3 M€ (5,3x 2025A EBITDA)</strong>, with anticipated earn-out of <strong>0,5 M€</strong> for an anticipated <strong>EV of 4,8 M€ (5,9x 2025 EBITDA)</strong>¹</li>
+                <li>Mantis generated <strong>~3.2 M€ revenue at ~0.8 M€ adj. EBITDA (~25%)</strong> in 2025, with 2023-25 revenue CAGR of ~7%</li>
+                <li>EV at closing of <strong>4.3 M€ (5.3x 2025A EBITDA)</strong>, with anticipated earn-out of <strong>0.5 M€</strong> for an anticipated <strong>EV of 4.8 M€ (5.9x 2025 EBITDA)</strong>¹</li>
                 <li>Strong market position given <strong>resilient, largely cycle-independent demand</strong> in a niche with <strong>few competitors</strong> – additional tailwind given OEM repair exits and healthcare cost pressure</li>
                 <li>Mantis could serve as an <strong>attractive small platform</strong> given its differentiated technical / service capability, scalable model and untapped new-customer acquisition potential (especially driven by geographic expansion and partner companies network)</li>
               </ul>
@@ -641,7 +686,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
           <div class="op-quadrant">
             <div class="op-quadrant-header"><span>Financials &amp; Valuation</span></div>
             <div class="op-quadrant-body">
-              <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>2.760</td><td>3.093</td><td>3.178</td><td class="op-fin-sep"></td><td>3.136</td><td class="op-fin-bp-cell">3.157</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>688</td><td>839</td><td>813</td><td class="op-fin-sep"></td><td>826</td><td class="op-fin-bp-cell">930</td><td class="op-fin-bp-cell">1.130</td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>17,5%</td><td>12,1%</td><td>2,7%</td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>24,9%</td><td>27,1%</td><td>25,6%</td><td class="op-fin-sep"></td><td>26,3%</td><td>29,5%</td><td></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>5,3x</td><td class="op-fin-sep"></td><td>5,2x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>4.283</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>5,9x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell">5,1x</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>4.783</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV incl. Super-EO</td><td></td><td></td><td>6,7x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell">4,8x</td><td class="op-fin-sep"></td><td>5.433</td></tr><tr><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td>211</td></tr><tr><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td>(144)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td>5.500</td></tr></tbody></table></div>
+              <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>2,760</td><td>3,093</td><td>3,178</td><td class="op-fin-sep"></td><td>3,136</td><td class="op-fin-bp-cell">3,157</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>688</td><td>839</td><td>813</td><td class="op-fin-sep"></td><td>826</td><td class="op-fin-bp-cell">930</td><td class="op-fin-bp-cell">1,130</td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>17.5%</td><td>12.1%</td><td>2.7%</td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>24.9%</td><td>27.1%</td><td>25.6%</td><td class="op-fin-sep"></td><td>26.3%</td><td>29.5%</td><td></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>5.3x</td><td class="op-fin-sep"></td><td>5.2x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>4,283</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>5.9x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell">5.1x</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>4,783</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV incl. Super-EO</td><td></td><td></td><td>6.7x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell">4.8x</td><td class="op-fin-sep"></td><td>5,433</td></tr><tr><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td>211</td></tr><tr><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td>(144)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td></td><td></td><td class="op-fin-sep"></td><td>5,500</td></tr></tbody></table></div>
             </div>
           </div>
           <div class="op-quadrant">
@@ -660,14 +705,14 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <div class="op-quadrant-body">
               <ul>
                 <li><strong>Transaction background:</strong> Acquiring 100% of shares (two managing shareholders: senior owner + son); proprietary sourcing, owner re-contacted Repuro after exclusive process was terminated due to personal fit with strategic buyer</li>
-                <li><strong>Reinvestment:</strong> 0,5 M€ (~10%) of cash purchase price to be reinvested pari passu with investors in Repuro group – proving commitment of management to group vision</li>
+                <li><strong>Reinvestment:</strong> 0.5 M€ (~10%) of cash purchase price to be reinvested pari passu with investors in Repuro group – proving commitment of management to group vision</li>
                 <li><strong>Transition:</strong> Senior owner/MD to support 6-12 months post-closing; son (junior MD) already runs day-to-day and stays on for knowledge transfer – mitigating key-person risk</li>
                 <li><strong>Due diligence:</strong> Specific focus on recurring vs. demand-driven revenue, OEM/Olympus dependency, adjustments, inventory valuation, customer churn, revenue visibility</li>
               </ul>
             </div>
           </div>
         </div>
-        <div class="op-footnote">Note: 1) Further super-earn-out (not-anticipated) of 0,65 M€, leading to total of 5,4 M€ EV (4,8x required EBITDA or 6,7x 2025 EBITDA)</div>
+        <div class="op-footnote">Note: 1) Further super-earn-out (not-anticipated) of 0.65 M€, leading to total of 5.4 M€ EV (4.8x required EBITDA or 6.7x 2025 EBITDA). Equity value bridges from Total EV incl. Super-EO (5,433 + 211 net cash − 144 permitted leakage = 5,500).</div>
 
         <div class="rf-wrap">
           <div class="sub-heading">Risks to verify</div>
@@ -689,12 +734,12 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
           <span class="op-stage op-stage--io">NBO Sent</span>
           <span class="op-days">NBO aligned; LOI preparation</span>
         </div>
-        <div class="deal-headline-txt">Service-led lab-equipment distributor at ~4,1x adj. EBITDA (incl. earn-out) — an attractive entry into the adjacent laboratory vertical.</div>
+        <div class="deal-headline-txt">Service-led lab-equipment distributor at ~4.1x adj. EBITDA (incl. earn-out) — an attractive entry into the adjacent laboratory vertical.</div>
         <div class="keystrip">
-          <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">~2,6 M€</span></div>
-          <div class="ks"><span class="kl">EV at closing</span><span class="kv">2,1 M€</span></div>
-          <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">~0,6 M€</span></div>
-          <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4,1x</span></div>
+          <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">~2.6 M€</span></div>
+          <div class="ks"><span class="kl">EV at closing</span><span class="kv">2.1 M€</span></div>
+          <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">~0.6 M€</span></div>
+          <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4.1x</span></div>
         </div>
 
         <div class="onepager-grid">
@@ -704,9 +749,9 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
               <ul>
                 <li>Mouse is a <strong>laboratory-equipment dealer, technical-service provider and niche instrument manufacturer</strong> — a ~100-year, 4th-generation family firm (~20 FTE) serving industrial (pharma / chemistry), public research and university-hospital labs</li>
                 <li>Partners with labs from initial <strong>lab equipment &amp; devices</strong> through regular <strong>consumables supply</strong>, complemented by <strong>technical service</strong> (maintenance, calibration, IQ/OQ) and in-house <strong>glass-equipment manufacturing</strong> (historical core)</li>
-                <li>Generated <strong>~3,9 M€ revenue (+14,5% YoY)</strong> at <strong>~0,6 M€ adj. EBITDA (~16%)</strong> in 2025; revenue broadly flat 2022–24 then a 2025 step-up; effectively <strong>debt-free with net cash</strong>; 2023–25 revenue CAGR ~6%</li>
-                <li><strong>Service is the strategic engine</strong> — ~0,8 M€ (~20% of revenue), growing ~20%/yr, recurring (maintenance, calibration, IQ/OQ) and pulls through equipment sales; service radius regionally capped (~100km)</li>
-                <li>EV at closing of <strong>2,1 M€ (3,3x 2025A EBITDA)</strong>, with anticipated earn-out of 0,5 M€ for an anticipated <strong>EV of ~2,6 M€ (4,1x)</strong>¹</li>
+                <li>Generated <strong>~3.9 M€ revenue (+14.6% YoY)</strong> at <strong>~0.6 M€ adj. EBITDA (~16%)</strong> in 2025; revenue broadly flat 2022–24 then a 2025 step-up; effectively <strong>debt-free with net cash</strong>; 2023–25 revenue CAGR ~6%</li>
+                <li><strong>Service is the strategic engine</strong> — ~0.8 M€ (~20% of revenue), growing ~20%/yr, recurring (maintenance, calibration, IQ/OQ) and pulls through equipment sales; service radius regionally capped (~100km)</li>
+                <li>EV at closing of <strong>2.1 M€ (3.3x 2025A EBITDA)</strong>, with anticipated earn-out of 0.5 M€ for an anticipated <strong>EV of ~2.6 M€ (4.1x)</strong>¹</li>
                 <li><strong>Strategic fit:</strong> operationally aligned with Repuro (B2B distribution &amp; service) but in the <strong>adjacent lab vertical</strong> — limited overlap with the core medical-facility segment; attractive <strong>entry into the lab vertical</strong> on individual merit and valuation</li>
               </ul>
             </div>
@@ -714,7 +759,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
           <div class="op-quadrant">
             <div class="op-quadrant-header"><span>Financials &amp; Valuation</span></div>
             <div class="op-quadrant-body">
-              <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>3.449</td><td>3.405</td><td>3.900</td><td class="op-fin-sep"></td><td>3.652</td><td class="op-fin-bp-cell">4.185</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>391</td><td>469</td><td>645</td><td class="op-fin-sep"></td><td>557</td><td class="op-fin-bp-cell">450</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>-4,2%</td><td>-1,3%</td><td>14,6%</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>11,3%</td><td>13,8%</td><td>16,5%</td><td class="op-fin-sep"></td><td>15,2%</td><td class="op-fin-bp-cell">10,8%</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>3,3x</td><td class="op-fin-sep"></td><td>3,8x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2.140</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>4,1x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2.640</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV</td><td></td><td></td><td>4,1x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2.640</td></tr><tr class=""><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>0</td></tr><tr class=""><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(140)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2.500</td></tr></tbody></table></div>
+              <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>3,449</td><td>3,405</td><td>3,900</td><td class="op-fin-sep"></td><td>3,652</td><td class="op-fin-bp-cell">4,185</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>391</td><td>469</td><td>645</td><td class="op-fin-sep"></td><td>557</td><td class="op-fin-bp-cell">450</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>-4.2%</td><td>-1.3%</td><td>14.6%</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>11.3%</td><td>13.8%</td><td>16.5%</td><td class="op-fin-sep"></td><td>15.2%</td><td class="op-fin-bp-cell">10.8%</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>3.3x</td><td class="op-fin-sep"></td><td>3.8x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2,140</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>4.1x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2,640</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV</td><td></td><td></td><td>4.1x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2,640</td></tr><tr class=""><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>0</td></tr><tr class=""><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(140)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2,500</td></tr></tbody></table></div>
             </div>
           </div>
           <div class="op-quadrant">
@@ -733,14 +778,14 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <div class="op-quadrant-body">
               <ul>
                 <li><strong>Status:</strong> NBO aligned; in-person owner meeting 18 Jun; owners indicated willingness to <strong>sign an exclusive LOI as the next step</strong></li>
-                <li><strong>Transaction:</strong> 100% share deal, cash-free / debt-free, economic closing 01.01.2026; 2,0 M€ cash + earn-out; WC peg ~0,6 M€; bilateral broker process (Everto); owners (2 brothers, ~64) selling on succession</li>
+                <li><strong>Transaction:</strong> 100% share deal, cash-free / debt-free, economic closing 01 Jan 2026; 2.0 M€ cash + earn-out; WC peg ~0.6 M€; bilateral broker process (Everto); owners (2 brothers, ~64) selling on succession</li>
                 <li><strong>Transition:</strong> both owners stay ≥12 months full-time + 6 months at ~50% + advisory; internal GF/MD successor identified (already runs large parts of the MD function); technical specialist to be hired to replace the owners' technical role</li>
                 <li><strong>DD focus:</strong> 2025 EBITDA sustainability (3–4 accounts drive the step-up; ~107 K€ GF bonus not yet booked), recurring vs. demand-driven revenue, successor + technical hire, buying-association dependency (IDL ~20% of COGS), Repuro strategic fit (customer exposure &amp; medtech cross-sell)</li>
               </ul>
             </div>
           </div>
         </div>
-        <div class="op-footnote">Note: 1) No Super Earn-Out. EV of ~2,6 M€ (4,1x 2025A adj. EBITDA) includes anticipated earn-out of 0,5 M€. Figures: HLL model v2 (21.05) + broker data (16.06); HLL standalone balance sheet still outstanding.</div>
+        <div class="op-footnote">Note: 1) No Super Earn-Out. EV of ~2.6 M€ (4.1x 2025A adj. EBITDA) includes anticipated earn-out of 0.5 M€. Figures: HLL model v2 (21 May) + broker data (16 Jun); HLL standalone balance sheet still outstanding. Equity value bridges from Total EV (2,640 + 0 net cash − 140 permitted leakage = 2,500).</div>
 
         <div class="rf-wrap">
           <div class="sub-heading">Strategic fit to Repuro</div>
@@ -759,14 +804,14 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
         <div class="deal-top">
           <span class="dname">Medizin &amp; Service (Cat)</span>
           <span class="op-stage op-stage--io">NBO Sent</span>
-          <span class="op-days">LOI verbally agreed; signing target 04 Jul</span>
+          <span class="op-days">LOI verbally agreed; to be sent 04 Jul, signing after holidays</span>
         </div>
-        <div class="deal-headline-txt">Specialized hospital medical-equipment provider with a ~10,5 M€ order backlog — a potential anchor platform for Repuro.</div>
+        <div class="deal-headline-txt">Specialized hospital medical-equipment provider with a ~10.5 M€ order backlog — a potential anchor platform for Repuro.</div>
         <div class="keystrip">
-          <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">~5,2 M€</span></div>
-          <div class="ks"><span class="kl">EV at closing</span><span class="kv">3,66 M€</span></div>
-          <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0,93 M€</span></div>
-          <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5,5x</span></div>
+          <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">~5.2 M€</span></div>
+          <div class="ks"><span class="kl">EV at closing</span><span class="kv">3.66 M€</span></div>
+          <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0.93 M€</span></div>
+          <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5.5x</span></div>
         </div>
 
         <div class="onepager-grid">
@@ -775,18 +820,18 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <div class="op-quadrant-body">
               <ul>
                 <li>Cat is a <strong>specialized medical-equipment provider</strong> — distributing, installing and servicing equipment (barrier systems, surgical lights, sterilization / bedpan units in surgical rooms) for <strong>hospitals &amp; clinics</strong> across Germany</li>
-                <li>Generated <strong>~6,2 M€ revenue at ~0,93 M€ adj. EBITDA (~15%)</strong> in 2025; <strong>revenue CAGR 2023–25 ~15%</strong>; targets ~6,5 M€ revenue / 0,9 M€ EBITDA in 2026</li>
+                <li>Generated <strong>~6.2 M€ revenue at ~0.93 M€ adj. EBITDA (~15%)</strong> in 2025; <strong>revenue CAGR 2023–25 ~15%</strong>; targets ~6.5 M€ revenue / 0.9 M€ EBITDA in 2026</li>
                 <li><strong>Q1-2026: +10% revenue, +14% gross margin</strong> — supporting the sustainability of the 2025 step-up</li>
                 <li>~70% of revenue from <strong>multi-year hospital projects</strong> (~95% of customers), plus ~24% from <strong>high-margin maintenance contracts</strong> (70–75% GM, growing)</li>
-                <li>EV at closing of <strong>3,7 M€ (3,9x 2025 EBITDA)</strong>; with anticipated earn-out total <strong>~5,2 M€ (~5,5x)</strong>; max earn-out tied to a 1,1 M€ EBITDA target¹</li>
-                <li>Could serve as an <strong>anchor platform</strong> — order backlog <strong>~10,5 M€ (85% of 2026B contracted)</strong> across ~40 projects, Germany-wide hospital base, roll-out potential across the Repuro portfolio</li>
+                <li>EV at closing of <strong>3.7 M€ (3.9x 2025 EBITDA)</strong>; with anticipated earn-out total <strong>~5.2 M€ (~5.5x)</strong>; max earn-out tied to a 1.1 M€ EBITDA target¹</li>
+                <li>Could serve as an <strong>anchor platform</strong> — order backlog <strong>~10.5 M€ across ~40 projects</strong> (85% of 2026B revenue already contracted), Germany-wide hospital base, roll-out potential across the Repuro portfolio</li>
               </ul>
             </div>
           </div>
           <div class="op-quadrant">
             <div class="op-quadrant-header"><span>Financials &amp; Valuation</span></div>
             <div class="op-quadrant-body">
-              <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>3.169</td><td>4.565</td><td>6.152</td><td class="op-fin-sep"></td><td>5.358</td><td class="op-fin-bp-cell">6.250</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>196</td><td>229</td><td>934</td><td class="op-fin-sep"></td><td>582</td><td class="op-fin-bp-cell">940</td><td class="op-fin-bp-cell">1.115</td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>-8,1%</td><td>44,0%</td><td>34,8%</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>6,2%</td><td>5,0%</td><td>15,2%</td><td class="op-fin-sep"></td><td>10,9%</td><td class="op-fin-bp-cell">15,0%</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>3,9x</td><td class="op-fin-sep"></td><td>6,3x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>3.659</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>5,5x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell">5,5x</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>5.172</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV incl. Super-EO</td><td></td><td></td><td>6,7x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell">5,5x</td><td class="op-fin-sep"></td><td>6.244</td></tr><tr class=""><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(1.291)</td></tr><tr class=""><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(259)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>4.694</td></tr></tbody></table></div>
+              <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>3,169</td><td>4,565</td><td>6,152</td><td class="op-fin-sep"></td><td>5,358</td><td class="op-fin-bp-cell">6,250</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>196</td><td>229</td><td>934</td><td class="op-fin-sep"></td><td>582</td><td class="op-fin-bp-cell">940</td><td class="op-fin-bp-cell">1,115</td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>-8.1%</td><td>44.0%</td><td>34.8%</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>6.2%</td><td>5.0%</td><td>15.2%</td><td class="op-fin-sep"></td><td>10.9%</td><td class="op-fin-bp-cell">15.0%</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>3.9x</td><td class="op-fin-sep"></td><td>6.3x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>3,659</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>5.5x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell">5.5x</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>5,172</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV incl. Super-EO</td><td></td><td></td><td>6.7x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell">5.5x</td><td class="op-fin-sep"></td><td>6,244</td></tr><tr class=""><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(1,291)</td></tr><tr class=""><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(259)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>4,694</td></tr></tbody></table></div>
             </div>
           </div>
           <div class="op-quadrant">
@@ -794,7 +839,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <div class="op-quadrant-body">
               <ul>
                 <li><strong>Revenue mix 2025:</strong> Projects ~71% (multi-year hospital projects), <strong>Service ~24%</strong> (maintenance / inspection, 70–75% GM), other ~6% — service share growing (from ~20% in 2023)</li>
-                <li><strong>Order backlog ~10,5 M€ (~1,5x revenue)</strong> across ~40 projects; largest ~1,8 M€ over 3 years; 85% of 2026B already contracted</li>
+                <li><strong>Order backlog ~10.5 M€ (~1.7x 2025 revenue)</strong> across ~40 projects; largest ~1.8 M€ over 3 years; 85% of 2026B revenue already contracted</li>
                 <li>Customer base ~95% <strong>hospitals &amp; ambulatory surgery centres</strong>; Top-10 concentration ~50% (down from ~70% in 2023 — diversifying)</li>
                 <li>&gt;40% of 2025 revenue from pre-2023 cohort customers; stable suppliers (Top-3 ~25–30% of procurement)</li>
               </ul>
@@ -804,15 +849,15 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <div class="op-quadrant-header"><span>Process &amp; Status</span></div>
             <div class="op-quadrant-body">
               <ul>
-                <li><strong>Status:</strong> LOI verbally agreed after phone call (01 Jul); signing target before seller holiday (<strong>04 Jul</strong>); key changes vs. previous offer: upfront multiple increased from 3,6x to 3,9x, earn-out threshold +25 K€, multiplier reduced from 6,0x to 5,5x — total anticipated EV unchanged</li>
-                <li><strong>Transaction:</strong> 100% share deal, proprietary sourcing; shares 50/50 MD + silent partner; earn-out = 2 annual payments on 2026/2027 EBITDA; linear (EBITDA − 665 K€) × 5,5x; anticipated earn-out at BP (940 K€ EBITDA) = 1.513 K€</li>
+                <li><strong>Status:</strong> LOI verbally agreed after phone call (01 Jul); to be sent before seller holiday (<strong>04 Jul</strong>), signing after holidays; key changes vs. previous offer: upfront multiple increased from 3.6x to 3.9x, earn-out threshold +25 K€, multiplier reduced from 6.0x to 5.5x — total anticipated EV unchanged</li>
+                <li><strong>Transaction:</strong> 100% share deal, proprietary sourcing; shares 50/50 MD + silent partner; earn-out = 2 annual payments on 2026/2027 EBITDA; linear (EBITDA − 665 K€) × 5.5x; anticipated earn-out at BP (940 K€ EBITDA) = 1,513 K€</li>
                 <li><strong>Transition:</strong> owner/GF stays as MD until 2028, potentially a broader consulting / operational role (e.g., hospital project lead)</li>
                 <li><strong>Real estate:</strong> office building &amp; land (owned by Cat) to be <strong>sold to a separate investor with a long-term lease</strong> — a condition for closing</li>
               </ul>
             </div>
           </div>
         </div>
-        <div class="op-footnote">Note: 1) Earn-out = two annual payments on 2026/2027 EBITDA; linear (EBITDA − 665 K€) × 5,5x; at BP (940 K€) = 1.513 K€. Order-book figures preliminary, subject to DD deep-dive.</div>
+        <div class="op-footnote">Note: 1) Earn-out = two annual payments on 2026/2027 EBITDA; linear (EBITDA − 665 K€) × 5.5x; at BP (940 K€) = 1,513 K€. Order-book figures preliminary, subject to DD deep-dive. Equity value bridges from Total EV incl. Super-EO (6,244 − 1,291 net debt − 259 permitted leakage = 4,694).</div>
 
         <div class="rf-wrap">
           <div class="sub-heading">Key DD items &amp; watch-points</div>
@@ -828,6 +873,8 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 
       </div><!-- /vgroup onepager -->
 
+      
+      
       <div class="cdd-wrap vgroup active" data-vg="scorecard">
 
         <!-- ----- OVERVIEW scorecard comparison ----- -->
@@ -842,18 +889,18 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
                 <tr><td>Historical growth (rev CAGR)</td><td>2</td><td>3</td><td>2</td><td>4</td></tr>
                 <tr><td>EBITDA margin</td><td>3</td><td>4</td><td>4</td><td>4</td></tr>
                 <tr><td>Customer concentration (Top 3)</td><td>4</td><td>3</td><td>3</td><td>3</td></tr>
-                <tr><td>Recurring revenue (% share)</td><td>2</td><td>4</td><td>2</td><td>1</td></tr>
+                <tr><td>Recurring revenue (% share)</td><td>2</td><td>4</td><td>3</td><td>1</td></tr>
                 <tr class="comp-cat"><td colspan="5">Strategic Fit</td></tr>
-                <tr><td>Strategic fit to Repuro</td><td>4</td><td>4</td><td>2</td><td>2</td></tr>
-                <tr><td>USP / differentiation</td><td>3</td><td>3</td><td>3</td><td>2</td></tr>
+                <tr><td>Strategic fit to Repuro</td><td>4</td><td>4</td><td>2</td><td>3</td></tr>
+                <tr><td>USP / differentiation</td><td>3</td><td>3</td><td>3</td><td>3</td></tr>
                 <tr class="comp-cat"><td colspan="5">Value Creation</td></tr>
-                <tr><td>Value-creation potential</td><td>3</td><td>4</td><td>3</td><td>2</td></tr>
+                <tr><td>Value-creation potential</td><td>3</td><td>4</td><td>3</td><td>3</td></tr>
                 <tr class="comp-cat"><td colspan="5">Execution Risk</td></tr>
-                <tr><td>Management &amp; transition</td><td>3</td><td>2</td><td>2</td><td>2</td></tr>
-                <tr><td>Outlook</td><td>3</td><td>3</td><td>2</td><td>2</td></tr>
-                <tr class="comp-tot"><td>Total</td><td>29/40</td><td>34/40</td><td>26/40</td><td>26/40</td></tr>
-                <tr class="comp-tot"><td>Multiple (2025A)</td><td>4,9x</td><td>5,9x</td><td>4,1x</td><td>5,5x</td></tr>
-                <tr class="comp-tot"><td>Score / Multiple</td><td>5,9</td><td>5,8</td><td>6,3</td><td>4,7</td></tr>
+                <tr><td>Management &amp; transition</td><td>3</td><td>2</td><td>2</td><td>3</td></tr>
+                <tr><td>Outlook</td><td>3</td><td>3</td><td>2</td><td>3</td></tr>
+                <tr class="comp-tot"><td>Total</td><td>29/40</td><td>34/40</td><td>27/40</td><td>31/40</td></tr>
+                <tr class="comp-tot"><td>Multiple (2025A)</td><td>4.9x</td><td>5.9x</td><td>4.1x</td><td>5.5x</td></tr>
+                <tr class="comp-tot"><td>Score / Multiple</td><td>5.9</td><td>5.8</td><td>6.6</td><td>5.6</td></tr>
               </tbody>
             </table>
           </div>
@@ -866,28 +913,28 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <span class="op-stage">LOI Signed</span>
           </div>
           <div class="keystrip">
-            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">1,75 M€</span></div>
-            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0,36 M€</span></div>
-            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4,9x</span></div>
+            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">1.75 M€</span></div>
+            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0.36 M€</span></div>
+            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4.9x</span></div>
           </div>
           <div class="portfolio-wrap">
           <table class="cdd2-table">
             <colgroup><col class="cc-cat"><col class="cc-crit"><col class="cc-val"><col class="cc-sc"><col class="cc-cmt"></colgroup>
             <thead><tr><th></th><th>Criterion</th><th class="c">Value</th><th class="c">Score</th><th class="cc-cmt-cell">Assessment</th></tr></thead>
             <tbody>
-              <tr><td class="cdd2-cat-cell" rowspan="5">Financial quality <span class="cat-score">13/20</span></td><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">0,36 M€</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Below platform scale</li><li>Partnership withdrawal add-back open</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Historical growth (rev CAGR)</td><td class="cdd2-val">~3,2%</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Group rev ~flat over 3y</li><li>MTec +25% offsets MT drag</li></ul></td></tr>
-              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">~10%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>In-line but no cushion</li><li>Mix shift could improve</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Customer concentration (Top 3)</td><td class="cdd2-val">21%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Well diversified</li><li>No single account &gt;10%</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Recurring revenue (% share)</td><td class="cdd2-val">~48%</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>~Half recurring</li><li>Rest transactional/spot</li></ul></td></tr>
+              <tr><td class="cdd2-cat-cell" rowspan="5">Financial quality <span class="cat-score">13/20</span></td><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">432 K€</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Below platform scale</li><li>Owner-drawings add-back open (KG)</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Historical growth (rev CAGR)</td><td class="cdd2-val">1.7%</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Group rev ~flat over 3y</li><li>MTec +25% offsets MT drag</li></ul></td></tr>
+              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">12.1%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>In-line but no cushion</li><li>Mix shift could improve</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Customer concentration (Top 3)</td><td class="cdd2-val">21.0%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Well diversified</li><li>No single account &gt;10%</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Recurring revenue (% share)</td><td class="cdd2-val">~48.0%</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>~Half recurring</li><li>Rest transactional/spot</li></ul></td></tr>
               <tr><td class="cdd2-cat-cell" rowspan="2">Strategic fit <span class="cat-score">7/8</span></td><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Core ambulatory consumables</li><li>Strong distribution overlap</li></ul></td></tr>
               <tr><td class="cdd2-crit">USP / differentiation</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Leasing + procurement model</li><li>No hard switching cost</li></ul></td></tr>
               <tr><td class="cdd2-cat-cell" rowspan="1">Value creation <span class="cat-score">3/4</span></td><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Cross-sell into 977 customers</li><li>MT turnaround lever</li></ul></td></tr>
               <tr><td class="cdd2-cat-cell" rowspan="2">Execution risk <span class="cat-score">6/8</span></td><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Successor named internally</li><li>Owners stay 2y post-close</li></ul></td></tr>
               <tr><td class="cdd2-crit">Outlook</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Stable earnings base</li><li>MT drag if turnaround stalls</li></ul></td></tr>
               <tr class="cdd2-total"><td colspan="3">Total</td><td class="cat-sub">29/40</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Multiple (2025A)</td><td class="cat-sub">4,9x</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Score / Multiple</td><td class="cat-sub">5,9</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="3">Multiple (2025A)</td><td class="cat-sub">4.9x</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="3">Score / Multiple</td><td class="cat-sub">5.9</td><td class="cc-cmt-cell"></td></tr>
             </tbody>
           </table>
           </div>
@@ -900,28 +947,28 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <span class="op-stage">LOI Signed</span>
           </div>
           <div class="keystrip">
-            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">4,78 M€</span></div>
-            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0,81 M€</span></div>
-            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5,9x</span></div>
+            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">4.78 M€</span></div>
+            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0.81 M€</span></div>
+            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5.9x</span></div>
           </div>
           <div class="portfolio-wrap">
           <table class="cdd2-table">
             <colgroup><col class="cc-cat"><col class="cc-crit"><col class="cc-val"><col class="cc-sc"><col class="cc-cmt"></colgroup>
             <thead><tr><th></th><th>Criterion</th><th class="c">Value</th><th class="c">Score</th><th class="cc-cmt-cell">Assessment</th></tr></thead>
             <tbody>
-              <tr><td class="cdd2-cat-cell" rowspan="5">Financial quality <span class="cat-score">18/20</span></td><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">0,8 M€</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Adj. on GF normalisation</li><li>Add-back bridge unverified</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Historical growth (rev CAGR)</td><td class="cdd2-val">~6,9%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Service-led organic growth</li><li>2024 had hospital one-off</li></ul></td></tr>
-              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">~26%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Service contracts ~100% GM</li><li>Highest in pipeline</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Customer concentration (Top 3)</td><td class="cdd2-val">27%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>27% top-3; one hospital = lumpy anchor</li><li>Diversified but project-driven swings</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Recurring revenue (% share)</td><td class="cdd2-val">~90%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Very sticky contract base</li><li>Multi-year service agreements</li></ul></td></tr>
+              <tr><td class="cdd2-cat-cell" rowspan="5">Financial quality <span class="cat-score">18/20</span></td><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">0.8 M€</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Adj. on GF normalisation</li><li>Add-back bridge unverified</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Historical growth (rev CAGR)</td><td class="cdd2-val">~6.9%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Service-led organic growth</li><li>2024 had hospital one-off</li></ul></td></tr>
+              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">~26.0%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Service contracts ~100% GM</li><li>Highest in pipeline</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Customer concentration (Top 3)</td><td class="cdd2-val">27.0%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>27% top-3; one hospital = lumpy anchor</li><li>Diversified but project-driven swings</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Recurring revenue (% share)</td><td class="cdd2-val">~90.0%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Very sticky contract base</li><li>Multi-year service agreements</li></ul></td></tr>
               <tr><td class="cdd2-cat-cell" rowspan="2">Strategic fit <span class="cat-score">7/8</span></td><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Endoscopy service niche</li><li>Direct roll-up into platform</li></ul></td></tr>
               <tr><td class="cdd2-crit">USP / differentiation</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Olympus OEM consent = moat</li><li>Transfer risk on consent clause</li></ul></td></tr>
               <tr><td class="cdd2-cat-cell" rowspan="1">Value creation <span class="cat-score">4/4</span></td><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Contract pricing power</li><li>Cross-sell platform products</li></ul></td></tr>
               <tr><td class="cdd2-cat-cell" rowspan="2">Execution risk <span class="cat-score">5/8</span></td><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Founder-dependent operations</li><li>Succession plan open</li></ul></td></tr>
               <tr><td class="cdd2-crit">Outlook</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Hinges on Olympus consent</li><li>Clause transfer = deal risk</li></ul></td></tr>
               <tr class="cdd2-total"><td colspan="3">Total</td><td class="cat-sub">34/40</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Multiple (2025A)</td><td class="cat-sub">5,9x</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Score / Multiple</td><td class="cat-sub">5,8</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="3">Multiple (2025A)</td><td class="cat-sub">5.9x</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="3">Score / Multiple</td><td class="cat-sub">5.8</td><td class="cc-cmt-cell"></td></tr>
             </tbody>
           </table>
           </div>
@@ -934,28 +981,28 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <span class="op-stage op-stage--io">NBO Sent</span>
           </div>
           <div class="keystrip">
-            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">~2,6 M€</span></div>
-            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">~0,6 M€</span></div>
-            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4,1x</span></div>
+            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">~2.6 M€</span></div>
+            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">~0.6 M€</span></div>
+            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4.1x</span></div>
           </div>
           <div class="portfolio-wrap">
           <table class="cdd2-table">
             <colgroup><col class="cc-cat"><col class="cc-crit"><col class="cc-val"><col class="cc-sc"><col class="cc-cmt"></colgroup>
             <thead><tr><th></th><th>Criterion</th><th class="c">Value</th><th class="c">Score</th><th class="cc-cmt-cell">Assessment</th></tr></thead>
             <tbody>
-              <tr><td class="cdd2-cat-cell" rowspan="5">Financial quality <span class="cat-score">14/20</span></td><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">~0,6 M€</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Rent add-back = upside</li><li>If confirmed, lifts adj. EBITDA</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Historical growth (rev CAGR)</td><td class="cdd2-val">~6%</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Low and lumpy revenue</li><li>Equipment-driven, project-based</li></ul></td></tr>
-              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">~16%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Strong on service + own products</li><li>Equipment drags blended margin</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Customer concentration (Top 3)</td><td class="cdd2-val">~35%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Volatile year-to-year</li><li>Swings with project wins</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Recurring revenue (% share)</td><td class="cdd2-val">~20%</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Thin recurring base</li><li>Equipment sales dominate</li></ul></td></tr>
+              <tr><td class="cdd2-cat-cell" rowspan="5">Financial quality <span class="cat-score">15/20</span></td><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">~0.6 M€</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Rent add-back = upside</li><li>If confirmed, lifts adj. EBITDA</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Historical growth (rev CAGR)</td><td class="cdd2-val">2.7%</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Low and lumpy revenue</li><li>Equipment-driven, project-based</li></ul></td></tr>
+              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">~16.0%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Strong on service + own products</li><li>Equipment drags blended margin</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Customer concentration (Top 3)</td><td class="cdd2-val">~35.0%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Volatile year-to-year</li><li>Swings with project wins</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Recurring revenue (% share)</td><td class="cdd2-val">25.0%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Thin recurring base</li><li>Equipment sales dominate</li></ul></td></tr>
               <tr><td class="cdd2-cat-cell" rowspan="2">Strategic fit <span class="cat-score">5/8</span></td><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Lab vertical = adjacency</li><li>Not direct bolt-on</li></ul></td></tr>
               <tr><td class="cdd2-crit">USP / differentiation</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Glassblowing + own instruments</li><li>Rare artisan capability</li></ul></td></tr>
               <tr><td class="cdd2-cat-cell" rowspan="1">Value creation <span class="cat-score">3/4</span></td><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Own-products expansion</li><li>Marketing + channel buildout</li></ul></td></tr>
               <tr><td class="cdd2-cat-cell" rowspan="2">Execution risk <span class="cat-score">4/8</span></td><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Owners retiring</li><li>No successor identified</li></ul></td></tr>
               <tr><td class="cdd2-crit">Outlook</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Artisan niche = revenue ceiling</li><li>No platform for scale-driven margin</li></ul></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Total</td><td class="cat-sub">26/40</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Multiple (2025A)</td><td class="cat-sub">4,1x</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Score / Multiple</td><td class="cat-sub">6,3</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="3">Total</td><td class="cat-sub">27/40</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="3">Multiple (2025A)</td><td class="cat-sub">4.1x</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="3">Score / Multiple</td><td class="cat-sub">6.6</td><td class="cc-cmt-cell"></td></tr>
             </tbody>
           </table>
           </div>
@@ -968,32 +1015,35 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <span class="op-stage op-stage--io">NBO Sent</span>
           </div>
           <div class="keystrip">
-            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">5,17 M€</span></div>
-            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0,93 M€</span></div>
-            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5,5x</span></div>
+            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">~5.2 M€</span></div>
+            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0.93 M€</span></div>
+            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5.5x</span></div>
           </div>
           <div class="portfolio-wrap">
           <table class="cdd2-table">
             <colgroup><col class="cc-cat"><col class="cc-crit"><col class="cc-val"><col class="cc-sc"><col class="cc-cmt"></colgroup>
             <thead><tr><th></th><th>Criterion</th><th class="c">Value</th><th class="c">Score</th><th class="cc-cmt-cell">Assessment</th></tr></thead>
             <tbody>
-              <tr><td class="cdd2-cat-cell" rowspan="5">Financial quality <span class="cat-score">16/20</span></td><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">~0,9 M€</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>2025 = peak year</li><li>Run-rate nearer 2024 level</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Historical growth (rev CAGR)</td><td class="cdd2-val">~15%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Tender-driven, not organic</li><li>Lumpy by nature</li></ul></td></tr>
-              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">~15%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Outlier high in pipeline</li><li>Sustainable range ~5-9%</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Customer concentration (Top 10)</td><td class="cdd2-val">~50%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>~60% new customers yearly</li><li>No sticky base</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Recurring revenue (% share)</td><td class="cdd2-val">~24%</td><td><span class="cdd2-score">1</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Mostly project work</li><li>Must re-win each cycle</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="2">Strategic fit <span class="cat-score">4/8</span></td><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Hospital projects</li><li>Not distribution/consumables</li></ul></td></tr>
-              <tr><td class="cdd2-crit">USP / differentiation</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Tender visibility only</li><li>Open tenders = low moat</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="1">Value creation <span class="cat-score">2/4</span></td><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Pricing + overhead leverage</li><li>Backlog covers FY26</li></ul></td></tr>
-              <tr><td class="cdd2-cat-cell" rowspan="2">Execution risk <span class="cat-score">4/8</span></td><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>GF-dependent pipeline</li><li>No successor in place</li></ul></td></tr>
-              <tr><td class="cdd2-crit">Outlook</td><td class="cdd2-val">—</td><td><span class="cdd2-score">2</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Hospital reform exposure</li><li>Tender lumpiness risk</li></ul></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Total</td><td class="cat-sub">26/40</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Multiple (2025A)</td><td class="cat-sub">5,5x</td><td class="cc-cmt-cell"></td></tr>
-              <tr class="cdd2-total"><td colspan="3">Score / Multiple</td><td class="cat-sub">4,7</td><td class="cc-cmt-cell"></td></tr>
+              <tr><td class="cdd2-cat-cell" rowspan="5">Financial quality <span class="cat-score">16/20</span></td><td class="cdd2-crit">Size (adj. EBITDA)</td><td class="cdd2-val">938 K€</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>2025 = peak year</li><li>Run-rate nearer 2024 level</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Historical growth (rev CAGR)</td><td class="cdd2-val">21.3%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Tender-driven, not organic</li><li>Lumpy by nature</li></ul></td></tr>
+              <tr><td class="cdd2-crit">EBITDA margin</td><td class="cdd2-val">~15.0%</td><td><span class="cdd2-score">4</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Outlier high in pipeline</li><li>Sustainable range ~5-9%</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Customer concentration (Top 3)</td><td class="cdd2-val">32.3%</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>~60% new customers yearly</li><li>No sticky base</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Recurring revenue (% share)</td><td class="cdd2-val">~24.0%</td><td><span class="cdd2-score">1</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Mostly project work</li><li>Must re-win each cycle</li></ul></td></tr>
+              <tr><td class="cdd2-cat-cell" rowspan="2">Strategic fit <span class="cat-score">6/8</span></td><td class="cdd2-crit">Strategic fit to Repuro</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Hospital projects</li><li>Not distribution/consumables</li></ul></td></tr>
+              <tr><td class="cdd2-crit">USP / differentiation</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Tender visibility only</li><li>Open tenders = low moat</li></ul></td></tr>
+              <tr><td class="cdd2-cat-cell" rowspan="1">Value creation <span class="cat-score">3/4</span></td><td class="cdd2-crit">Value-creation potential</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Pricing + overhead leverage</li><li>Backlog covers FY26</li></ul></td></tr>
+              <tr><td class="cdd2-cat-cell" rowspan="2">Execution risk <span class="cat-score">6/8</span></td><td class="cdd2-crit">Management &amp; transition</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>GF-dependent pipeline</li><li>No successor in place</li></ul></td></tr>
+              <tr><td class="cdd2-crit">Outlook</td><td class="cdd2-val">—</td><td><span class="cdd2-score">3</span></td><td class="cdd2-cmt cc-cmt-cell"><ul><li>Hospital reform exposure</li><li>Tender lumpiness risk</li></ul></td></tr>
+              <tr class="cdd2-total"><td colspan="3">Total</td><td class="cat-sub">31/40</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="3">Multiple (2025A)</td><td class="cat-sub">5.5x</td><td class="cc-cmt-cell"></td></tr>
+              <tr class="cdd2-total"><td colspan="3">Score / Multiple</td><td class="cat-sub">5.6</td><td class="cc-cmt-cell"></td></tr>
             </tbody>
           </table>
           </div>
         </div>
+
+        
+
 
       </div>
 
@@ -1003,47 +1053,72 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
         <!-- ----- OVERVIEW sources comparison ----- -->
         <div class="su-deal active" id="su-overview">
           <div class="overview-section">
-            <h3>Sources &amp; Uses — Comparison (all values in K&#8364;)</h3>
-            <table class="comp-table">
-              <thead><tr><th>Metric</th><th>Fox</th><th>Mantis</th><th>Mouse</th><th>Cat</th></tr></thead>
-              <tbody>
-                <tr class="comp-cat"><td colspan="5">Key Metrics</td></tr>
-                <tr><td>2025 Adj. EBITDA</td><td>359</td><td>813</td><td>645</td><td>934</td></tr>
-                <tr><td>EV (incl. ant. Earn-Out)</td><td>1.753</td><td>4.783</td><td>2.640</td><td>5.172</td></tr>
-                <tr><td>Net Cash / (Net Debt)</td><td>+137</td><td>+211</td><td>0</td><td>(1.291)</td></tr>
-                <tr class="comp-tot"><td>Equity Value</td><td>1.750</td><td>5.500</td><td>2.500</td><td>~4.694</td></tr>
-                <tr class="comp-cat"><td colspan="5">Sources — At Closing</td></tr>
-                <tr><td>Investor Equity</td><td>1.000</td><td>3.850</td><td>2.000</td><td>~2.109</td></tr>
-                <tr><td>Mgmt Reinvestment</td><td>—</td><td>500</td><td>—</td><td>—</td></tr>
-                <tr class="comp-cat"><td colspan="5">Sources — Post-Closing</td></tr>
-                <tr><td>Operating Cash Flow</td><td>750</td><td>1.150</td><td>500</td><td>~579</td></tr>
-                <tr><td>Additional Investor Equity</td><td>—</td><td>—</td><td>—</td><td>~2.007</td></tr>
-                <tr class="comp-tot"><td>Total sources</td><td>1.750</td><td>5.500</td><td>2.500</td><td>~4.695</td></tr>
-                <tr class="comp-cat"><td colspan="5">Transaction costs (funded at holding level, K&#8364; net)</td></tr>
-                <tr><td>DD / Legal / Notary</td><td>79</td><td>76</td><td>TBD</td><td>TBD</td></tr>
-              </tbody>
-            </table>
+            <div class="su-two-col">
+              <div>
+                <h3>Sources &amp; Uses — Comparison (all values in K&#8364;)</h3>
+                <table class="comp-table">
+                  <thead><tr><th>Metric</th><th>Fox</th><th>Mantis</th><th>Mouse</th><th>Cat</th></tr></thead>
+                  <tbody>
+                    <tr class="comp-cat"><td colspan="5">Key Metrics</td></tr>
+                    <tr><td>2025 Adj. EBITDA</td><td>359</td><td>813</td><td>645</td><td>934</td></tr>
+                    <tr><td>EV (incl. ant. Earn-Out)</td><td>1,753</td><td>4,783</td><td>2,640</td><td>5,172</td></tr>
+                    <tr><td>Net Cash / (Net Debt)</td><td>+137</td><td>+211</td><td>0</td><td>(1,291)</td></tr>
+                    <tr class="comp-tot"><td>Equity Value</td><td>1,750</td><td>5,500</td><td>2,500</td><td>~4,694</td></tr>
+                    <tr class="comp-cat"><td colspan="5">Sources — At Closing</td></tr>
+                    <tr><td>Equity</td><td>1,080</td><td>3,930</td><td>2,000</td><td>~2,109</td></tr>
+                    <tr><td>Mgmt Reinvestment</td><td>—</td><td>500</td><td>—</td><td>—</td></tr>
+                    <tr><td>Debt</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+                    <tr class="comp-cat"><td colspan="5">Sources — Post-Closing</td></tr>
+                    <tr><td>Operating Cash Flow</td><td>583</td><td>500</td><td>500</td><td>~579</td></tr>
+                    <tr><td>Additional Equity</td><td>17</td><td>—</td><td>—</td><td>~934</td></tr>
+                    <tr><td>Super EO — not anticipated</td><td>150</td><td>650</td><td>—</td><td>~1,073</td></tr>
+                    <tr class="comp-tot"><td>Total sources</td><td>1,830</td><td>5,580</td><td>2,500</td><td>~4,695</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="su-drawdown">
+                <h3>Equity drawdown schedule (K&#8364;)</h3>
+                <table class="su-table">
+                  <thead><tr><th>Item</th><th>K&#8364;</th></tr></thead>
+                  <tbody>
+                    <tr class="su-sec"><td colspan="2">First close — Aug 2026</td></tr>
+                    <tr><td>Fox equity</td><td>1,000</td></tr>
+                    <tr><td>Mantis equity</td><td>3,850</td></tr>
+                    <tr><td>Transaction costs (Fox + Mantis)</td><td>160</td></tr>
+                    <tr class="su-tot"><td>Subtotal first close</td><td>5,010</td></tr>
+                    <tr class="su-sec"><td colspan="2">Pipeline — requires commitment increase</td></tr>
+                    <tr><td>Mouse equity</td><td>2,000</td></tr>
+                    <tr><td>Cat equity (closing)</td><td>~2,109</td></tr>
+                    <tr><td>Cat additional equity (post-closing)</td><td>~934</td></tr>
+                    <tr><td>Transaction costs (est.)</td><td>TBD</td></tr>
+                    <tr class="su-tot"><td>Total deal equity (excl. transaction costs)</td><td>~9,893</td></tr>
+                    <tr class="su-sec"><td colspan="2">Platform team costs (annual, K&#8364;)</td></tr>
+                    <tr><td>Management compensation (2 founders, 150 K&#8364; each)</td><td>300</td></tr>
+                    <tr><td>VP Finance / CFO</td><td>~140</td></tr>
+                    <tr><td>Founders Associate</td><td>100</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
             <div class="su-drawdown">
-              <h3>Equity drawdown schedule (K&#8364;)</h3>
-              <table class="su-table">
-                <thead><tr><th>Item</th><th>K&#8364;</th></tr></thead>
+              <h3>DD &amp; transaction costs — Fox + Mantis (K&#8364; net)</h3>
+              <table class="dd-cost-table" id="dd-costs">
+                <thead><tr><th>DD Cost Item</th><th>Provider</th><th>Fox</th><th>Mantis</th><th>Total</th></tr></thead>
                 <tbody>
-                  <tr class="su-sec"><td colspan="2">First close — Aug 2026</td></tr>
-                  <tr><td>Fox investor equity</td><td>1.000</td></tr>
-                  <tr><td>Mantis investor equity</td><td>3.850</td></tr>
-                  <tr><td>Transaction costs (Fox + Mantis)</td><td>155</td></tr>
-                  <tr class="su-tot"><td>Subtotal first close</td><td>5.005</td></tr>
-                  <tr class="su-sec"><td colspan="2">Pipeline — requires commitment increase</td></tr>
-                  <tr><td>Mouse investor equity</td><td>2.000</td></tr>
-                  <tr><td>Cat investor equity (closing)</td><td>~2.109</td></tr>
-                  <tr><td>Cat additional equity (post-closing)</td><td>~2.007</td></tr>
-                  <tr><td>Transaction costs (est.)</td><td>TBD</td></tr>
-                  <tr class="su-tot"><td>Total deal equity</td><td>~10.966</td></tr>
-                  <tr class="su-sec"><td colspan="2">Platform team costs (annual)</td></tr>
-                  <tr><td>Management compensation (2 founders, 150 K&#8364; each)</td><td>300 p.a.</td></tr>
+                  <tr class="dd-cat"><td colspan="5">Ebner Stolz</td></tr>
+                  <tr><td>Financial DD</td><td>Ebner Stolz</td><td>22</td><td>21</td><td>43</td></tr>
+                  <tr><td>Legal DD</td><td>Ebner Stolz</td><td>15</td><td>15</td><td>30</td></tr>
+                  <tr><td>Tax DD</td><td>Ebner Stolz</td><td>16</td><td>15</td><td>31</td></tr>
+                  <tr><td>SPA Draft</td><td>Ebner Stolz</td><td>9</td><td>9</td><td>18</td></tr>
+                  <tr><td>SPA Negotiation</td><td>Ebner Stolz</td><td>5</td><td>5</td><td>10</td></tr>
+                  <tr class="dd-cat"><td colspan="5">Other</td></tr>
+                  <tr><td>Customer Interviews</td><td>Repuro</td><td>4</td><td>4</td><td>8</td></tr>
+                  <tr><td>Notary</td><td>Berlin notary</td><td>4</td><td>7</td><td>11</td></tr>
+                  <tr><td>Structuring / Tax KG</td><td>Ebner Stolz / YPOG</td><td>4</td><td>0</td><td>4</td></tr>
+                  <tr class="dd-tot"><td>Total itemized (K&#8364; net)</td><td></td><td>79</td><td>76</td><td>155</td></tr>
+                  <tr class="dd-tot"><td>Proposed budget (rounded)</td><td></td><td>80</td><td>80</td><td>160</td></tr>
                 </tbody>
               </table>
-              <p class="note">Committed initial tranche: <b>5.000 K&#8364;</b> (deal equity). Transaction costs (155 K&#8364;) funded additionally at holding level. Platform costs funded from equity pool until distributable cash flow.</p>
             </div>
           </div>
         </div>
@@ -1055,45 +1130,40 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <span class="op-stage">LOI Signed</span>
           </div>
           <div class="keystrip">
-            <div class="ks"><span class="kl">Equity Value</span><span class="kv brand">1,75 M&#8364;</span></div>
-            <div class="ks"><span class="kl">EV at closing</span><span class="kv">1,25 M&#8364;</span></div>
-            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0,36 M&#8364;</span></div>
-            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4,9x</span></div>
+            <div class="ks"><span class="kl">Equity Value</span><span class="kv brand">1.75 M&#8364;</span></div>
+            <div class="ks"><span class="kl">EV at closing</span><span class="kv">1.25 M&#8364;</span></div>
+            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0.36 M&#8364;</span></div>
+            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4.9x</span></div>
           </div>
-          <div class="su-layout">
-            <table class="su-table">
-              <thead><tr><th>Sources</th><th></th><th>Uses</th><th></th></tr></thead>
-              <tbody>
-                <tr class="su-sec"><td colspan="4">At Closing (Aug 2026)</td></tr>
-                <tr><td>Investor Equity</td><td>1.000</td><td>Cash at Closing</td><td>1.000</td></tr>
-                <tr class="su-sec"><td colspan="4">Post-Closing (from target cash flow)</td></tr>
-                <tr><td>Operating Cash Flow</td><td>750</td><td>Vendor Loan (2027)</td><td>100</td></tr>
-                <tr><td></td><td></td><td>Avg. Earn-Out 2026/2027</td><td>500</td></tr>
-                <tr><td></td><td></td><td>Super Earn-Out 2026/2027</td><td>150</td></tr>
-                <tr class="su-tot"><td>Total</td><td>1.750</td><td>Total</td><td>1.750</td></tr>
-              </tbody>
-            </table>
-            <div class="su-comment">
-              <b>1.000 K&#8364;</b> investor equity at closing (Aug 2026). Vendor loan and earn-outs funded from target operating cash flow.<br><br>
-              <b>Net Cash:</b> +137 K&#8364;<br>
-              <b>Permitted Leakage:</b> 290 K&#8364;<br>
-              <b>Transaction Costs:</b> 79 K&#8364; (DD/Legal/Notary, funded at holding level)
-            </div>
-          </div>
-          <table class="dd-cost-table" id="dd-costs">
-            <thead><tr><th>DD Cost Item</th><th>Provider</th><th>Fox</th><th>Mantis</th><th>Total</th></tr></thead>
+          <table class="su-table">
+            <thead><tr><th>Sources</th><th></th><th>Uses</th><th></th></tr></thead>
             <tbody>
-              <tr class="dd-cat"><td colspan="5">Ebner Stolz</td></tr>
-              <tr><td>Financial DD</td><td>Ebner Stolz</td><td>22</td><td>21</td><td>43</td></tr>
-              <tr><td>Legal DD</td><td>Ebner Stolz</td><td>15</td><td>15</td><td>30</td></tr>
-              <tr><td>Tax DD</td><td>Ebner Stolz</td><td>16</td><td>15</td><td>31</td></tr>
-              <tr><td>SPA Draft</td><td>Ebner Stolz</td><td>9</td><td>9</td><td>18</td></tr>
-              <tr><td>SPA Negotiation</td><td>Ebner Stolz</td><td>5</td><td>5</td><td>10</td></tr>
-              <tr class="dd-cat"><td colspan="5">Other</td></tr>
-              <tr><td>Customer Interviews</td><td>Repuro</td><td>4</td><td>4</td><td>8</td></tr>
-              <tr><td>Notary</td><td>Notary</td><td>4</td><td>7</td><td>11</td></tr>
-              <tr><td>Structuring / Tax KG</td><td>YPOG</td><td>4</td><td>0</td><td>4</td></tr>
-              <tr class="dd-tot"><td>Total (K&#8364; net)</td><td></td><td>79</td><td>76</td><td>155</td></tr>
+              <tr class="su-sec"><td colspan="4">At Closing (Aug 2026)</td></tr>
+              <tr><td>Equity</td><td>1,080</td><td>Cash at Closing</td><td>1,000</td></tr>
+              <tr><td>Debt</td><td>0</td><td>Transaction Costs (DD/Legal/Notary)</td><td>80</td></tr>
+              <tr class="su-sec"><td colspan="4">Post-Closing (from target cash flow)</td></tr>
+              <tr><td>Operating Cash Flow</td><td>583</td><td>Vendor Loan (2027)</td><td>100</td></tr>
+              <tr><td>Equity (earn-out top-up)</td><td>17</td><td>Avg. Earn-Out 2026/2027</td><td>500</td></tr>
+              <tr><td class="su-note-inline">Super earn-out — not anticipated</td><td>150</td><td>Super Earn-Out 2026/2027</td><td>150</td></tr>
+              <tr class="su-tot"><td>Total</td><td>1,830</td><td>Total</td><td>1,830</td></tr>
+            </tbody>
+          </table>
+          <p class="note">Operating cash flow availability: 2025 adj. EBITDA 359 &times; 65% &asymp; 233 p.a. &rarr; ~350 by the 2026 earn-out (1.5 years), ~583 cumulative by the 2027 earn-out (2.5 years). OCF-funded uses of 600 (vendor loan 100 + earn-outs 500) exceed this by ~17, covered by equity.</p>
+          <table class="dd-cost-table">
+            <thead><tr><th>DD Cost Item</th><th>Provider</th><th>Fox</th></tr></thead>
+            <tbody>
+              <tr class="dd-cat"><td colspan="3">Ebner Stolz</td></tr>
+              <tr><td>Financial DD</td><td>Ebner Stolz</td><td>22</td></tr>
+              <tr><td>Legal DD</td><td>Ebner Stolz</td><td>15</td></tr>
+              <tr><td>Tax DD</td><td>Ebner Stolz</td><td>16</td></tr>
+              <tr><td>SPA Draft</td><td>Ebner Stolz</td><td>9</td></tr>
+              <tr><td>SPA Negotiation</td><td>Ebner Stolz</td><td>5</td></tr>
+              <tr class="dd-cat"><td colspan="3">Other</td></tr>
+              <tr><td>Customer Interviews</td><td>Repuro</td><td>4</td></tr>
+              <tr><td>Notary</td><td>Berlin notary</td><td>4</td></tr>
+              <tr><td>Structuring / Tax KG</td><td>Ebner Stolz / YPOG</td><td>4</td></tr>
+              <tr class="dd-tot"><td>Total itemized (K&#8364; net)</td><td></td><td>79</td></tr>
+              <tr class="dd-tot"><td>Proposed budget (rounded)</td><td></td><td>80</td></tr>
             </tbody>
           </table>
         </div>
@@ -1105,31 +1175,43 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <span class="op-stage">LOI Signed</span>
           </div>
           <div class="keystrip">
-            <div class="ks"><span class="kl">Equity Value</span><span class="kv brand">5,50 M&#8364;</span></div>
-            <div class="ks"><span class="kl">EV at closing</span><span class="kv">4,28 M&#8364;</span></div>
-            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0,81 M&#8364;</span></div>
-            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5,9x</span></div>
+            <div class="ks"><span class="kl">Equity Value</span><span class="kv brand">5.50 M&#8364;</span></div>
+            <div class="ks"><span class="kl">EV at closing</span><span class="kv">4.28 M&#8364;</span></div>
+            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0.81 M&#8364;</span></div>
+            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5.9x</span></div>
           </div>
-          <div class="su-layout">
-            <table class="su-table">
-              <thead><tr><th>Sources</th><th></th><th>Uses</th><th></th></tr></thead>
-              <tbody>
-                <tr class="su-sec"><td colspan="4">At Closing (Aug 2026)</td></tr>
-                <tr><td>Investor Equity</td><td>3.850</td><td>Cash at Closing</td><td>4.350</td></tr>
-                <tr><td>Mgmt Reinvestment</td><td>500</td><td></td><td></td></tr>
-                <tr class="su-sec"><td colspan="4">Post-Closing (from target cash flow)</td></tr>
-                <tr><td>Operating Cash Flow</td><td>1.150</td><td>Avg. Earn-Out 2026/2027</td><td>500</td></tr>
-                <tr><td></td><td></td><td>Super Earn-Out 2026/2027</td><td>650</td></tr>
-                <tr class="su-tot"><td>Total</td><td>5.500</td><td>Total</td><td>5.500</td></tr>
-              </tbody>
-            </table>
-            <div class="su-comment">
-              <b>3.850 K&#8364;</b> investor equity at closing (Aug 2026). Mgmt reinvestment 500 K&#8364; pari passu. Earn-outs funded from target operating cash flow.<br><br>
-              <b>Net Cash:</b> +211 K&#8364;<br>
-              <b>Permitted Leakage:</b> 144 K&#8364;<br>
-              <b>Transaction Costs:</b> 76 K&#8364; (DD/Legal/Notary, funded at holding level)
-            </div>
-          </div>
+          <table class="su-table">
+            <thead><tr><th>Sources</th><th></th><th>Uses</th><th></th></tr></thead>
+            <tbody>
+              <tr class="su-sec"><td colspan="4">At Closing (Aug 2026)</td></tr>
+              <tr><td>Equity</td><td>3,930</td><td>Cash at Closing</td><td>4,350</td></tr>
+              <tr><td>Mgmt Reinvestment</td><td>500</td><td>Transaction Costs (DD/Legal/Notary)</td><td>80</td></tr>
+              <tr><td>Debt</td><td>0</td><td></td><td></td></tr>
+              <tr class="su-sec"><td colspan="4">Post-Closing (from target cash flow)</td></tr>
+              <tr><td>Operating Cash Flow</td><td>500</td><td>Avg. Earn-Out 2026/2027</td><td>500</td></tr>
+              <tr><td>Equity (earn-out top-up)</td><td>0</td><td></td><td></td></tr>
+              <tr><td class="su-note-inline">Super earn-out — not anticipated</td><td>650</td><td>Super Earn-Out 2026/2027</td><td>650</td></tr>
+              <tr class="su-tot"><td>Total</td><td>5,580</td><td>Total</td><td>5,580</td></tr>
+            </tbody>
+          </table>
+          <p class="note">Operating cash flow availability: 2025 adj. EBITDA 813 &times; 65% &asymp; 528 p.a. &rarr; ~793 by the 2026 earn-out (1.5 years), ~1,321 cumulative by the 2027 earn-out (2.5 years). Earn-out requirement of 500 fully OCF-funded — no additional equity needed.</p>
+          <table class="dd-cost-table">
+            <thead><tr><th>DD Cost Item</th><th>Provider</th><th>Mantis</th></tr></thead>
+            <tbody>
+              <tr class="dd-cat"><td colspan="3">Ebner Stolz</td></tr>
+              <tr><td>Financial DD</td><td>Ebner Stolz</td><td>21</td></tr>
+              <tr><td>Legal DD</td><td>Ebner Stolz</td><td>15</td></tr>
+              <tr><td>Tax DD</td><td>Ebner Stolz</td><td>15</td></tr>
+              <tr><td>SPA Draft</td><td>Ebner Stolz</td><td>9</td></tr>
+              <tr><td>SPA Negotiation</td><td>Ebner Stolz</td><td>5</td></tr>
+              <tr class="dd-cat"><td colspan="3">Other</td></tr>
+              <tr><td>Customer Interviews</td><td>Repuro</td><td>4</td></tr>
+              <tr><td>Notary</td><td>Berlin notary</td><td>7</td></tr>
+              <tr><td>Structuring / Tax KG</td><td>Ebner Stolz / YPOG</td><td>0</td></tr>
+              <tr class="dd-tot"><td>Total itemized (K&#8364; net)</td><td></td><td>76</td></tr>
+              <tr class="dd-tot"><td>Proposed budget (rounded)</td><td></td><td>80</td></tr>
+            </tbody>
+          </table>
         </div>
 
         <!-- ----- MOUSE S&U ----- -->
@@ -1139,20 +1221,21 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <span class="op-stage op-stage--io">NBO Sent</span>
           </div>
           <div class="keystrip">
-            <div class="ks"><span class="kl">Equity Value</span><span class="kv brand">2,50 M&#8364;</span></div>
-            <div class="ks"><span class="kl">EV at closing</span><span class="kv">2,14 M&#8364;</span></div>
-            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">~0,6 M&#8364;</span></div>
-            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4,1x</span></div>
+            <div class="ks"><span class="kl">Equity Value</span><span class="kv brand">2.50 M&#8364;</span></div>
+            <div class="ks"><span class="kl">EV at closing</span><span class="kv">2.14 M&#8364;</span></div>
+            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">~0.6 M&#8364;</span></div>
+            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4.1x</span></div>
           </div>
           <div class="su-layout">
             <table class="su-table">
               <thead><tr><th>Sources</th><th></th><th>Uses</th><th></th></tr></thead>
               <tbody>
                 <tr class="su-sec"><td colspan="4">At Closing</td></tr>
-                <tr><td>Investor Equity</td><td>2.000</td><td>Cash at Closing</td><td>2.000</td></tr>
+                <tr><td>Equity</td><td>2,000</td><td>Cash at Closing</td><td>2,000</td></tr>
+                <tr><td>Debt</td><td>0</td><td></td><td></td></tr>
                 <tr class="su-sec"><td colspan="4">Post-Closing (from target cash flow)</td></tr>
                 <tr><td>Operating Cash Flow</td><td>500</td><td>Avg. Earn-Out 2026/2027</td><td>500</td></tr>
-                <tr class="su-tot"><td>Total</td><td>2.500</td><td>Total</td><td>2.500</td></tr>
+                <tr class="su-tot"><td>Total</td><td>2,500</td><td>Total</td><td>2,500</td></tr>
               </tbody>
             </table>
             <div class="su-comment">
@@ -1161,6 +1244,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
               <b>Transaction Costs:</b> TBD (DD/Legal/Notary, funded at holding level)
             </div>
           </div>
+          <p class="note">Operating cash flow availability: 2025 adj. EBITDA 645 &times; 65% &asymp; 419 p.a. &rarr; ~629 by the 2026 earn-out (1.5 years), ~1,048 cumulative by the 2027 earn-out (2.5 years). Earn-out requirement of 500 fully OCF-funded.</p>
         </div>
 
         <!-- ----- CAT S&U ----- -->
@@ -1170,33 +1254,36 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <span class="op-stage op-stage--io">NBO Sent</span>
           </div>
           <div class="keystrip">
-            <div class="ks"><span class="kl">Equity Value</span><span class="kv brand">~4,69 M&#8364;</span></div>
-            <div class="ks"><span class="kl">EV at closing</span><span class="kv">3,66 M&#8364;</span></div>
-            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0,93 M&#8364;</span></div>
-            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5,5x</span></div>
+            <div class="ks"><span class="kl">Equity Value</span><span class="kv brand">~4.69 M&#8364;</span></div>
+            <div class="ks"><span class="kl">EV at closing</span><span class="kv">3.66 M&#8364;</span></div>
+            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0.93 M&#8364;</span></div>
+            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5.5x</span></div>
           </div>
           <div class="su-layout">
             <table class="su-table">
               <thead><tr><th>Sources</th><th></th><th>Uses</th><th></th></tr></thead>
               <tbody>
                 <tr class="su-sec"><td colspan="4">At Closing</td></tr>
-                <tr><td>Investor Equity</td><td>~2.109</td><td>Cash at Closing</td><td>~2.109</td></tr>
+                <tr><td>Equity</td><td>~2,109</td><td>Cash at Closing</td><td>~2,109</td></tr>
+                <tr><td>Debt</td><td>0</td><td></td><td></td></tr>
                 <tr class="su-sec"><td colspan="4">Post-Closing</td></tr>
                 <tr><td>Operating Cash Flow</td><td>~579</td><td>Ant. Earn-Out 2026</td><td>~756</td></tr>
-                <tr><td>Additional Investor Equity</td><td>~2.007</td><td>Ant. Earn-Out 2027</td><td>~757</td></tr>
-                <tr><td></td><td></td><td>Super Earn-Out</td><td>~1.073</td></tr>
-                <tr class="su-tot"><td>Total</td><td>~4.695</td><td>Total</td><td>~4.695</td></tr>
+                <tr><td>Additional Equity</td><td>~934</td><td>Ant. Earn-Out 2027</td><td>~757</td></tr>
+                <tr><td class="su-note-inline">Super earn-out — not anticipated</td><td>~1,073</td><td>Super Earn-Out</td><td>~1,073</td></tr>
+                <tr class="su-tot"><td>Total</td><td>~4,695</td><td>Total</td><td>~4,695</td></tr>
               </tbody>
             </table>
             <div class="su-comment">
-              Real-estate sale is closing condition. OCF based on 65% of adj. EBIT FY25 (891 K&#8364;); gap funded by additional investor equity.<br><br>
-              <b>Net Debt:</b> -1.291 K&#8364;<br>
+              Real-estate sale is closing condition. OCF based on 65% of adj. EBIT FY25 (891 K&#8364;); gap funded by additional equity. Figures rounded (&#177;1 K&#8364;).<br><br>
+              Availability check: 2025 adj. EBITDA 934 &times; 65% &asymp; 607 p.a. &rarr; ~911 (1.5 years) / ~1,518 (2.5 years) vs. earn-outs ~1,513 — no headroom, hence conservative EBIT-based OCF and equity pre-funding.<br><br>
+              <b>Net Debt:</b> -1,291 K&#8364;<br>
               <b>Permitted Leakage:</b> ~259 K&#8364;<br>
               <b>Transaction Costs:</b> TBD (DD/Legal/Notary, funded at holding level)
             </div>
           </div>
         </div>
-      </div>
+      
+              </div>
       <!-- ============ VIEW GROUP — VALUATION ============ -->
       <div class="vgroup" data-vg="valuation">
 
@@ -1207,25 +1294,25 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <span class="op-stage">LOI Signed</span>
           </div>
           <div class="keystrip">
-            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">1,75 M€</span></div>
-            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0,36 M€</span></div>
-            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4,9x</span></div>
+            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">1.75 M€</span></div>
+            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0.36 M€</span></div>
+            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4.9x</span></div>
           </div>
           <div class="val-layout">
-            <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>3.129</td><td>3.392</td><td>3.500</td><td class="op-fin-sep"></td><td>3.446</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>205</td><td>159</td><td>359</td><td class="op-fin-sep"></td><td>259</td><td class="op-fin-bp-cell">393</td><td class="op-fin-bp-cell">418</td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>-8,0%</td><td>8,4%</td><td>3,2%</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>6,6%</td><td>4,7%</td><td>10,3%</td><td class="op-fin-sep"></td><td>7,5%</td><td class="op-fin-bp-cell">—</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>3,5x</td><td class="op-fin-sep"></td><td>4,8x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>1.253</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>4,9x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell">4,5x</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>1.753</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV incl. Super-EO</td><td></td><td></td><td>5,3x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell">4,5x</td><td class="op-fin-sep"></td><td>1.903</td></tr><tr class=""><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>137</td></tr><tr class=""><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(290)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>1.750</td></tr></tbody></table></div>
+            <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>3,129</td><td>3,392</td><td>3,500</td><td class="op-fin-sep"></td><td>3,446</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>205</td><td>159</td><td>359</td><td class="op-fin-sep"></td><td>259</td><td class="op-fin-bp-cell">393</td><td class="op-fin-bp-cell">418</td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>-8.0%</td><td>8.4%</td><td>3.2%</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>6.6%</td><td>4.7%</td><td>10.3%</td><td class="op-fin-sep"></td><td>7.5%</td><td class="op-fin-bp-cell">—</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>3.5x</td><td class="op-fin-sep"></td><td>4.8x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>1,253</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>4.9x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell">4.5x</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>1,753</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV incl. Super-EO</td><td></td><td></td><td>5.3x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell">4.5x</td><td class="op-fin-sep"></td><td>1,903</td></tr><tr class=""><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>137</td></tr><tr class=""><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(290)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>1,750</td></tr></tbody></table></div>
             <div class="eo-panel">
               <div class="eo-head">Earn-Out Thresholds (in K€) — EBIT-based</div>
               <div class="eo-body">
                 <table class="eo-thresh">
                   <thead><tr><th>EBIT 26/27</th><th>Earn-Out</th><th>EV</th><th>Multiple</th></tr></thead>
                   <tbody>
-                    <tr class="eo-floor"><td>≤225</td><td>0</td><td>963</td><td>2,7x</td></tr>
-                    <tr><td>250</td><td>225</td><td>1.188</td><td>3,3x</td></tr>
-                    <tr class="eo-bp"><td>300 (BP)</td><td>500</td><td>1.463</td><td>4,1x</td></tr>
-                    <tr class="eo-max"><td>325 (MAX)</td><td>650</td><td>1.613</td><td>4,5x</td></tr>
+                    <tr class="eo-floor"><td>≤225</td><td>0</td><td>963</td><td>2.7x</td></tr>
+                    <tr><td>250</td><td>225</td><td>1,188</td><td>3.3x</td></tr>
+                    <tr class="eo-bp"><td>300 (BP)</td><td>500</td><td>1,463</td><td>4.1x</td></tr>
+                    <tr class="eo-max"><td>325 (MAX)</td><td>650</td><td>1,613</td><td>4.5x</td></tr>
                   </tbody>
                 </table>
-                <div class="eo-note">+ Super EO 150 K€ → max total EV 1.903 (5,3x). VL 100 K€ at closing. 2025A EBITDA: 359 K€.</div>
+                <div class="eo-note">+ Super EO 150 K€ → max total EV 1,903 (5.3x). VL 100 K€ at closing. 2025A EBITDA: 359 K€. Equity value bridges from Total EV incl. Super-EO.</div>
               </div>
             </div>
           </div>
@@ -1238,26 +1325,26 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <span class="op-stage">LOI Signed</span>
           </div>
           <div class="keystrip">
-            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">4,78 M€</span></div>
-            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0,81 M€</span></div>
-            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5,9x</span></div>
+            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">4.78 M€</span></div>
+            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0.81 M€</span></div>
+            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5.9x</span></div>
           </div>
           <div class="val-layout">
-            <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>2.760</td><td>3.093</td><td>3.178</td><td class="op-fin-sep"></td><td>3.136</td><td class="op-fin-bp-cell">3.157</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>688</td><td>839</td><td>813</td><td class="op-fin-sep"></td><td>826</td><td class="op-fin-bp-cell">930</td><td class="op-fin-bp-cell">1.130</td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>17,5%</td><td>12,1%</td><td>2,7%</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>24,9%</td><td>27,1%</td><td>25,6%</td><td class="op-fin-sep"></td><td>26,3%</td><td class="op-fin-bp-cell">29,5%</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>5,3x</td><td class="op-fin-sep"></td><td>5,2x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>4.283</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>5,9x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell">5,1x</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>4.783</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV incl. Super-EO</td><td></td><td></td><td>6,7x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell">4,8x</td><td class="op-fin-sep"></td><td>5.433</td></tr><tr class=""><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>211</td></tr><tr class=""><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(144)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>5.500</td></tr></tbody></table></div>
+            <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>2,760</td><td>3,093</td><td>3,178</td><td class="op-fin-sep"></td><td>3,136</td><td class="op-fin-bp-cell">3,157</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>688</td><td>839</td><td>813</td><td class="op-fin-sep"></td><td>826</td><td class="op-fin-bp-cell">930</td><td class="op-fin-bp-cell">1,130</td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>17.5%</td><td>12.1%</td><td>2.7%</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>24.9%</td><td>27.1%</td><td>25.6%</td><td class="op-fin-sep"></td><td>26.3%</td><td class="op-fin-bp-cell">29.5%</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>5.3x</td><td class="op-fin-sep"></td><td>5.2x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>4,283</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>5.9x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell">5.1x</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>4,783</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV incl. Super-EO</td><td></td><td></td><td>6.7x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell">4.8x</td><td class="op-fin-sep"></td><td>5,433</td></tr><tr class=""><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>211</td></tr><tr class=""><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(144)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>5,500</td></tr></tbody></table></div>
             <div class="eo-panel">
               <div class="eo-head">Earn-Out Thresholds (in K€) — EBITDA-based</div>
               <div class="eo-body">
                 <table class="eo-thresh">
                   <thead><tr><th>EBITDA 26/27</th><th>Earn-Out</th><th>EV</th><th>Multiple</th></tr></thead>
                   <tbody>
-                    <tr class="eo-floor"><td>830</td><td>0</td><td>4.280</td><td>5,3x</td></tr>
-                    <tr><td>880</td><td>250</td><td>4.530</td><td>5,6x</td></tr>
-                    <tr class="eo-bp"><td>930 (BP)</td><td>500</td><td>4.780</td><td>5,9x</td></tr>
-                    <tr><td>1.030</td><td>800</td><td>5.080</td><td>6,2x</td></tr>
-                    <tr class="eo-max"><td>1.130 (MAX)</td><td>1.150</td><td>5.430</td><td>6,7x</td></tr>
+                    <tr class="eo-floor"><td>830</td><td>0</td><td>4,283</td><td>5.3x</td></tr>
+                    <tr><td>880</td><td>250</td><td>4,533</td><td>5.6x</td></tr>
+                    <tr class="eo-bp"><td>930 (BP)</td><td>500</td><td>4,783</td><td>5.9x</td></tr>
+                    <tr><td>1,030</td><td>825</td><td>5,108</td><td>6.3x</td></tr>
+                    <tr class="eo-max"><td>1,130 (MAX)</td><td>1,150</td><td>5,433</td><td>6.7x</td></tr>
                   </tbody>
                 </table>
-                <div class="eo-note">2-tranche: EO 0→500 K€ (EBITDA 830→930), SEO 0→650 K€ (930→1.130). Mgmt reinvestment 500 K€. 2025A: 813 K€.</div>
+                <div class="eo-note">2-tranche: EO 0→500 K€ (EBITDA 830→930), SEO 0→650 K€ (930→1,130). Mgmt reinvestment 500 K€. 2025A: 813 K€. Equity value bridges from Total EV incl. Super-EO.</div>
               </div>
             </div>
           </div>
@@ -1270,27 +1357,28 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <span class="op-stage op-stage--io">NBO Sent</span>
           </div>
           <div class="keystrip">
-            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">~2,6 M€</span></div>
-            <div class="ks"><span class="kl">EV at closing</span><span class="kv">2,1 M€</span></div>
-            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">~0,6 M€</span></div>
-            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4,1x</span></div>
+            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">~2.6 M€</span></div>
+            <div class="ks"><span class="kl">EV at closing</span><span class="kv">2.1 M€</span></div>
+            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">~0.6 M€</span></div>
+            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">4.1x</span></div>
           </div>
           <div class="val-layout">
-            <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>3.449</td><td>3.405</td><td>3.900</td><td class="op-fin-sep"></td><td>3.652</td><td class="op-fin-bp-cell">4.185</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>391</td><td>469</td><td>645</td><td class="op-fin-sep"></td><td>557</td><td class="op-fin-bp-cell">450</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>-4,2%</td><td>-1,3%</td><td>14,6%</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>11,3%</td><td>13,8%</td><td>16,5%</td><td class="op-fin-sep"></td><td>15,2%</td><td class="op-fin-bp-cell">10,8%</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>3,3x</td><td class="op-fin-sep"></td><td>3,8x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2.140</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>4,1x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2.640</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV</td><td></td><td></td><td>4,1x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2.640</td></tr><tr class=""><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>0</td></tr><tr class=""><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(140)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2.500</td></tr></tbody></table></div>
+            <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>3,449</td><td>3,405</td><td>3,900</td><td class="op-fin-sep"></td><td>3,652</td><td class="op-fin-bp-cell">4,185</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>391</td><td>469</td><td>645</td><td class="op-fin-sep"></td><td>557</td><td class="op-fin-bp-cell">450</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>-4.2%</td><td>-1.3%</td><td>14.6%</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>11.3%</td><td>13.8%</td><td>16.5%</td><td class="op-fin-sep"></td><td>15.2%</td><td class="op-fin-bp-cell">10.8%</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>3.3x</td><td class="op-fin-sep"></td><td>3.8x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2,140</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>4.1x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2,640</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV</td><td></td><td></td><td>4.1x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2,640</td></tr><tr class=""><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>0</td></tr><tr class=""><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(140)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>2,500</td></tr></tbody></table></div>
             <div class="eo-panel">
               <div class="eo-head">Earn-Out Thresholds (in K€) — EBIT-based</div>
               <div class="eo-body">
                 <table class="eo-thresh">
                   <thead><tr><th>EBIT 26/27</th><th>Earn-Out</th><th>EV</th><th>Multiple</th></tr></thead>
                   <tbody>
-                    <tr class="eo-floor"><td>≤500</td><td>0</td><td>2.140</td><td>3,3x</td></tr>
-                    <tr><td>550</td><td>150</td><td>2.290</td><td>3,5x</td></tr>
-                    <tr><td>600</td><td>300</td><td>2.440</td><td>3,8x</td></tr>
-                    <tr class="eo-bp"><td>650 (BP)</td><td>450</td><td>2.590</td><td>4,0x</td></tr>
-                    <tr class="eo-max"><td>700 (MAX)</td><td>600</td><td>2.740</td><td>4,2x</td></tr>
+                    <tr class="eo-floor"><td>≤500</td><td>0</td><td>2,140</td><td>3.3x</td></tr>
+                    <tr><td>550</td><td>150</td><td>2,290</td><td>3.5x</td></tr>
+                    <tr><td>600</td><td>300</td><td>2,440</td><td>3.8x</td></tr>
+                    <tr><td>650 (BP)</td><td>450</td><td>2,590</td><td>4.0x</td></tr>
+                    <tr class="eo-bp"><td>~667 (ant.)</td><td>500</td><td>2,640</td><td>4.1x</td></tr>
+                    <tr class="eo-max"><td>700 (MAX)</td><td>600</td><td>2,740</td><td>4.2x</td></tr>
                   </tbody>
                 </table>
-                <div class="eo-note">No Super Earn-Out. EO trigger: EBIT &gt;500 K€ (2025A: 535 K€). PL (140). Debt-free.</div>
+                <div class="eo-note">No Super Earn-Out. EO trigger: EBIT &gt;500 K€ (2025A: 535 K€). PL (140). Debt-free. Anticipated earn-out of 500 K€ corresponds to ~667 K€ EBIT (between BP and max case).</div>
               </div>
             </div>
           </div>
@@ -1303,82 +1391,35 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
             <span class="op-stage op-stage--io">NBO Sent</span>
           </div>
           <div class="keystrip">
-            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">~5,2 M€</span></div>
-            <div class="ks"><span class="kl">EV at closing</span><span class="kv">3,66 M€</span></div>
-            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0,93 M€</span></div>
-            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5,5x</span></div>
+            <div class="ks"><span class="kl">EV (incl. ant. EO)</span><span class="kv brand">~5.2 M€</span></div>
+            <div class="ks"><span class="kl">EV at closing</span><span class="kv">3.66 M€</span></div>
+            <div class="ks"><span class="kl">Adj. EBITDA FY25</span><span class="kv">0.93 M€</span></div>
+            <div class="ks"><span class="kl">Multiple (2025A)</span><span class="kv">5.5x</span></div>
           </div>
           <div class="val-layout">
-            <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>3.169</td><td>4.565</td><td>6.152</td><td class="op-fin-sep"></td><td>5.358</td><td class="op-fin-bp-cell">6.250</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>196</td><td>229</td><td>934</td><td class="op-fin-sep"></td><td>582</td><td class="op-fin-bp-cell">940</td><td class="op-fin-bp-cell">1.115</td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>-8,1%</td><td>44,0%</td><td>34,8%</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>6,2%</td><td>5,0%</td><td>15,2%</td><td class="op-fin-sep"></td><td>10,9%</td><td class="op-fin-bp-cell">15,0%</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>3,9x</td><td class="op-fin-sep"></td><td>6,3x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>3.659</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>5,5x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell">5,5x</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>5.172</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV incl. Super-EO</td><td></td><td></td><td>6,7x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell">5,5x</td><td class="op-fin-sep"></td><td>6.244</td></tr><tr class=""><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(1.291)</td></tr><tr class=""><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(259)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>4.694</td></tr></tbody></table></div>
+            <div class="op-fin-wrap"><table class="op-fin-table"><thead><tr><th class="op-fin-label">P&amp;L (in K€)</th><th>2023</th><th>2024</th><th>2025</th><th class="op-fin-sep"></th><th class="op-fin-ct">Avg. 24-25</th><th class="op-fin-bp">2026 BP</th><th class="op-fin-bp">Max EO</th><th class="op-fin-sep"></th><th class="op-fin-cagr">Valuation</th></tr></thead><tbody><tr class="op-fin-bold"><td>Revenue</td><td>3,169</td><td>4,565</td><td>6,152</td><td class="op-fin-sep"></td><td>5,358</td><td class="op-fin-bp-cell">6,250</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-bold"><td>Adj. EBITDA</td><td>196</td><td>229</td><td>934</td><td class="op-fin-sep"></td><td>582</td><td class="op-fin-bp-cell">940</td><td class="op-fin-bp-cell">1,115</td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>Revenue growth</em></td><td>-8.1%</td><td>44.0%</td><td>34.8%</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-kpi"><td><em>EBITDA margin</em></td><td>6.2%</td><td>5.0%</td><td>15.2%</td><td class="op-fin-sep"></td><td>10.9%</td><td class="op-fin-bp-cell">15.0%</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td></td></tr><tr class="op-fin-spacer"><td colspan="10"></td></tr><tr class="op-fin-highlight"><td>EV at closing</td><td></td><td></td><td>3.9x</td><td class="op-fin-sep"></td><td>6.3x</td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>3,659</td></tr><tr class="op-fin-highlight"><td>EV anticipated Earn-Out</td><td></td><td></td><td>5.5x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell">5.5x</td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>5,172</td></tr><tr class="op-fin-bold op-fin-highlight"><td>Total EV incl. Super-EO</td><td></td><td></td><td>6.7x</td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell">5.5x</td><td class="op-fin-sep"></td><td>6,244</td></tr><tr class=""><td>+/- Net Cash | (Net Debt)</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(1,291)</td></tr><tr class=""><td>- Permitted Leakage</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>(259)</td></tr><tr class="op-fin-bold"><td>Equity Value</td><td></td><td></td><td></td><td class="op-fin-sep"></td><td></td><td class="op-fin-bp-cell"></td><td class="op-fin-bp-cell"></td><td class="op-fin-sep"></td><td>4,694</td></tr></tbody></table></div>
             <div class="eo-panel">
               <div class="eo-head">Earn-Out Thresholds (in K€) — EBITDA-based</div>
               <div class="eo-body">
                 <table class="eo-thresh">
                   <thead><tr><th>EBITDA 26/27</th><th>Earn-Out</th><th>EV</th><th>Multiple</th></tr></thead>
                   <tbody>
-                    <tr class="eo-floor"><td>≤665</td><td>0</td><td>3.659</td><td>3,9x</td></tr>
-                    <tr><td>765</td><td>550</td><td>4.209</td><td>5,5x</td></tr>
-                    <tr><td>865</td><td>1.100</td><td>4.759</td><td>5,5x</td></tr>
-                    <tr class="eo-bp"><td>940 (BP)</td><td>1.513</td><td>5.172</td><td>5,5x</td></tr>
-                    <tr class="eo-max"><td>1.135 (MAX)</td><td>2.585</td><td>6.244</td><td>5,5x</td></tr>
+                    <tr class="eo-floor"><td>≤665</td><td>0</td><td>3,659</td><td>3.9x</td></tr>
+                    <tr><td>765</td><td>550</td><td>4,209</td><td>5.5x</td></tr>
+                    <tr><td>865</td><td>1,100</td><td>4,759</td><td>5.5x</td></tr>
+                    <tr class="eo-bp"><td>940 (BP)</td><td>1,513</td><td>5,172</td><td>5.5x</td></tr>
+                    <tr class="eo-max"><td>1,135 (MAX)</td><td>2,585</td><td>6,244</td><td>5.5x</td></tr>
                   </tbody>
                 </table>
-                <div class="eo-note">Linear: (EBITDA − 665) × 5,5x. Forward multiple constant at 5,5x. Net Debt: -1.291 K€. 2025A: 934 K€.</div>
+                <div class="eo-note">Linear: (EBITDA − 665) × 5.5x. Forward multiple constant at 5.5x; floor-row multiple on 2025A EBITDA (934 K€). Net Debt: -1,291 K€. Equity value bridges from Total EV incl. Super-EO.</div>
               </div>
             </div>
           </div>
         </div>
 
+      
+        
       </div><!-- /vgroup valuation -->
-
-      <div class="vgroup" data-vg="dd">
-        <div class="sub-heading">Open due-diligence flags</div>
-
-        <div class="ddi-deal" id="ddi-fox">
-          <div class="dd-deal">
-            <table class="dd-table">
-              <thead><tr><th>Risk</th><th>Description</th><th>Mitigation</th><th>Degree</th></tr></thead>
-              <tbody>
-                <tr><td>Co-Med structure (CoC)</td><td>Change of control requires 75% consent from co-shareholders; partners can exit if investor structure doesn't fit owner-managed criteria</td><td>Legal review of purchasing cooperative statutes; consent pathway to be mapped</td><td><span class="degree degree--yellow">WIP</span></td></tr>
-                <tr><td>Leadership / succession</td><td>Key employees are 66 and 63 years old; succession undocumented; authorized signatories (Prokuristen) as possible successors unconfirmed</td><td>Transition plan + successor interviews in DD scope</td><td><span class="degree degree--yellow">WIP</span></td></tr>
-                <tr><td>Family concentration</td><td>3 of 8 employees are family members (wife, son, founder = 38% of headcount)</td><td>Organisational review; assess operational dependency on family members</td><td><span class="degree degree--yellow">WIP</span></td></tr>
-                <tr><td>Gross margin decline</td><td>Distribution gross margin fell from 75% to 32% (2023-2025); likely distorted by ~120 K€ Olympus revenue rebooking</td><td>FDD deep-dive on margin bridge; Olympus rebooking verification</td><td><span class="degree degree--yellow">WIP</span></td></tr>
-                <tr><td>Customer concentration</td><td>Top-20 = 70% of revenue; two new distributors jumped from zero to 400 K€ / 250 K€ in 2025 — unexplained</td><td>Customer data RFI; new-account origin interviews</td><td><span class="degree degree--yellow">WIP</span></td></tr>
-                <tr><td>Practice planner key person</td><td>Architect / practice planner (~200 K€ salary) critical for ~1/3 of revenue (practice planning segment)</td><td>Retention agreement; assess replaceability in DD</td><td><span class="degree degree--yellow">WIP</span></td></tr>
-              </tbody>
-            </table>
-            <p class="eo-note">Source: DD kick-off (30 Jun 2026). Data room populates 03 Jul; FDD scheduled 17 Jul. All items WIP — answers not yet verified.</p>
-          </div>
-        </div>
-
-        <div class="ddi-deal" id="ddi-mantis">
-          <div class="dd-deal">
-            <table class="dd-table">
-              <thead><tr><th>Risk</th><th>Description</th><th>Mitigation</th><th>Degree</th></tr></thead>
-              <tbody>
-                <tr><td>Leadership succession</td><td>Son (29) taking over; acceptance issues with older employees (40+); office manager supplements but doesn't cover technical operations</td><td>Management interviews; transition plan in SPA</td><td><span class="degree degree--yellow">WIP</span></td></tr>
-                <tr><td>Olympus authorization</td><td>Requires regular audits, training and authorizations with defined scope limits; lengthy process</td><td>Document current authorization status; assess alternative scaling paths</td><td><span class="degree degree--yellow">WIP</span></td></tr>
-                <tr><td>Swiss expansion</td><td>Cooperation agreement not yet signed; no Swiss entity established</td><td>Legal review of cooperation terms; entity setup timeline</td><td><span class="degree degree--yellow">WIP</span></td></tr>
-                <tr><td>2025 financials</td><td>Final audited version still outstanding</td><td>Requested from seller; Ebner Stolz FDD scope includes verification</td><td><span class="degree degree--yellow">WIP</span></td></tr>
-              </tbody>
-            </table>
-            <p class="eo-note">Source: DD kick-off (03 Jun 2026). Ebner Stolz engaged for FDD/LDD/TDD. Fox notary 21 Aug; Mantis notary 28 Aug. All items WIP — answers not yet verified.</p>
-          </div>
-        </div>
-
-        <div class="ddi-deal" id="ddi-mouse">
-          <div class="dd-deal">
-            <div class="cdd2-empty"><span class="ic">—</span><div><b>No DD flags yet.</b> Mouse is pre-LOI — due-diligence items will be populated once an exclusive LOI is signed and confirmatory DD opens.</div></div>
-          </div>
-        </div>
-
-        <div class="ddi-deal" id="ddi-cat">
-          <div class="dd-deal">
-            <div class="cdd2-empty"><span class="ic">—</span><div><b>No DD flags yet.</b> Cat is in negotiation stage — due-diligence items will be populated once the LOI is signed and DD opens.</div></div>
-          </div>
-        </div>
-
-      </div><!-- /vgroup dd -->
 
     </div>
   </section>
@@ -1394,7 +1435,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
       <div class="sub-heading">Outbound sourcing funnel</div>
 
       <!-- Sourcing funnel — left to right descending columns; verified from Briefaktion 2 tracker -->
-      <div class="funnel" role="img" aria-label="Sourcing funnel: 408 approached, 116 replied (28,4% of approached), 31 meetings (26,7% of replies), 14 tracked deals (45,2% of meetings)">
+      <div class="funnel" role="img" aria-label="Sourcing funnel: 408 approached, 116 replied, 53 meetings, 10 NBO sent, 2 LOI signed">
         <div class="fn-col">
           <div class="fn-bartrack"><div class="fn-v">408</div><div class="fn-bar" style="--h:130px"></div></div>
           <div class="fn-l">Approached</div>
@@ -1403,27 +1444,39 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
         <div class="fn-col">
           <div class="fn-bartrack"><div class="fn-v">116</div><div class="fn-bar" style="--h:37px"></div></div>
           <div class="fn-l">Replied</div>
-          <div class="fn-sub"><b>28,4%</b> of approached</div>
+          <div class="fn-sub"><b>28.4%</b> of approached</div>
         </div>
         <div class="fn-col">
-          <div class="fn-bartrack"><div class="fn-v">31</div><div class="fn-bar" style="--h:10px"></div></div>
+          <div class="fn-bartrack"><div class="fn-v">53</div><div class="fn-bar" style="--h:17px"></div></div>
           <div class="fn-l">Meetings</div>
-          <div class="fn-sub"><b>26,7%</b> of replies</div>
+          <div class="fn-sub"><b>45.7%</b> of replies</div>
         </div>
         <div class="fn-col">
-          <div class="fn-bartrack"><div class="fn-v">14</div><div class="fn-bar" style="--h:4px"></div></div>
-          <div class="fn-l">Tracked deals</div>
-          <div class="fn-sub"><b>45,2%</b> of meetings</div>
+          <div class="fn-bartrack"><div class="fn-v">10</div><div class="fn-bar fn-bar--stage" style="--h:4px"></div></div>
+          <div class="fn-l">NBO Sent</div>
+          <div class="fn-sub"><b>18.9%</b> of meetings</div>
+        </div>
+        <div class="fn-col">
+          <div class="fn-bartrack"><div class="fn-v">2</div><div class="fn-bar fn-bar--stage" style="--h:4px"></div></div>
+          <div class="fn-l">LOI Signed</div>
+          <div class="fn-sub"><b>20.0%</b> of NBO</div>
         </div>
       </div>
-      <p class="note"><span class="src-chip src-ba"></span><b>Briefaktion</b> (outbound, BA1–8) &nbsp;·&nbsp; <span class="src-chip src-bk"></span>Broker approaches</p>
+      <p class="note"><span class="src-chip src-ba"></span><b>Briefaktion</b> (outbound, BA1–9) &nbsp;·&nbsp; <span class="src-chip src-bk"></span>Broker approaches</p>
 
       <hr class="hairline">
 
       <div class="sub-heading">Live Deal Portfolio</div>
+      <div class="stage-filter">
+        <label>Stage</label>
+        <button class="filter-btn active" data-filter="active">Active</button>
+        <button class="filter-btn" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="on_hold">On Hold</button>
+        <button class="filter-btn" data-filter="dead">Dead</button>
+      </div>
       <div class="portfolio-wrap">
       <!-- ===== VERBATIM Dealroom "Live Deal Portfolio" table (UNTOUCHED) ===== -->
-      <table class="portfolio-table"><colgroup><col class="c-code"><col class="c-rev"><col class="c-ebitda"><col class="c-pct"><col class="c-emp"><col class="c-desc"><col class="c-ev"><col class="c-mul"><col class="c-stage"><col class="c-comment"></colgroup><thead><tr><th class="c">Deal</th><th class="c">Rev.</th><th class="c">EBITDA</th><th class="c">EBITDA<br>margin</th><th class="c"># empl.</th><th style="text-align:left">Description</th><th class="c">EV<sup>1</sup></th><th class="c">Multiple<sup>2</sup></th><th class="c">Stage</th><th style="text-align:left">Comment</th></tr></thead><tbody><tr data-stage="loi_signed"><td class="code-cell">Fox</td><td style="text-align:right;font-weight:700">3.5</td><td style="text-align:right;font-weight:700">0.4</td><td style="text-align:center">10%</td><td style="text-align:center">20</td><td class="text-cell"><div class="clamp3">Distribution &amp; service of medical products and practice planning (including IT)</div></td><td style="text-align:right;font-weight:700">1.8</td><td style="text-align:right;font-weight:700">4.9x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="loi_signed" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#8b5cf6"></span>LOI Signed</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Confirmatory DD scheduled; notary 21 Aug</li></ul></div></td></tr><tr data-stage="loi_signed"><td class="code-cell">Mantis</td><td style="text-align:right;font-weight:700">3.2</td><td style="text-align:right;font-weight:700">0.8</td><td style="text-align:center">25%</td><td style="text-align:center">9</td><td class="text-cell"><div class="clamp3">Repair &amp; distribution of flexible endoscopes (third-party service for practices and hospitals)</div></td><td style="text-align:right;font-weight:700">4.8</td><td style="text-align:right;font-weight:700">5.9x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="loi_signed" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#8b5cf6"></span>LOI Signed</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Confirmatory DD scheduled; notary 28 Aug</li></ul></div></td></tr><tr data-stage="indicative_offer"><td class="code-cell">Cat</td><td style="text-align:right;font-weight:700">6.2</td><td style="text-align:right;font-weight:700">0.9</td><td style="text-align:center">15%</td><td style="text-align:center">35</td><td class="text-cell"><div class="clamp3">Distribution &amp; service of medical equipment (focus on hospitals and surgery)</div></td><td style="text-align:right;font-weight:700">5.2</td><td style="text-align:right;font-weight:700">5.5x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="indicative_offer" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#6366f1"></span>NBO Sent</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>LOI verbally agreed; signing target before seller holiday (04 Jul)</li></ul></div></td></tr><tr data-stage="indicative_offer"><td class="code-cell">Mouse</td><td style="text-align:right;font-weight:700">3.9</td><td style="text-align:right;font-weight:700">0.6</td><td style="text-align:center">16%</td><td style="text-align:center">20</td><td class="text-cell"><div class="clamp3">Lab-equipment distribution, technical service &amp; instrument manufacturing</div></td><td style="text-align:right;font-weight:700">2.6</td><td style="text-align:right;font-weight:700">4.1x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="indicative_offer" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#6366f1"></span>NBO Sent</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>NBO aligned; exclusive LOI next</li></ul></div></td></tr></tbody><tfoot><tr><td style="text-align:center">SUM</td><td style="text-align:center" id="sum-rev">—</td><td style="text-align:center" id="sum-ebitda">—</td><td style="text-align:center">—</td><td style="text-align:center" id="sum-emp">—</td><td></td><td style="text-align:center">—</td><td style="text-align:center">—</td><td></td><td></td></tr></tfoot></table>
+      <table class="portfolio-table"><colgroup><col class="c-code"><col class="c-rev"><col class="c-ebitda"><col class="c-pct"><col class="c-emp"><col class="c-desc"><col class="c-ev"><col class="c-mul"><col class="c-stage"><col class="c-comment"></colgroup><thead><tr><th class="c">Deal</th><th class="c">Rev.</th><th class="c">EBITDA</th><th class="c">EBITDA<br>margin</th><th class="c"># empl.</th><th style="text-align:left">Description</th><th class="c">EV<sup>1</sup></th><th class="c">Multiple<sup>2</sup></th><th class="c">Stage</th><th style="text-align:left">Comment</th></tr></thead><tbody><tr data-stage="loi_signed"><td class="code-cell">Fox</td><td style="text-align:right;font-weight:700">3.5</td><td style="text-align:right;font-weight:700">0.4</td><td style="text-align:center">10%</td><td style="text-align:center">20</td><td class="text-cell"><div class="clamp3">Distribution &amp; service of medical products and practice planning (including IT)</div></td><td style="text-align:right;font-weight:700">1.8</td><td style="text-align:right;font-weight:700">4.9x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="loi_signed" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#8b5cf6"></span>LOI Signed</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Confirmatory DD scheduled; notary 21 Aug</li></ul></div></td></tr><tr data-stage="loi_signed"><td class="code-cell">Mantis</td><td style="text-align:right;font-weight:700">3.2</td><td style="text-align:right;font-weight:700">0.8</td><td style="text-align:center">25%</td><td style="text-align:center">9</td><td class="text-cell"><div class="clamp3">Repair &amp; distribution of flexible endoscopes (third-party service for practices and hospitals)</div></td><td style="text-align:right;font-weight:700">4.8</td><td style="text-align:right;font-weight:700">5.9x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="loi_signed" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#8b5cf6"></span>LOI Signed</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Confirmatory DD scheduled; notary 28 Aug</li></ul></div></td></tr><tr data-stage="indicative_offer"><td class="code-cell">Cat</td><td style="text-align:right;font-weight:700">6.2</td><td style="text-align:right;font-weight:700">0.9</td><td style="text-align:center">15%</td><td style="text-align:center">35</td><td class="text-cell"><div class="clamp3">Distribution &amp; service of medical equipment (focus on hospitals and surgery)</div></td><td style="text-align:right;font-weight:700">5.2</td><td style="text-align:right;font-weight:700">5.5x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="indicative_offer" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#6366f1"></span>NBO Sent</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>LOI verbally agreed; to be sent before seller holiday (04 Jul) - signing most likely after holidays</li></ul></div></td></tr><tr data-stage="indicative_offer"><td class="code-cell">Lion</td><td style="text-align:right;font-weight:700">7.8</td><td style="text-align:right;font-weight:700">0.7</td><td style="text-align:center">9%</td><td style="text-align:center">27</td><td class="text-cell"><div class="clamp3">Distribution of medical products (equipment parts)</div></td><td style="text-align:right;font-weight:700">4.8</td><td style="text-align:right;font-weight:700">5.9x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="indicative_offer" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#6366f1"></span>NBO Sent</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Live discussions; 2026 EBITDA adjustments under review</li></ul></div></td></tr><tr data-stage="indicative_offer"><td class="code-cell">Mouse</td><td style="text-align:right;font-weight:700">3.9</td><td style="text-align:right;font-weight:700">0.6</td><td style="text-align:center">16%</td><td style="text-align:center">20</td><td class="text-cell"><div class="clamp3">Lab-equipment distribution, technical service &amp; instrument manufacturing</div></td><td style="text-align:right;font-weight:700">2.6</td><td style="text-align:right;font-weight:700">4.1x</td><td class="stage-cell" style="text-align:center"><span class="stage-dropdown-trigger" data-stage="indicative_offer" style="display:inline-flex;align-items:center;gap:5px;color:#334155;background:none"><span class="stage-dot" style="background:#6366f1"></span>NBO Sent</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>NBO aligned; exclusive LOI next</li><li>Geographically close to Fox and Holding (Berlin)</li></ul></div></td></tr><tr data-stage="on_hold"><td class="code-cell">Wolf</td><td class="num-b">8.0</td><td class="num-b">0.8</td><td class="ctr">10%</td><td class="ctr">18</td><td class="text-cell"><div class="clamp3">Distribution &amp; service of medical products (SSB focus)</div></td><td class="num-b">5.2</td><td class="num-b">5.1x</td><td class="stage-cell ctr"><span class="stage-dropdown-trigger" data-stage="on_hold"><span class="stage-dot stage-dot--on_hold"></span>On Hold</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Offer discussions on hold</li></ul></div></td></tr><tr data-stage="on_hold"><td class="code-cell">Eagle</td><td class="num-b">1.4</td><td class="num-b">0.2</td><td class="ctr">16%</td><td class="ctr">7</td><td class="text-cell"><div class="clamp3">Development &amp; sourcing surgery equipment and QM-consultation</div></td><td class="num-b">—</td><td class="num-b">—</td><td class="stage-cell ctr"><span class="stage-dropdown-trigger" data-stage="on_hold"><span class="stage-dot stage-dot--on_hold"></span>On Hold</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Broker process; on hold after financials review</li></ul></div></td></tr><tr data-stage="on_hold"><td class="code-cell">Falcon</td><td class="num-b">1.2</td><td class="num-b">0.2</td><td class="ctr">12%</td><td class="ctr">4</td><td class="text-cell"><div class="clamp3">Distribution of medical products</div></td><td class="num-b">—</td><td class="num-b">—</td><td class="stage-cell ctr"><span class="stage-dropdown-trigger" data-stage="on_hold"><span class="stage-dot stage-dot--on_hold"></span>On Hold</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Paused pre-offer</li></ul></div></td></tr><tr data-stage="on_hold"><td class="code-cell">Owl</td><td class="num-b">1.8</td><td class="num-b">0.2</td><td class="ctr">11%</td><td class="ctr">12</td><td class="text-cell"><div class="clamp3">Distribution &amp; service of medical products (focus: radiology and ambulatory surgery)</div></td><td class="num-b">—</td><td class="num-b">—</td><td class="stage-cell ctr"><span class="stage-dropdown-trigger" data-stage="on_hold"><span class="stage-dot stage-dot--on_hold"></span>On Hold</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Paused after financials review</li></ul></div></td></tr><tr data-stage="dead"><td class="code-cell">Octopus</td><td class="num-b">11.0</td><td class="num-b">2.0</td><td class="ctr">18%</td><td class="ctr">36</td><td class="text-cell"><div class="clamp3">Distribution &amp; service of medical products (SSB focus)</div></td><td class="num-b">12.4</td><td class="num-b">5.6x</td><td class="stage-cell ctr"><span class="stage-dropdown-trigger" data-stage="dead"><span class="stage-dot stage-dot--dead"></span>Dead</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Offer declined by seller (Mar 2026); door left open</li></ul></div></td></tr><tr data-stage="dead"><td class="code-cell">Swordfish</td><td class="num-b">1.6</td><td class="num-b">0.7</td><td class="ctr">53%</td><td class="ctr">4</td><td class="text-cell"><div class="clamp3">(Soft) OEM of small medical devices (focus on assembly with lean operations)</div></td><td class="num-b">—</td><td class="num-b">—</td><td class="stage-cell ctr"><span class="stage-dropdown-trigger" data-stage="dead"><span class="stage-dot stage-dot--dead"></span>Dead</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>EBITDA adj. 3-yr avg; indicative offer submitted (May 2026); not pursued</li></ul></div></td></tr><tr data-stage="dead"><td class="code-cell">Colibri</td><td class="num-b">4.1</td><td class="num-b">0.4</td><td class="ctr">9%</td><td class="ctr">22</td><td class="text-cell"><div class="clamp3">Distribution of medical products (aesthetics)</div></td><td class="num-b">—</td><td class="num-b">—</td><td class="stage-cell ctr"><span class="stage-dropdown-trigger" data-stage="dead"><span class="stage-dot stage-dot--dead"></span>Dead</span></td><td class="text-cell"><div class="comment-cell-wrap"><ul class="comment-bullets"><li>Not pursued</li></ul></div></td></tr></tbody><tfoot><tr><td class="ctr">SUM</td><td class="num-b" id="sum-rev">—</td><td class="num-b" id="sum-ebitda">—</td><td class="ctr">—</td><td class="ctr" id="sum-emp">—</td><td></td><td class="num-b">—</td><td class="num-b">—</td><td></td><td></td></tr></tfoot></table>
       </div>
       <p class="note"><sup>1</sup> EV incl. anticipated earn-out &nbsp;·&nbsp; <sup>2</sup> Multiple on 2025A adj. EBITDA</p>
     </div>
@@ -1433,7 +1486,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
   <section class="act" id="act4">
     <div class="section-band section-band--accent">
       <span class="band-no">04</span>
-      <span class="band-title">Timeline</span>
+      <span class="band-title">Preliminary Timeline</span>
     </div>
     <div class="slide-body">
       <div class="sub-heading">Closing milestones</div>
@@ -1562,6 +1615,26 @@ document.querySelectorAll('.view-tab').forEach(function(tab){
 });
 
 
+// ---- ACT 3 — stage filter pills (verbatim table) ----
+var ACTIVE_STAGES=['loi_signed','indicative_offer','valuation_rfi','meeting_concluded','due_diligence','contract_negotiation','closed'];
+function applyStageFilter(f){
+  document.querySelectorAll('.portfolio-table tbody tr').forEach(function(tr){
+    var st=tr.getAttribute('data-stage');
+    var show;
+    if(f==='all') show=true;
+    else if(f==='active') show=ACTIVE_STAGES.indexOf(st)!==-1;
+    else show=(st===f);
+    tr.style.display=show?'':'none';
+  });
+  recomputeSum();
+}
+document.querySelectorAll('.stage-filter .filter-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.stage-filter .filter-btn').forEach(function(b){b.classList.toggle('active',b===btn);});
+    applyStageFilter(this.getAttribute('data-filter'));
+  });
+});
+
 function parseDE(s){return parseFloat(String(s).replace(',','.'));}
 function fmtDE(n){return n.toFixed(1);}
 function recomputeSum(){
@@ -1577,7 +1650,7 @@ function recomputeSum(){
   var se=document.getElementById('sum-ebitda'); if(se) se.textContent=fmtDE(eb);
   var sm=document.getElementById('sum-emp'); if(sm) sm.textContent=emp;
 }
-recomputeSum();
+applyStageFilter('active');
 
 applyDeal('overview');
 
@@ -1589,7 +1662,7 @@ document.querySelectorAll('.dec-link').forEach(function(a){
     var deal,view;
     if(id.indexOf('cdd-')===0){deal=id.replace('cdd-','');view='scorecard';}
     else if(id.indexOf('su-')===0){deal=id.replace('su-','');view='su';}
-    else if(id==='dd-costs'){deal='fox';view='su';}
+    else if(id==='dd-costs'){deal='overview';view='su';}
     if(deal){
       var dt=document.querySelector('.deal-tab[data-deal="'+deal+'"]');
       if(dt){dt.click();}
@@ -1599,6 +1672,59 @@ document.querySelectorAll('.dec-link').forEach(function(a){
     }
   });
 });
+
+// ---- inline edit (admin-only, persisted to investor.db) ----
+(function(){
+  var toast=document.createElement('div');
+  toast.className='edit-toast';
+  document.body.appendChild(toast);
+  var toastTimer;
+
+  function showToast(msg,isErr){
+    toast.textContent=msg;
+    toast.classList.toggle('err',!!isErr);
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){toast.classList.remove('show');},isErr?3000:1500);
+  }
+
+  fetch('api/whoami').then(function(r){return r.json();}).then(function(who){
+    var isAdmin=who.role==='admin';
+    return fetch('api/inline-edits').then(function(r){return r.json();}).then(function(d){
+      var edits=d.edits||{};
+      var els=document.querySelectorAll('[data-edit-id]');
+      els.forEach(function(el){
+        var eid=el.getAttribute('data-edit-id');
+        if(edits[eid]!==undefined){el.innerHTML=edits[eid];el.classList.add('edit-dirty');}
+      });
+      if(!isAdmin) return;
+      var badge=document.createElement('span');
+      badge.className='edit-badge';
+      badge.textContent='EDIT MODE';
+      var hdr=document.querySelector('.meta b');
+      if(hdr) hdr.parentNode.insertBefore(badge,hdr.nextSibling);
+      els.forEach(function(el){
+        el.setAttribute('contenteditable','true');
+        el.classList.add('editable');
+        var orig=el.innerHTML;
+        el.addEventListener('focus',function(){orig=el.innerHTML;});
+        el.addEventListener('blur',function(){
+          var now=el.innerHTML;
+          if(now===orig) return;
+          var eid=el.getAttribute('data-edit-id');
+          fetch('api/inline-edit',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({edit_id:eid,content:now})
+          }).then(function(r){
+            if(r.ok){showToast('Saved');el.classList.add('edit-dirty');}
+            else{showToast('Save failed',true);}
+          }).catch(function(){showToast('Network error',true);});
+        });
+      });
+    });
+  }).catch(function(e){/* no auth = static view, nothing to do */});
+})();
 
 </script>
 </body>

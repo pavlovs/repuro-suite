@@ -24,22 +24,58 @@
 	basic_auth @needsAuth {
 		roman {$AUTH_ROMAN_HASH}
 		florian {$AUTH_FLORIAN_HASH}
-		# investor {$AUTH_INVESTOR_HASH}  # add when Strada access is provisioned (defer)
+		investor {$AUTH_INVESTOR_HASH}
 	}
-
-	# Investor isolation: a logged-in `investor` user is confined to /investor — 403 elsewhere.
-	# Inert until the investor basic_auth line above is enabled; load-bearing once Strada is provisioned.
-	@investor_outside {
-		expression {http.auth.user.id} == "investor"
-		not path /investor /investor/*
-	}
-	respond @investor_outside 403
 
 	header {
 		X-Frame-Options DENY
 		X-Content-Type-Options nosniff
 		Referrer-Policy no-referrer
 		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+	}
+
+	# Trailing-slash redirects — top-level redir runs before handle blocks,
+	# so the catch-all landing page handler cannot swallow these paths.
+	redir /allex /allex/ permanent
+	redir /deals /deals/ permanent
+	redir /cockpit /cockpit/ permanent
+	redir /investor /investor/ permanent
+
+	# Investor isolation: investor user is confined to /investor — 403 elsewhere.
+	# Must be a handle block (not respond) and placed BEFORE other handle/handle_path
+	# blocks because Caddy evaluates handle blocks in order — first match wins.
+	@investor_outside {
+		expression {http.auth.user.id} == "investor"
+		not path /investor /investor/*
+	}
+	handle @investor_outside {
+		header Content-Type "text/html"
+		respond `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Repuro Suite</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+background:#f0f2f5;color:#111827;display:flex;align-items:center;justify-content:center;
+min-height:100vh;-webkit-font-smoothing:antialiased}
+.card{background:#fff;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);
+padding:48px 56px;text-align:center;max-width:420px}
+.mark{width:48px;height:48px;border-radius:12px;background:#0891B2;display:inline-flex;
+align-items:center;justify-content:center;margin-bottom:24px}
+.mark svg{width:28px;height:28px}
+h1{font-size:20px;font-weight:700;margin-bottom:8px}
+p{font-size:14px;color:#4b5563;line-height:1.55;margin-bottom:24px}
+a{display:inline-block;font-size:13px;font-weight:600;color:#0891B2;
+text-decoration:none;padding:8px 20px;border:1.5px solid #0891B2;border-radius:8px;
+transition:background .15s,color .15s}
+a:hover{background:#0891B2;color:#fff}
+</style></head><body>
+<div class="card">
+<div class="mark"><svg viewBox="0 0 32 32" fill="none"><rect x="7" y="17.5" width="7.5" height="7.5" rx="2" fill="white"/><rect x="12.25" y="12.25" width="7.5" height="7.5" rx="2" fill="white" opacity=".78"/><rect x="17.5" y="7" width="7.5" height="7.5" rx="2" fill="white"/></svg></div>
+<h1>Investor Access Only</h1>
+<p>Your account has access to the Investor Room. The internal suite requires a team login.</p>
+<a href="/investor/">Go to Investor Room</a>
+</div></body></html>` 403
 	}
 
 	handle /api/whoami {
@@ -56,6 +92,26 @@
 		respond 204
 	}
 
+	handle_path /allex/* {
+		reverse_proxy localhost:8081
+	}
+
+	handle_path /deals/* {
+		reverse_proxy localhost:8082
+	}
+
+	handle_path /cockpit/* {
+		reverse_proxy localhost:8083 {
+			header_up X-Remote-User {http.auth.user.id}
+		}
+	}
+
+	handle_path /investor/* {
+		reverse_proxy localhost:8084 {
+			header_up X-Remote-User {http.auth.user.id}
+		}
+	}
+
 	handle /shared.css {
 		header Cache-Control "no-cache, must-revalidate"
 		root * /app/suite/static
@@ -66,42 +122,5 @@
 		header Cache-Control "no-cache, must-revalidate"
 		root * /app/suite/static
 		file_server
-	}
-
-	handle /allex {
-		redir /allex/ permanent
-	}
-	handle /deals {
-		redir /deals/ permanent
-	}
-	handle /cockpit {
-		redir /cockpit/ permanent
-	}
-	handle /investor {
-		redir /investor/ permanent
-	}
-
-	handle_path /allex/* {
-		header Cache-Control "no-cache, no-store, must-revalidate"
-		reverse_proxy localhost:8081
-	}
-
-	handle_path /deals/* {
-		header Cache-Control "no-cache, no-store, must-revalidate"
-		reverse_proxy localhost:8082
-	}
-
-	handle_path /cockpit/* {
-		header Cache-Control "no-cache, no-store, must-revalidate"
-		reverse_proxy localhost:8083 {
-			header_up X-Remote-User {http.auth.user.id}
-		}
-	}
-
-	handle_path /investor/* {
-		header Cache-Control "no-cache, no-store, must-revalidate"
-		reverse_proxy localhost:8084 {
-			header_up X-Remote-User {http.auth.user.id}
-		}
 	}
 }

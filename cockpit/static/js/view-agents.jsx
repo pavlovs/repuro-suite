@@ -215,14 +215,69 @@ function AgentQueueCard(props) {
       <div className="ag-card-top">
         <span className={"ag-state-badge " + st.cls}><Icon name={st.icon} size={11} /> {st.label}</span>
         {qpos && <span className="ag-queue-pos">#{qpos}</span>}
+        {t.reviewRound > 0 && <span className="ag-round-chip">Round {t.reviewRound + 1}</span>}
         {t.lane && <span className={"ag-lane-chip ag-lane-" + t.lane}>{t.lane}</span>}
         {ws && <span className="ag-card-ws">{ws.name}</span>}
       </div>
       <div className="ag-card-title tc-click" onClick={function() { openTask(t.id); }}>{t.text}</div>
       {t.ac && <div className="ag-card-ac"><b>Done when:</b> {t.ac}</div>}
+      {/* a send-back rides with the human's instruction — show it on the card */}
+      {t.reviewRound > 0 && t.reviewFeedback &&
+        <div className="ag-card-feedback"><b>Your feedback:</b> {t.reviewFeedback}</div>}
       {t.status === "in_progress" && t.claimed_by && <div className="ag-card-meta">Claimed by {t.claimed_by}</div>}
       {t.status === "open" && r === "red" && t.need && <div className="ag-card-blocked">Blocked: {t.need}</div>}
       {t.status === "open" && r === "green" && <div className="ag-card-ready">Ready to pick up</div>}
+    </div>
+  );
+}
+
+/* AgentBlockedCard — "Waiting on you": the agent parked this task on a question.
+   Inline answer -> task re-opens -> next runner pass picks it up (SPEC §7c). */
+function AgentBlockedCard(props) {
+  var t = props.t, ws = props.ws, openTask = props.openTask;
+  var ansState = React.useState("");
+  var ansVal = ansState[0], setAns = ansState[1];
+  var busyState = React.useState(false);
+  var busyVal = busyState[0], setBusy = busyState[1];
+
+  var submit = function() {
+    if (!ansVal.trim()) { showToast("Type an answer first", "err"); return; }
+    if (busyVal) return;
+    setBusy(true);
+    api.answerBlocker(t, ansVal.trim()).then(function(ok) {
+      setBusy(false);
+      if (ok) { setAns(""); showToast("Answered — back in the queue for the next run", "info"); }
+    });
+  };
+
+  return (
+    <div className="ag-card ag-waiting-card">
+      <div className="ag-card-top">
+        <span className="ag-state-badge ag-waiting-badge"><Icon name="bolt" size={11} /> Waiting on you</span>
+        {t.reviewRound > 0 && <span className="ag-round-chip">Round {t.reviewRound + 1}</span>}
+        {t.lane && <span className={"ag-lane-chip ag-lane-" + t.lane}>{t.lane}</span>}
+        {ws && <span className="ag-card-ws">{ws.name}</span>}
+      </div>
+      <div className="ag-card-title tc-click" onClick={function() { openTask(t.id); }}>{t.text}</div>
+      {t.inputQuestion
+        ? (
+          <React.Fragment>
+            <div className="ag-waiting-q">{t.inputQuestion}</div>
+            <div className="ag-waiting-answer">
+              <input
+                className="ag-waiting-input"
+                placeholder="Your answer — the agent continues with this…"
+                value={ansVal}
+                onChange={function(e) { setAns(e.target.value); }}
+                onKeyDown={function(e) { if (e.key === "Enter") submit(); }}
+              />
+              <button className="btn approve" disabled={busyVal} onClick={submit}>
+                <Icon name="check" size={13} /> {busyVal ? "Sending…" : "Answer & requeue"}
+              </button>
+            </div>
+          </React.Fragment>
+        )
+        : <div className="ag-card-blocked">Blocked without a question — open the task to resolve.</div>}
     </div>
   );
 }
@@ -251,7 +306,10 @@ function AgentsView({ openTask, person }) {
 
   var review = agents.filter(function(t) { return t.status === "in_review"; });
   var running = agents.filter(function(t) { return t.status === "in_progress" && t.claimed_by; });
-  var queued = agents.filter(function(t) { return t.status === "open"; });
+  /* statusRaw: boot.js maps blocked->open for the general views; here blocked
+     tasks get their own "Waiting on you" section instead of hiding in Queue */
+  var waiting = agents.filter(function(t) { return t.statusRaw === "blocked"; });
+  var queued = agents.filter(function(t) { return t.status === "open" && t.statusRaw !== "blocked"; });
 
   var parseId = function(id) { return parseInt((id || "").replace("t-", ""), 10) || 0; };
   var queuedSorted = queued.slice().sort(function(a, b) {
@@ -297,6 +355,21 @@ function AgentsView({ openTask, person }) {
           : <div className="ag-sec-empty">Nothing waiting on you. Finished agent tasks land here for approval.</div>}
       </section>
 
+      {/* ---- Waiting on you (agent questions) ---- */}
+      {waiting.length > 0 && (
+        <section className="ag-sec">
+          <h2 className="ag-sec-h">
+            Waiting on you
+            <span className="ag-sec-count ag-count-attn">{waiting.length}</span>
+          </h2>
+          <div className="ag-cards">
+            {waiting.map(function(t) {
+              return <AgentBlockedCard key={t.id} t={t} ws={wsFor(t)} openTask={openTask} />;
+            })}
+          </div>
+        </section>
+      )}
+
       {/* ---- Running ---- */}
       {running.length > 0 && (
         <section className="ag-sec">
@@ -318,7 +391,7 @@ function AgentsView({ openTask, person }) {
                 return <AgentQueueCard key={t.id} t={t} ws={wsFor(t)} queuePosition={queuePosition} openTask={openTask} />;
               })}
             </div>
-          : <div className="ag-sec-empty">Queue empty. Add a task with execution <b>Claude (agent)</b>, or run <code>/repuro:queue</code>.</div>}
+          : <div className="ag-sec-empty">Queue empty. Add a task with execution <b>Claude (agent)</b>, or <code>/repuro:add</code> from any Claude session.</div>}
       </section>
 
       {/* ---- Recently completed — collapsible, same .ag-sec pattern ---- */}
@@ -356,8 +429,8 @@ function AgentsView({ openTask, person }) {
           <ol className="ag-faq-body">
             <li><b>What it is.</b> Agent tasks are run by Claude via the <code>/repuro</code> plugin — it executes the task and posts the result above for your verdict. Nothing auto-closes.</li>
             <li><b>Set up once</b> (in Claude Code): <code>/plugin marketplace add pavlovs/repuro-cockpit-skills</code> → <code>/plugin install repuro</code> → <code>/repuro:setup &lt;your-token&gt;</code>. No clone, no scripts — ask Roman for your token; it sets your lane (RC / FC) automatically.</li>
-            <li><b>Run it.</b> <code>/repuro:queue</code> lists your lane; <code>/repuro:run &lt;id | #position | words&gt;</code> claims and runs one task. Add <code>--all</code> to work across both lanes.</li>
-            <li><b>Review.</b> Results appear under <b>Needs your review</b> above — <b>Approve</b> to close, or <b>Send back</b> with feedback to re-queue.</li>
+            <li><b>Run it.</b> <code>/repuro:loop</code> drains your whole queue (also runs on a schedule); <code>/repuro:run &lt;id | #position | words&gt;</code> runs one task; <code>/repuro:add</code> queues a new task from any session. Add <code>--all</code> to work across both lanes.</li>
+            <li><b>Review — everything happens here, not in the terminal.</b> Results land under <b>Needs your review</b>: <b>Approve</b> to close, <b>Request changes</b> to send back with feedback (the next loop pass redoes it), <b>Reject</b> to take it off the agent lane. Agent questions land under <b>Waiting on you</b> — answer inline and the task re-queues itself.</li>
             <li><b>Repo</b> (auto-updates): <a href="https://github.com/pavlovs/repuro-cockpit-skills" target="_blank" rel="noreferrer">github.com/pavlovs/repuro-cockpit-skills</a></li>
           </ol>
         )}

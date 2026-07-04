@@ -240,6 +240,11 @@ def test_agent_reject_reopens(client):
     )
     body = r.json()
     assert body["status"] == "open" and "REJECTED" in body["evidence"]
+    # SPEC §7d: reject pulls the task OFF the agent lane — an unattended loop
+    # must never re-execute a rejected task
+    assert body["execution"] == "me"
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
+    assert q == []
 
 
 def test_expired_lease_reaped(client):
@@ -279,6 +284,176 @@ def test_agent_queue_lane_and_scope(client):  # SPEC §3a — token-derived lane
         client.get("/api/agent/queue?scope=xx", headers=auth(AGENT_TOKEN)).status_code
         == 422
     )
+
+
+# ---- SPEC §7 review->rework loop -------------------------------------------
+def test_queue_carries_review_context_after_request_changes(client):
+    """A sent-back task arrives at the runner WITH feedback + evidence trail."""
+    t = agent_task(client)
+    client.post(f"/api/agent/claim/{t['id']}", headers=auth(AGENT_TOKEN))
+    client.post(
+        f"/api/agent/result/{t['id']}",
+        json={"idempotency_key": "k1", "evidence": "round 1 result"},
+        headers=auth(AGENT_TOKEN),
+    )
+    r = client.post(
+        f"/api/task/{t['id']}/request-changes",
+        json={"feedback": "wrong currency, use EUR"},
+        headers=auth(),
+    )
+    assert r.status_code == 200 and r.json()["review_round"] == 1
+
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
+    assert len(q) == 1
+    task = q[0]
+    assert task["review_round"] == 1
+    assert task["review_feedback"] == "wrong currency, use EUR"
+    assert "round 1 result" in task["evidence"]
+    assert "wrong currency" in task["evidence"]
+    assert task["ready"] is True and task["blocked_by"] == []
+
+
+def test_queue_readiness_and_display_order(client):
+    gate = make_task(client, text="gate")
+    blocked = make_task(
+        client,
+        text="blocked agent job",
+        execution="agent_supervised",
+        acceptance_criteria="ac",
+        prereqs=[{"ref": gate["id"], "hardness": "hard"}],
+    )
+    free = agent_task(client)
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
+    # order = sort_order, id — identical to the Agents view display order
+    assert [x["id"] for x in q] == [blocked["id"], free["id"]]
+    by_id = {x["id"]: x for x in q}
+    assert by_id[blocked["id"]]["ready"] is False
+    assert by_id[blocked["id"]]["blocked_by"] == [gate["id"]]
+    assert by_id[free["id"]]["ready"] is True
+
+    # gate done -> blocked task becomes ready
+    client.patch(
+        f"/api/task/{gate['id']}",
+        json={"version": 1, "status": "done"},
+        headers=auth(),
+    )
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
+    assert {x["id"]: x["ready"] for x in q} == {blocked["id"]: True, free["id"]: True}
+
+
+def test_agent_block_and_human_answer_flow(client):
+    """in_progress -> blocked (agent question) -> answer -> open with context."""
+    t = agent_task(client)
+    client.post(f"/api/agent/claim/{t['id']}", headers=auth(AGENT_TOKEN))
+
+    # question required; must be the claimant
+    assert (
+        client.post(
+            f"/api/agent/block/{t['id']}", json={}, headers=auth(AGENT_TOKEN)
+        ).status_code
+        == 422
+    )
+    r = client.post(
+        f"/api/agent/block/{t['id']}",
+        json={"question": "Which SUSA version — March or April?"},
+        headers=auth(AGENT_TOKEN),
+    )
+    assert r.status_code == 200
+    conn = client.cockpit_conn
+    row = conn.execute(
+        "SELECT status, input_from, input_question, claimed_by FROM tasks WHERE id=1"
+    ).fetchone()
+    assert row["status"] == "blocked" and row["claimed_by"] is None
+    assert row["input_from"] == "RD" and "SUSA" in row["input_question"]
+
+    # blocked task is NOT in the runner queue
+    assert (
+        client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"] == []
+    )
+
+    # agents cannot answer; empty answer rejected; human answer re-opens
+    assert (
+        client.post(
+            f"/api/task/{t['id']}/answer",
+            json={"answer": "x"},
+            headers=auth(AGENT_TOKEN),
+        ).status_code
+        == 403
+    )
+    assert (
+        client.post(
+            f"/api/task/{t['id']}/answer", json={"answer": "  "}, headers=auth()
+        ).status_code
+        == 422
+    )
+    r = client.post(
+        f"/api/task/{t['id']}/answer", json={"answer": "April"}, headers=auth()
+    )
+    body = r.json()
+    assert body["status"] == "open"
+    assert body["input_question"] is None and body["input_from"] is None
+    assert "QUESTION:" in body["evidence"] and "ANSWER (rd): April" in body["evidence"]
+
+    # back in the queue, answer rides along in evidence
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
+    assert [x["id"] for x in q] == [t["id"]]
+    assert "ANSWER (rd): April" in q[0]["evidence"]
+
+    # answer on a non-blocked task -> 409
+    assert (
+        client.post(
+            f"/api/task/{t['id']}/answer", json={"answer": "again"}, headers=auth()
+        ).status_code
+        == 409
+    )
+
+
+def test_agent_block_requires_claim(client):
+    t = agent_task(client)
+    assert (
+        client.post(
+            f"/api/agent/block/{t['id']}",
+            json={"question": "q?"},
+            headers=auth(AGENT_TOKEN),
+        ).status_code
+        == 409
+    )
+
+
+def test_agent_create_task(client):
+    """client `add` — agent enqueues into its human's lane, AC enforced."""
+    # no AC -> 422 (unverifiable tasks are not enqueuable)
+    r = client.post(
+        "/api/agent/task", json={"text": "no ac"}, headers=auth(AGENT_TOKEN)
+    )
+    assert r.status_code == 422
+    # humans use /api/task, not the agent door
+    assert (
+        client.post(
+            "/api/agent/task",
+            json={"text": "x", "acceptance_criteria": "y"},
+            headers=auth(),
+        ).status_code
+        == 403
+    )
+    r = client.post(
+        "/api/agent/task",
+        json={
+            "text": "Update MOUSE onepager",
+            "acceptance_criteria": "onepager reflects 2025 SUSA",
+            "deal": "Mouse",
+            "priority": "high",
+        },
+        headers=auth(AGENT_TOKEN),
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    # created in the REPRESENTED human's lane -> shows as RC, drained by RD's runner
+    assert body["created_by"] == "rd"
+    assert body["execution"] == "agent_supervised" and body["kind"] == "agent_job"
+    assert body["runner"] == "local"
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
+    assert body["id"] in [x["id"] for x in q]
 
 
 # ---- export / import -------------------------------------------------------

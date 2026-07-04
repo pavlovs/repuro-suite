@@ -9,7 +9,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -246,7 +246,10 @@ CREATE TABLE tasks (
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   done_at TEXT,
-  start_date TEXT
+  start_date TEXT,
+  preview_url TEXT,
+  review_feedback TEXT,
+  review_round INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -328,6 +331,13 @@ MIGRATIONS = {
         lambda c: _add_column_if_missing(c, "users", "represents", "TEXT"),
         "UPDATE users SET represents='rd' WHERE id='rc-agent'",
         "UPDATE users SET represents='ff' WHERE id='fc-agent'",
+    ],
+    10: [
+        lambda c: _add_column_if_missing(c, "tasks", "preview_url", "TEXT"),
+        lambda c: _add_column_if_missing(c, "tasks", "review_feedback", "TEXT"),
+        lambda c: _add_column_if_missing(
+            c, "tasks", "review_round", "INTEGER NOT NULL DEFAULT 0"
+        ),
     ],
 }
 

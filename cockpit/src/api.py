@@ -1053,11 +1053,35 @@ def agent_queue(scope: str = Query(default="mine"), p=Depends(agent_only)):
             )
         sql += " AND created_by=?"
         params.append(creator)
-    sql += " ORDER BY priority='high' DESC, deadline"
+    # queue order must equal the Agents-view display order — "next task the
+    # runner picks" is always the top card on screen
+    sql += " ORDER BY sort_order, id"
     rows = conn.execute(sql, params).fetchall()
     owner_of = _owner_tag_map(conn)
-    return {
-        "queue": [
+
+    def _status_of(ref):
+        try:
+            prefix, num = models.parse_ref(ref)
+        except ValueError:
+            return None
+        table = "tasks" if prefix == "t" else "deliverables"
+        hit = conn.execute(f"SELECT status FROM {table} WHERE id=?", (num,)).fetchone()
+        return hit["status"] if hit else None
+
+    def _readiness(r):
+        prereqs = json.loads(r["prereqs"] or "[]")
+        color = compute.readiness(prereqs, _status_of)
+        blocked_by = [
+            p_["ref"]
+            for p_ in prereqs
+            if p_.get("hardness", "hard") == "hard" and _status_of(p_["ref"]) != "done"
+        ]
+        return color != compute.RED, blocked_by
+
+    out = []
+    for r in rows:
+        ready, blocked_by = _readiness(r)
+        out.append(
             {
                 "id": models.task_id(r["id"]),
                 "text": r["text"],
@@ -1070,10 +1094,16 @@ def agent_queue(scope: str = Query(default="mine"), p=Depends(agent_only)):
                 "created_by": r["created_by"],
                 "owner": owner_of.get(r["created_by"]),
                 "version": r["version"],
+                # review-loop context: a sent-back task arrives WITH the human
+                # feedback and the prior evidence trail (SPEC §7b)
+                "review_round": r["review_round"] or 0,
+                "review_feedback": r["review_feedback"],
+                "evidence": r["evidence"],
+                "ready": ready,
+                "blocked_by": blocked_by,
             }
-            for r in rows
-        ]
-    }
+        )
+    return {"queue": out}
 
 
 @app.post("/api/agent/claim/{tid}")
@@ -1098,6 +1128,7 @@ def agent_claim(tid: str, p=Depends(agent_only)):
             (p["id"], expires, num),
         )
         conn.commit()
+    _broadcast(p["id"])  # card moves Queue -> Running live in the open browser
     return {"id": tid, "claimed_by": p["id"], "claim_expires_at": expires}
 
 
@@ -1158,7 +1189,136 @@ def agent_result(tid: str, payload: dict = Body(...), p=Depends(agent_only)):
             (num, key, json.dumps(response), db.now_iso()),
         )
         conn.commit()
+    _broadcast(p["id"])  # card moves Running -> Needs your review live
     return response
+
+
+def _agent_lane(conn, p):
+    """The human a caller-agent represents ('rd'/'ff'). 409 if unlinked."""
+    me = conn.execute("SELECT represents FROM users WHERE id=?", (p["id"],)).fetchone()
+    if not me or not me["represents"]:
+        raise HTTPException(
+            409, f"agent {p['id']!r} has no lane set (represents is empty)"
+        )
+    return me["represents"]
+
+
+@app.post("/api/agent/task", status_code=201)
+def agent_create_task(payload: dict = Body(...), p=Depends(agent_only)):
+    """Enqueue an agent task from any Claude session (client `add`, SPEC §3a-2).
+    The task is created in the caller's lane: created_by = the represented human,
+    so RC-enqueued work shows lane RC and is drained by Roman's runner."""
+    conn = db.get_conn()
+    if not payload.get("text"):
+        raise HTTPException(422, "text is required")
+    lane = _agent_lane(conn, p)
+    fields = {
+        k: payload.get(k)
+        for k in (
+            "text",
+            "detail",
+            "acceptance_criteria",
+            "deadline",
+            "priority",
+            "deal",
+            "runner",
+        )
+        if payload.get(k) is not None
+    }
+    fields["execution"] = payload.get("execution") or "agent_supervised"
+    if fields["execution"] not in models.AGENT_EXECUTIONS:
+        raise HTTPException(422, "execution must be agent_supervised or agent_auto")
+    fields["kind"] = "agent_job"
+    fields.setdefault("runner", "local")
+    if payload.get("deliverable_id"):
+        prefix, dnum = _safe_ref(payload["deliverable_id"])
+        if prefix != "d":
+            raise HTTPException(422, "deliverable_id must be d-<n>")
+        fields["deliverable_id"] = dnum
+    _validate_task_fields(conn, fields)  # enforces AC for agent execution
+    with db.WRITE_LOCK:
+        new_id = _insert_task(conn, lane, fields)
+        db.audit(conn, p["id"], "agent_enqueue", models.task_id(new_id))
+        conn.commit()
+    _broadcast(p["id"])
+    return assemble_task(conn, new_id)
+
+
+@app.post("/api/agent/block/{tid}")
+def agent_block(tid: str, payload: dict = Body(...), p=Depends(agent_only)):
+    """Claimant parks a task on a question for its human (SPEC §7b): status ->
+    blocked, question stored, claim released. The browser shows it under
+    'Waiting on you'; answering re-opens it for the next runner pass."""
+    conn = db.get_conn()
+    num = _tid(tid)
+    question = (payload.get("question") or "").strip()
+    if not question:
+        raise HTTPException(422, "question is required")
+    lane = _agent_lane(conn, p)
+    input_from = payload.get("input_from") or lane.upper()
+    if input_from not in _TASK_ENUMS["input_from"]:
+        raise HTTPException(422, f"invalid input_from: {input_from!r}")
+    _reap_expired_claims(conn)
+    with db.WRITE_LOCK:
+        row = _get_task(conn, num)
+        if row["claimed_by"] != p["id"]:
+            raise HTTPException(409, "not the claimant")
+        if row["status"] != "in_progress":
+            raise HTTPException(409, f"task is {row['status']}, not in_progress")
+        _update_task(
+            conn,
+            p["id"],
+            num,
+            {
+                "status": "blocked",
+                "input_from": input_from,
+                "input_question": question,
+            },
+            action="agent_block",
+        )
+        conn.execute(
+            "UPDATE tasks SET claimed_by=NULL, claim_expires_at=NULL WHERE id=?", (num,)
+        )
+        conn.commit()
+    _broadcast(p["id"])  # card moves Running -> Waiting on you live
+    return {"id": tid, "status": "blocked", "input_from": input_from}
+
+
+@app.post("/api/task/{tid}/answer")
+def answer_blocker(tid: str, payload: dict = Body(...), p=Depends(human_only)):
+    """Human answers a blocked task's question inline (SPEC §7b): the answer is
+    appended to the evidence trail, the question cleared, the task re-opened —
+    the next runner pass picks it up with the answer in context."""
+    conn = db.get_conn()
+    num = _tid(tid)
+    answer = (payload.get("answer") or "").strip()
+    if not answer:
+        raise HTTPException(422, "answer is required")
+    with db.WRITE_LOCK:
+        row = _get_task(conn, num)
+        _guard_personal(row, p["id"])
+        if row["status"] != "blocked" or not row["input_question"]:
+            raise HTTPException(
+                409, f"task is {row['status']} and/or has no open question"
+            )
+        evidence = (row["evidence"] or "") + (
+            f"\n\n---\nQUESTION: {row['input_question']}\nANSWER ({p['id']}): {answer}"
+        )
+        _update_task(
+            conn,
+            p["id"],
+            num,
+            {
+                "status": "open",
+                "evidence": evidence,
+                "input_from": None,
+                "input_question": None,
+            },
+            action="task_answer",
+        )
+        conn.commit()
+    _broadcast(p["id"])
+    return assemble_task(conn, num)
 
 
 @app.delete("/api/task/{tid}")
@@ -1307,11 +1467,15 @@ def reject(tid: str, payload: dict = Body(default={}), p=Depends(human_only)):
         if row["status"] != "in_review":
             raise HTTPException(409, f"task is {row['status']}, not in_review")
         evidence = (row["evidence"] or "") + f"\nREJECTED ({p['id']}): {comment}"
+        # Reject = "this result is unusable / never agent work" — flip execution
+        # to 'me' so the task LEAVES the agent lane. Otherwise an unattended
+        # runner re-executes the identical failure forever (SPEC §7d).
+        # Redo-with-guidance is exclusively request-changes.
         _update_task(
             conn,
             p["id"],
             num,
-            {"status": "open", "evidence": evidence},
+            {"status": "open", "evidence": evidence, "execution": "me"},
             action="task_reject",
         )
         conn.execute(

@@ -245,6 +245,7 @@
       id: t.id, d: delivId, text: t.text, detail: t.detail || null,
       owners: owners, ownersRaw: t.responsible || "",
       status: t.status === "blocked" ? "open" : t.status,
+      statusRaw: t.status, // AgentsView needs real 'blocked' for "Waiting on you"
       due: t.deadline || t.computed.effective_deadline || null,
       ownDue: t.deadline || null,
       priority: t.priority || null,
@@ -466,6 +467,16 @@
       conflictReload(r);
       if (!r.ok) { showToast("Failed: " + (await r.text()).slice(0, 200), "err"); return; }
       await refreshFromServer();
+    },
+    async answerBlocker(t, answer) {
+      var r = await authedFetch("/api/task/" + t.id + "/answer", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer: answer }),
+      });
+      conflictReload(r);
+      if (!r.ok) { showToast("Failed: " + (await r.text()).slice(0, 200), "err"); return false; }
+      await refreshFromServer();
+      return true;
     },
     async requestChanges(t, feedback) {
       var r = await authedFetch("/api/task/" + t.id + "/request-changes", {

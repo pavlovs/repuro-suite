@@ -9,7 +9,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -267,6 +267,19 @@ CREATE TABLE idempotency (
   at TEXT NOT NULL,
   PRIMARY KEY (task_id, key)
 );
+CREATE TABLE learnings (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lane TEXT,
+  kind TEXT NOT NULL DEFAULT 'heuristic' CHECK(kind IN ('constraint','heuristic')),
+  text TEXT NOT NULL,
+  source_task TEXT,
+  status TEXT NOT NULL DEFAULT 'candidate'
+    CHECK(status IN ('candidate','active','dismissed')),
+  created_by TEXT,
+  created_at TEXT NOT NULL,
+  decided_by TEXT,
+  decided_at TEXT
+);
 CREATE INDEX idx_tasks_deliverable ON tasks(deliverable_id);
 CREATE INDEX idx_tasks_status ON tasks(status);
 """
@@ -338,6 +351,25 @@ MIGRATIONS = {
         lambda c: _add_column_if_missing(
             c, "tasks", "review_round", "INTEGER NOT NULL DEFAULT 0"
         ),
+    ],
+    11: [
+        # Curated agent playbook (SPEC-agentic-workflow §learnings): runners
+        # submit one-line candidates; a human promotes/dismisses; active
+        # entries ride into every queue fetch. Capped at 40 active per lane.
+        """CREATE TABLE IF NOT EXISTS learnings (
+             id INTEGER PRIMARY KEY AUTOINCREMENT,
+             lane TEXT,
+             kind TEXT NOT NULL DEFAULT 'heuristic'
+               CHECK(kind IN ('constraint','heuristic')),
+             text TEXT NOT NULL,
+             source_task TEXT,
+             status TEXT NOT NULL DEFAULT 'candidate'
+               CHECK(status IN ('candidate','active','dismissed')),
+             created_by TEXT,
+             created_at TEXT NOT NULL,
+             decided_by TEXT,
+             decided_at TEXT
+           )""",
     ],
 }
 

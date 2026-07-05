@@ -105,6 +105,20 @@
 .ag-waiting-answer { display: flex; gap: 8px; margin-top: 10px; align-items: center; }
 .ag-waiting-input { flex: 1; font: 13px var(--font); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
 .ag-waiting-input:focus { outline: none; border-color: var(--brand); }
+/* artifact preview variants (md rendered, html sandboxed) */
+.ag-rev-mdprev { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; max-height: 420px; overflow: auto; font-size: 13px; line-height: 1.5; }
+.ag-rev-iframe { width: 100%; height: 420px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+/* playbook / proposed lessons — deliberately small: one line per rule */
+.ag-lessons { display: flex; flex-direction: column; gap: 8px; }
+.ag-lesson-row { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
+.ag-lesson-row--active { background: var(--surface-2); }
+.ag-lesson-kind { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; padding: 2px 7px; border-radius: 4px; flex: none; }
+.ag-lesson-constraint { background: #fee2e2; color: #991b1b; }
+.ag-lesson-heuristic { background: var(--brand-50); color: var(--brand-700); }
+.ag-lesson-text { flex: 1; font: 13px var(--font); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+.ag-lesson-text:focus { outline: none; border-color: var(--brand); }
+.ag-lesson-static { flex: 1; font-size: 13px; color: var(--ink); }
+.ag-lesson-src { font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; flex: none; }
 .ag-recent-toggle { background: none; border: none; font: 13px var(--font); color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 0; }
 .ag-recent-toggle:hover { color: var(--ink); }
 

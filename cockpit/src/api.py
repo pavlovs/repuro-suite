@@ -720,8 +720,16 @@ def _scrub_state_personal(st, viewer):
 
 @app.get("/api/state")
 def state(p=Depends(principal)):
-    s = assemble_state(db.get_conn())
+    conn = db.get_conn()
+    s = assemble_state(conn)
     s["principal"] = p
+    s["learnings"] = [
+        _learning_json(r)
+        for r in conn.execute(
+            "SELECT * FROM learnings WHERE status!='dismissed' "
+            "ORDER BY status='candidate' DESC, kind='constraint' DESC, id"
+        )
+    ]
     # Server-side privacy: filter personal todos to the authenticated viewer.
     _scrub_state_personal(s, p["id"])
     return s
@@ -1080,19 +1088,17 @@ def agent_queue(scope: str = Query(default="mine"), p=Depends(agent_only)):
         "AND staging=0 AND status='open'"
     )
     params: list = []
+    me = conn.execute("SELECT represents FROM users WHERE id=?", (p["id"],)).fetchone()
+    lane = me["represents"] if me else None
     if scope == "mine":
-        me = conn.execute(
-            "SELECT represents FROM users WHERE id=?", (p["id"],)
-        ).fetchone()
-        creator = me["represents"] if me else None
-        if not creator:
+        if not lane:
             raise HTTPException(
                 409,
                 f"agent {p['id']!r} has no lane set (represents is empty); "
                 "use ?scope=all or ask an admin to link it",
             )
         sql += " AND created_by=?"
-        params.append(creator)
+        params.append(lane)
     # queue order must equal the Agents-view display order — "next task the
     # runner picks" is always the top card on screen
     sql += " ORDER BY sort_order, id"
@@ -1124,7 +1130,9 @@ def agent_queue(scope: str = Query(default="mine"), p=Depends(agent_only)):
                 "blocked_by": blocked_by,
             }
         )
-    return {"queue": out}
+    # the curated playbook rides with every queue fetch — the runner applies
+    # constraints as binding rules and heuristics as defaults (SPEC §learnings)
+    return {"queue": out, "playbook": _playbook_for(conn, lane)}
 
 
 @app.post("/api/agent/claim/{tid}")
@@ -1349,6 +1357,122 @@ def answer_blocker(tid: str, payload: dict = Body(...), p=Depends(human_only)):
     return assemble_task(conn, num)
 
 
+# --------------------------------------------------------------------------
+# playbook learnings — candidates from runners, human-curated, hard-capped
+_PLAYBOOK_CAP = 40  # active entries per lane — a playbook, not an incident log
+
+
+def _learning_json(r):
+    return {
+        "id": r["id"],
+        "lane": r["lane"],
+        "kind": r["kind"],
+        "text": r["text"],
+        "source_task": r["source_task"],
+        "status": r["status"],
+        "created_by": r["created_by"],
+        "created_at": r["created_at"],
+    }
+
+
+def _playbook_for(conn, lane):
+    """Active entries for one lane (+ lane-agnostic), constraints first."""
+    rows = conn.execute(
+        "SELECT * FROM learnings WHERE status='active' AND (lane IS NULL OR lane=?) "
+        "ORDER BY kind='constraint' DESC, id LIMIT ?",
+        (lane, _PLAYBOOK_CAP),
+    ).fetchall()
+    return [
+        {"kind": r["kind"], "text": r["text"], "source_task": r["source_task"]}
+        for r in rows
+    ]
+
+
+@app.post("/api/agent/learning", status_code=201)
+def agent_submit_learning(payload: dict = Body(...), p=Depends(agent_only)):
+    """Runner submits ONE candidate lesson (one line, generalizable). It does
+    NOT enter the playbook — a human promotes or dismisses it in the cockpit."""
+    conn = db.get_conn()
+    text = " ".join((payload.get("text") or "").split())
+    if not text:
+        raise HTTPException(422, "text is required")
+    if len(text) > 300:
+        raise HTTPException(422, "lesson too long — one line, max 300 chars")
+    kind = payload.get("kind") or "heuristic"
+    if kind not in ("constraint", "heuristic"):
+        raise HTTPException(422, f"invalid kind: {kind!r}")
+    lane = _agent_lane(conn, p)
+    dup = conn.execute(
+        "SELECT * FROM learnings WHERE status!='dismissed' "
+        "AND lower(text)=lower(?) AND (lane IS NULL OR lane=?)",
+        (text, lane),
+    ).fetchone()
+    if dup:
+        return _learning_json(dup) | {"duplicate": True}
+    with db.WRITE_LOCK:
+        cur = conn.execute(
+            "INSERT INTO learnings (lane, kind, text, source_task, status, "
+            "created_by, created_at) VALUES (?,?,?,?, 'candidate', ?, ?)",
+            (lane, kind, text, payload.get("source_task"), p["id"], db.now_iso()),
+        )
+        db.audit(conn, p["id"], "learning_submit", f"l-{cur.lastrowid}")
+        conn.commit()
+    _broadcast(p["id"])
+    row = conn.execute(
+        "SELECT * FROM learnings WHERE id=?", (cur.lastrowid,)
+    ).fetchone()
+    return _learning_json(row)
+
+
+@app.post("/api/learning/{lid}/decide")
+def decide_learning(lid: int, payload: dict = Body(...), p=Depends(human_only)):
+    """Human curation: promote a candidate into the playbook (optionally edited)
+    or dismiss it. Also retires active entries (action=dismiss). The cap is a
+    hard gate — a full playbook forces pruning before new promotions."""
+    action = payload.get("action")
+    if action not in ("promote", "dismiss"):
+        raise HTTPException(422, "action must be promote or dismiss")
+    conn = db.get_conn()
+    row = conn.execute("SELECT * FROM learnings WHERE id=?", (lid,)).fetchone()
+    if not row:
+        raise HTTPException(404, f"learning {lid} not found")
+    with db.WRITE_LOCK:
+        if action == "promote":
+            if row["status"] == "active":
+                raise HTTPException(409, "already active")
+            lane = row["lane"]
+            n = conn.execute(
+                "SELECT COUNT(*) AS n FROM learnings "
+                "WHERE status='active' AND (lane IS NULL OR lane=?)",
+                (lane,),
+            ).fetchone()["n"]
+            if n >= _PLAYBOOK_CAP:
+                raise HTTPException(
+                    409,
+                    f"playbook full ({_PLAYBOOK_CAP}) — dismiss an active entry first",
+                )
+            text = " ".join((payload.get("text") or row["text"]).split())[:300]
+            kind = payload.get("kind") or row["kind"]
+            if kind not in ("constraint", "heuristic"):
+                raise HTTPException(422, f"invalid kind: {kind!r}")
+            conn.execute(
+                "UPDATE learnings SET status='active', text=?, kind=?, "
+                "decided_by=?, decided_at=? WHERE id=?",
+                (text, kind, p["id"], db.now_iso(), lid),
+            )
+        else:
+            conn.execute(
+                "UPDATE learnings SET status='dismissed', decided_by=?, decided_at=? "
+                "WHERE id=?",
+                (p["id"], db.now_iso(), lid),
+            )
+        db.audit(conn, p["id"], f"learning_{action}", f"l-{lid}")
+        conn.commit()
+    _broadcast(p["id"])
+    row = conn.execute("SELECT * FROM learnings WHERE id=?", (lid,)).fetchone()
+    return _learning_json(row)
+
+
 @app.delete("/api/task/{tid}")
 def delete_task(tid: str, p=Depends(human_only)):
     """Hard delete (undo/cleanup). Strips the ref from other tasks' prereqs so
@@ -1563,16 +1687,13 @@ _PREVIEW_DIR = (
 _MAX_PREVIEW_MB = 50
 
 
-@app.post("/api/task/{tid}/upload-preview", status_code=201)
-def upload_preview(tid: str, file: UploadFile = File(...), p=Depends(principal)):
-    """Store a preview file (PDF, PNG, HTML) for the review UI."""
-    conn = db.get_conn()
-    num = _tid(tid)
-    row = _get_task(conn, num)
-    if not row:
-        raise HTTPException(404, "task not found")
+_PREVIEW_EXTS = (".pdf", ".png", ".jpg", ".jpeg", ".html", ".md")
+
+
+def _store_preview(conn, actor_id, tid, num, file):
+    """Shared by the human and agent upload doors. Returns the preview URL."""
     ext = Path(file.filename or "preview.pdf").suffix.lower()
-    if ext not in (".pdf", ".png", ".jpg", ".jpeg", ".html"):
+    if ext not in _PREVIEW_EXTS:
         raise HTTPException(422, f"unsupported preview type: {ext}")
     task_dir = _PREVIEW_DIR / str(num)
     task_dir.mkdir(parents=True, exist_ok=True)
@@ -1594,13 +1715,38 @@ def upload_preview(tid: str, file: UploadFile = File(...), p=Depends(principal))
         )
         db.audit(
             conn,
-            p["id"],
+            actor_id,
             "preview_upload",
             models.task_id(num),
             after={"preview_url": preview_url, "size": size},
         )
         conn.commit()
     return {"url": preview_url, "size": size}
+
+
+@app.post("/api/task/{tid}/upload-preview", status_code=201)
+def upload_preview(tid: str, file: UploadFile = File(...), p=Depends(principal)):
+    """Store a preview file (PDF, PNG, HTML, MD) for the review UI."""
+    conn = db.get_conn()
+    num = _tid(tid)
+    _get_task(conn, num)
+    out = _store_preview(conn, p["id"], tid, num, file)
+    _broadcast(p["id"])
+    return out
+
+
+@app.post("/api/agent/upload-preview/{tid}", status_code=201)
+def agent_upload_preview(tid: str, file: UploadFile = File(...), p=Depends(agent_only)):
+    """Agent door for artifact previews (Caddy exempts /api/agent/* on Bearer).
+    Claimant-only, while the claim is held — upload BEFORE posting the result."""
+    conn = db.get_conn()
+    num = _tid(tid)
+    row = _get_task(conn, num)
+    if row["claimed_by"] != p["id"]:
+        raise HTTPException(409, "not the claimant — upload previews before result")
+    out = _store_preview(conn, p["id"], tid, num, file)
+    _broadcast(p["id"])
+    return out
 
 
 @app.get("/api/task/{tid}/preview/{filename}")
@@ -1616,6 +1762,7 @@ def serve_preview(tid: str, filename: str):
         ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",
         ".html": "text/html",
+        ".md": "text/markdown; charset=utf-8",
     }.get(path.suffix.lower(), "application/octet-stream")
     return FileResponse(path, media_type=media)
 

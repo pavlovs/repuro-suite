@@ -2,7 +2,9 @@
 const { TODAY, PEOPLE, EXT, SPACES, WORKSTREAMS, DELIVERABLES, TASKS, STAGE_LABEL } = window.COCKPIT_DATA;
 const PERSONAL = window.COCKPIT_DATA.PERSONAL || [];
 const PRINCIPAL = window.COCKPIT_DATA.PRINCIPAL || null;
+const LEARNINGS = window.COCKPIT_DATA.LEARNINGS || [];
 const byPersonal = Object.fromEntries(PERSONAL.map((t) => [t.id, t]));
+const byLearning = Object.fromEntries(LEARNINGS.map((l) => [l.id, l]));
 
 const todayDate = new Date(TODAY + "T00:00:00");
 const byTask = Object.fromEntries(TASKS.map((t) => [t.id, t]));
@@ -190,6 +192,7 @@ WORKSTREAMS.forEach((w) => { if (wsPerSpace[w.space]) wsPerSpace[w.space].push(w
 
 Object.assign(window, {
   TODAY, PEOPLE, EXT, SPACES, WORKSTREAMS, DELIVERABLES, TASKS, PERSONAL, PRINCIPAL, STAGE_LABEL,
+  LEARNINGS, byLearning,
   todayDate, byTask, byDeliv, byWs, bySpace, byPersonal, wsPerSpace,
   daysUntil, addDays, fdate, fdateShort, readiness, blockingPrereqs, risks, recommendation, chaseDue,
   delivOf, wsOf, dealOf, STATUS_LABEL, STATUS_ORDER, DEPENDENTS,

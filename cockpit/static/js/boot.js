@@ -235,6 +235,7 @@
       TODAY: state.meta.today, PEOPLE: PEOPLE, EXT: EXT,
       SPACES: SPACES, WORKSTREAMS: WORKSTREAMS, DELIVERABLES: DELIVERABLES,
       TASKS: TASKS, PERSONAL: PERSONAL, PRINCIPAL: state.principal || null,
+      LEARNINGS: state.learnings || [],
       STAGE_LABEL: STAGE_LABEL,
     };
   }
@@ -264,7 +265,9 @@
       execution: (t.execution === "agent_supervised" || t.execution === "agent_auto") ? "agent" : t.execution,
       executionRaw: t.execution,
       ac: t.acceptance_criteria || null, evidence: t.evidence || null,
-      previewUrl: t.preview_url || null,
+      // preview_url is stored relative ("/api/task/…") — prefix the mount path
+      // (e.g. /cockpit) or the object/img/fetch misses the Caddy route on prod
+      previewUrl: t.preview_url ? (window.COCKPIT_BASE || "") + t.preview_url : null,
       reviewFeedback: t.review_feedback || null,
       reviewRound: t.review_round || 0,
       claimed_by: t.claimed_by || null, claim_expires_at: t.claim_expires_at || null,
@@ -341,6 +344,7 @@
     }
     syncArray(window.TASKS, fresh.TASKS, window.byTask);
     if (window.PERSONAL) syncArray(window.PERSONAL, fresh.PERSONAL || [], window.byPersonal || (window.byPersonal = {}));
+    if (window.LEARNINGS) syncArray(window.LEARNINGS, fresh.LEARNINGS || [], window.byLearning || (window.byLearning = {}));
     syncArray(window.DELIVERABLES, fresh.DELIVERABLES, window.byDeliv);
     syncArray(window.WORKSTREAMS, fresh.WORKSTREAMS, window.byWs);
     if (window.SPACES && fresh.SPACES) {
@@ -467,6 +471,17 @@
       conflictReload(r);
       if (!r.ok) { showToast("Failed: " + (await r.text()).slice(0, 200), "err"); return; }
       await refreshFromServer();
+    },
+    async decideLearning(l, action, text) {
+      var body = { action: action };
+      if (text) body.text = text;
+      var r = await authedFetch("/api/learning/" + l.id + "/decide", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) { showToast("Failed: " + (await r.text()).slice(0, 200), "err"); return false; }
+      await refreshFromServer();
+      return true;
     },
     async answerBlocker(t, answer) {
       var r = await authedFetch("/api/task/" + t.id + "/answer", {

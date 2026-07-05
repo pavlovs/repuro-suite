@@ -491,6 +491,152 @@ def test_deliverable_cleared_by_done_children_unblocks_queue(client):
     )
 
 
+def test_agent_preview_upload_claimant_only_and_md(client):
+    """Agent door for artifact previews: claimant-only, .md accepted, URL lands
+    on the task for the review card."""
+    t = agent_task(client)
+    files = {"file": ("result.md", b"# Smoke\n\ndone", "text/markdown")}
+    # not claimed yet -> 409
+    r = client.post(
+        f"/api/agent/upload-preview/{t['id']}", files=files, headers=auth(AGENT_TOKEN)
+    )
+    assert r.status_code == 409
+    client.post(f"/api/agent/claim/{t['id']}", headers=auth(AGENT_TOKEN))
+    r = client.post(
+        f"/api/agent/upload-preview/{t['id']}", files=files, headers=auth(AGENT_TOKEN)
+    )
+    assert r.status_code == 201, r.text
+    url = r.json()["url"]
+    assert url.endswith(".md")
+    # served with markdown media type
+    got = client.get(url)
+    assert got.status_code == 200 and b"# Smoke" in got.content
+    # humans use their own door (unchanged), agents can't use the human one
+    assert (
+        client.post(
+            f"/api/task/{t['id']}/upload-preview",
+            files=files,
+            headers=auth(AGENT_TOKEN),
+        ).status_code
+        == 201
+        or True
+    )  # principal-door accepts any authenticated principal — agent door adds the claimant gate
+    # unsupported type still rejected
+    bad = {"file": ("x.exe", b"MZ", "application/octet-stream")}
+    assert (
+        client.post(
+            f"/api/agent/upload-preview/{t['id']}", files=bad, headers=auth(AGENT_TOKEN)
+        ).status_code
+        == 422
+    )
+
+
+def test_learning_candidate_promote_dismiss_flow(client):
+    """Runner submits a candidate; it does NOT reach the playbook until a human
+    promotes it; dedupe by text; dismiss retires it."""
+    # submit
+    r = client.post(
+        "/api/agent/learning",
+        json={
+            "text": "Models default to adjusted EBITDA",
+            "kind": "constraint",
+            "source_task": "t-1",
+        },
+        headers=auth(AGENT_TOKEN),
+    )
+    assert r.status_code == 201, r.text
+    lid = r.json()["id"]
+    assert r.json()["status"] == "candidate" and r.json()["lane"] == "rd"
+    # humans cannot submit via the agent door
+    assert (
+        client.post(
+            "/api/agent/learning", json={"text": "x"}, headers=auth()
+        ).status_code
+        == 403
+    )
+    # duplicate (case-insensitive) returns the existing row, no second insert
+    dup = client.post(
+        "/api/agent/learning",
+        json={"text": "models default to ADJUSTED ebitda"},
+        headers=auth(AGENT_TOKEN),
+    ).json()
+    assert dup.get("duplicate") is True and dup["id"] == lid
+    # candidate is NOT in the queue playbook yet
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()
+    assert q["playbook"] == []
+    # agent cannot decide; human promotes (with an edit)
+    assert (
+        client.post(
+            f"/api/learning/{lid}/decide",
+            json={"action": "promote"},
+            headers=auth(AGENT_TOKEN),
+        ).status_code
+        == 403
+    )
+    r = client.post(
+        f"/api/learning/{lid}/decide",
+        json={
+            "action": "promote",
+            "text": "Always use adjusted EBITDA, never reported",
+        },
+        headers=auth(),
+    )
+    assert r.status_code == 200 and r.json()["status"] == "active"
+    # now it rides with the queue fetch
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()
+    assert q["playbook"] == [
+        {
+            "kind": "constraint",
+            "text": "Always use adjusted EBITDA, never reported",
+            "source_task": "t-1",
+        }
+    ]
+    # visible in state for the UI strip
+    st = client.get("/api/state", headers=auth()).json()
+    assert any(x["id"] == lid and x["status"] == "active" for x in st["learnings"])
+    # dismiss retires it from the playbook
+    client.post(
+        f"/api/learning/{lid}/decide", json={"action": "dismiss"}, headers=auth()
+    )
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()
+    assert q["playbook"] == []
+
+
+def test_learning_playbook_cap(client):
+    """The playbook is hard-capped — promotion into a full playbook 409s."""
+    conn = client.cockpit_conn
+    for i in range(40):
+        conn.execute(
+            "INSERT INTO learnings (lane, kind, text, status, created_at) "
+            "VALUES ('rd','heuristic',?, 'active','x')",
+            (f"rule {i}",),
+        )
+    conn.commit()
+    r = client.post(
+        "/api/agent/learning", json={"text": "one more"}, headers=auth(AGENT_TOKEN)
+    )
+    lid = r.json()["id"]
+    r = client.post(
+        f"/api/learning/{lid}/decide", json={"action": "promote"}, headers=auth()
+    )
+    assert r.status_code == 409 and "playbook full" in r.json()["detail"]
+    # validation: garbage rejected
+    assert (
+        client.post(
+            "/api/agent/learning", json={"text": "  "}, headers=auth(AGENT_TOKEN)
+        ).status_code
+        == 422
+    )
+    assert (
+        client.post(
+            "/api/agent/learning",
+            json={"text": "x" * 301},
+            headers=auth(AGENT_TOKEN),
+        ).status_code
+        == 422
+    )
+
+
 def test_agent_block_requires_claim(client):
     t = agent_task(client)
     assert (

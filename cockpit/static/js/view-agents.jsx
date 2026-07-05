@@ -90,6 +90,47 @@ function renderMarkdown(text) {
   return out;
 }
 
+/* ArtifactPreview — renders the uploaded artifact preview inline by type:
+   .pdf → embedded viewer, .md → fetched + rendered with renderMarkdown,
+   .html → sandboxed iframe, images → <img>. The reviewer reads the actual
+   output in the card, not a file path. */
+function ArtifactPreview(props) {
+  var url = props.url;
+  var mdState = React.useState(null);
+  var mdText = mdState[0], setMdText = mdState[1];
+  var isMd = /\.md$/i.test(url);
+
+  React.useEffect(function() {
+    if (!isMd) return;
+    var alive = true;
+    setMdText(null);
+    fetch(url)
+      .then(function(r) { return r.ok ? r.text() : "Preview could not be loaded (" + r.status + ")"; })
+      .then(function(txt) { if (alive) setMdText(txt); })
+      .catch(function() { if (alive) setMdText("Preview could not be loaded."); });
+    return function() { alive = false; };
+  }, [url]);
+
+  if (/\.pdf$/i.test(url)) {
+    return (
+      <object data={url} type="application/pdf" className="ag-rev-pdf">
+        <a href={url} target="_blank" rel="noreferrer">Open PDF</a>
+      </object>
+    );
+  }
+  if (isMd) {
+    return (
+      <div className="ag-rev-mdprev">
+        {mdText === null ? <span className="ag-card-no-ev">Loading preview…</span> : renderMarkdown(mdText)}
+      </div>
+    );
+  }
+  if (/\.html?$/i.test(url)) {
+    return <iframe src={url} sandbox="" className="ag-rev-iframe" title="Artifact preview" />;
+  }
+  return <img src={url} className="ag-rev-img" alt="Preview" />;
+}
+
 /* ReviewCard — hoisted to module scope so React never remounts it on AgentsView
    rerenders (nested var definitions recreate component identity every render,
    wiping in-flight send-back textarea state). Receives deps as explicit props. */
@@ -149,11 +190,7 @@ function AgentReviewCard(props) {
           <div className="ag-rev-right">
             <div className="ag-rev-evlabel">Artifact preview</div>
             <div className="ag-rev-preview-wrap">
-              {t.previewUrl.match(/\.pdf$/i)
-                ? <object data={t.previewUrl} type="application/pdf" className="ag-rev-pdf">
-                    <a href={t.previewUrl} target="_blank" rel="noreferrer">Open PDF</a>
-                  </object>
-                : <img src={t.previewUrl} className="ag-rev-img" alt="Preview" />}
+              <ArtifactPreview url={t.previewUrl} />
             </div>
             <a href={t.previewUrl} target="_blank" rel="noreferrer" className="ag-rev-open-link">
               <Icon name="arrow" size={12} /> Open in browser
@@ -282,6 +319,27 @@ function AgentBlockedCard(props) {
   );
 }
 
+/* LessonRow — one proposed lesson: promote (optionally after inline edit) or
+   dismiss. Candidates come from runners; NOTHING enters the playbook without a
+   human click, and the playbook is hard-capped server-side (40). */
+function LessonRow(props) {
+  var l = props.l;
+  var editState = React.useState(l.text);
+  var editVal = editState[0], setEdit = editState[1];
+  return (
+    <div className="ag-lesson-row">
+      <span className={"ag-lesson-kind ag-lesson-" + l.kind}>{l.kind === "constraint" ? "hard" : "soft"}</span>
+      <input className="ag-lesson-text" value={editVal}
+        onChange={function(e) { setEdit(e.target.value); }} />
+      {l.source_task && <span className="ag-lesson-src">{l.source_task}</span>}
+      <button className="btn approve" onClick={function() {
+        api.decideLearning(l, "promote", editVal.trim() || l.text);
+      }}><Icon name="check" size={12} /> Adopt</button>
+      <button className="btn" onClick={function() { api.decideLearning(l, "dismiss"); }}>Dismiss</button>
+    </div>
+  );
+}
+
 function AgentsView({ openTask, person }) {
   var allAgents = TASKS.filter(function(t) { return t.execution === "agent"; });
   /* prefilter the lane to the logged-in person: Roman (RD) → RC, Flo (FF) → FC */
@@ -295,6 +353,11 @@ function AgentsView({ openTask, person }) {
   var showRecentVal = showRecentState[0], setShowRecent = showRecentState[1];
   var showFaqState = React.useState(false);
   var showFaqVal = showFaqState[0], setShowFaq = showFaqState[1];
+  var showPlaybookState = React.useState(false);
+  var showPlaybookVal = showPlaybookState[0], setShowPlaybook = showPlaybookState[1];
+  var learnings = window.LEARNINGS || [];
+  var lessonCandidates = learnings.filter(function(l) { return l.status === "candidate"; });
+  var playbook = learnings.filter(function(l) { return l.status === "active"; });
 
   /* lane filter counts — active tasks only, ignore current filter */
   var laneN = function(l) {
@@ -411,6 +474,45 @@ function AgentsView({ openTask, person }) {
                       <span className="ag-state-badge ag-done-badge"><Icon name="check" size={11} /> Done</span>
                     </div>
                     <div className="ag-card-title">{t.text}</div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ---- Proposed lessons — runner candidates awaiting your curation ---- */}
+      {lessonCandidates.length > 0 && (
+        <section className="ag-sec">
+          <h2 className="ag-sec-h">
+            Proposed lessons
+            <span className="ag-sec-count ag-count-attn">{lessonCandidates.length}</span>
+          </h2>
+          <div className="ag-lessons">
+            {lessonCandidates.map(function(l) { return <LessonRow key={l.id} l={l} />; })}
+          </div>
+        </section>
+      )}
+
+      {/* ---- Playbook — the curated rules every runner gets (capped at 40) ---- */}
+      {playbook.length > 0 && (
+        <section className="ag-sec">
+          <h2 className="ag-sec-h ag-sec-h--toggle" onClick={function() { setShowPlaybook(!showPlaybookVal); }}>
+            <span className={"caret" + (showPlaybookVal ? " open" : "")}><Icon name="chevron" size={13} /></span>
+            Playbook
+            <span className="ag-sec-count">{playbook.length}/40</span>
+          </h2>
+          {showPlaybookVal && (
+            <div className="ag-lessons">
+              {playbook.map(function(l) {
+                return (
+                  <div key={l.id} className="ag-lesson-row ag-lesson-row--active">
+                    <span className={"ag-lesson-kind ag-lesson-" + l.kind}>{l.kind === "constraint" ? "hard" : "soft"}</span>
+                    <span className="ag-lesson-static">{l.text}</span>
+                    {l.source_task && <span className="ag-lesson-src">{l.source_task}</span>}
+                    <button className="btn" title="Retire from playbook"
+                      onClick={function() { api.decideLearning(l, "dismiss"); }}>Retire</button>
                   </div>
                 );
               })}

@@ -664,7 +664,12 @@ async def sse_events(
 ) -> StreamingResponse:
     """Server-Sent Events stream. Broadcasts a refresh event on any mutation.
     Clients that cannot set custom headers (EventSource) pass token as ?token=."""
-    # Auth: X-Remote-User (Caddy) or Bearer token via query param
+    # Auth: X-Remote-User (Caddy) or Bearer token via query param.
+    # Same trust gate as principal() (codex #5 sweep): header-only identity
+    # requires the trusted-proxy env; a token-carrying caller never gets to
+    # also assert a header identity.
+    if x_remote_user and (os.environ.get("COCKPIT_TRUSTED_PROXY") != "1" or token):
+        x_remote_user = None
     p = None
     if x_remote_user and x_remote_user in _CADDY_USER_MAP:
         pid = _CADDY_USER_MAP[x_remote_user]

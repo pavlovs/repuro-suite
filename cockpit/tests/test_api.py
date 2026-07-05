@@ -569,6 +569,9 @@ def test_x_remote_user_not_trusted_by_default(client):
     # header-only spoof without COCKPIT_TRUSTED_PROXY -> anonymous -> 401
     r = client.post("/api/task/t-1/approve", headers={"X-Remote-User": "roman"})
     assert r.status_code == 401
+    # the SSE endpoint has its own auth path — same gate applies
+    r = client.get("/api/events", headers={"X-Remote-User": "roman"})
+    assert r.status_code == 401
 
 
 def test_promote_with_edited_duplicate_text_rejected(client):

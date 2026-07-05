@@ -4,6 +4,30 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.15 — 2026-07-05
+
+### Cockpit — Agentic workflow v2 (closed review loop, SPEC-agentic-workflow)
+- **Review→rework loop closed end-to-end**: agent queue returns `review_round`/`review_feedback`/`evidence` + prereq readiness (send-backs arrive WITH the feedback); SSE broadcast on claim/result/block so cards move live in the browser
+- **New agent endpoints**: `POST /api/agent/task` (enqueue from any Claude session, AC enforced), `POST /api/agent/block/{id}` (park on a question for the human)
+- **New human endpoint**: `POST /api/task/{id}/answer` — inline answer re-opens a blocked task for the next runner pass
+- **Reject is loop-safe**: flips `execution → me` so an unattended runner never re-executes a rejected task
+- **Claim enforces readiness** server-side (409 on unmet hard prereqs); readiness resolver mirrors canonical state exactly (dropped deliverables + children-done deliverables count as cleared)
+- **UI**: "Waiting on you" section with inline answer box; Round-N badge + feedback line on send-back queue cards; FAQ updated to `/repuro:loop` flow
+- **DDL fix**: fresh DBs were created without migration-10 columns (`preview_url`, `review_feedback`, `review_round`)
+- 102 pytest passing; Codex review PASS (r3) after 2 fix rounds
+- Plugin v0.3.0 (`pavlovs/repuro-cockpit-skills`): `/repuro:loop`, `/repuro:add`, block support, feedback-aware `/repuro:run`
+
+### Cockpit — earlier this cycle
+- CSS unification (design-system variables, button consolidation); `+1d` fast path; cache-bust vendor scripts + no-cache middleware (blank-page fix)
+
+### Boardroom — Investor view v15
+- English number convention throughout; S&U rebuilt; funnel/timeline updates; scorecard horizontal rows; monolith split into `templates/` (per-deal + per-act, assembled in api.py)
+
+### Infrastructure
+- Caddy no-cache headers + `/diag`; fly.toml: `auto_stop_machines=suspend`, `min_machines_running=1` (always-on — prevents blank-page on cold start); `DEALROOM_REQUIRE_DB=1`
+
+---
+
 ## v2.1.11 — 2026-06-17
 
 ### Infrastructure — Deploy consolidation

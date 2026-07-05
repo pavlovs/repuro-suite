@@ -1,7 +1,7 @@
 
 # Repuro Lead Pipeline — Roadmap
 
-Last updated: 2026-05-11.
+Last updated: 2026-06-29.
 
 ---
 
@@ -76,7 +76,7 @@ All core pipeline stages, outreach data model, Serienbriefe cohort ingest, and d
 | BP1 | `ownership_review_needed` was a dead end — no recovery path | Fixed: three-column ownership review UI (Owner / Investigation / Action) with Resolve, Pass, Exclude buttons. Visual flash feedback on decisions. Detail panel shows ownership investigation block. Codex-reviewed 2026-04-27. | Fixed |
 | BP2 | `enrich_email_batch` WHERE clause skips `ownership_review_needed` | Still open — even after manual resolution via dashboard, records may not re-enter email enrichment | Open |
 | BP3 | `run-all` not implemented (prints "not yet implemented") | No single command to run post-classification pipeline end-to-end | Fixed — `_run_all_stages()` in pipeline.py: sequential filter → scrape → classify → enrich with per-stage timing output |
-| BP4 | K1/K2 generated at export time, not as pipeline stage; ~30% fail rate on combined prompt, no retry | Silent incomplete exports | Open |
+| BP4 | K1/K2 generated at export time, not as pipeline stage; ~30% fail rate on combined prompt, no retry | Silent incomplete exports | Fixed (M34) — compliments generated via `backfill-compliments` stage; export warns on missing K1/K2 instead of silently generating; K2-only retry pass for truncation |
 | BP5 | `normalize` / `backfill` don't change pipeline_stage — no way to tell if a record has been through these steps | No readiness tracking | Open |
 | BP6 | No completeness gate before approval — only checked at PDF export time | Approval of incomplete records | Mitigated: `isExportEligible()` gate in M29 — requires all fields filled + approved. Confirm dialog when blocking fields missing. |
 | BP7 | 27 K2 compliments have structural grammar issues (missing verb) — detected by normalize but not auto-fixed | Broken letter text | Open |
@@ -98,7 +98,7 @@ All core pipeline stages, outreach data model, Serienbriefe cohort ingest, and d
 | M29 | ✅ Delivered — see Delivered table above |  |
 | M30 | **Analyze mode + polish** — Funnel/Classes/Bottlenecks views respond to BA selector via `getFilteredRows()` (server-computed data used only when no BA selected), empty states added, actor selector radio in tweaks panel (Roman/Flo, persists to `allex_actor` in localStorage). Spec: `ai/PLAN-M30.md`. | ✅ |
 | M31 | **Backtest harness** — `--backtest` CLI flag for every pipeline stage. Uses 408 already-approached records (BA1–BA7) as ground truth. Runs stage logic on a sample, compares output to existing data, reports match rate + divergences. Covers: scrape, classify, enrich-ownership, enrich-email, normalize, backfill-compliments. No golden dataset to maintain — the BA records ARE the dataset. | 📋 Planned |
-| M34 | **Briefvorbereitung Kompliment-Logik & Defaults** — Codify K1/K2 compliment generation with phrasing hierarchy (foundation year → duration → specialization for K1; slogan → quantitative → portfolio → backup for K2). About-page URL discovery (40+ suffixes). Conditional Mehrwerte based on Leistung 1. Leistung 1/2 defaults pre-filled. Moves compliment generation from export-time to pipeline stage (addresses BP4). Spec: `ai/PLAN-M34.md`. | 📋 Planned |
+| M34 | **Briefvorbereitung Kompliment-Logik & Defaults** — K1/K2 phrasing hierarchy in prompt (3-tier K1, 4-tier K2). About-page URL discovery (30+ suffixes in scraper). Category-driven Leistung/Mehrwerte defaults. Export-time compliment generation removed (warns instead). `compliment_guide.md` updated with Flo's verbatim cascade. Addresses BP4. Spec: `ai/PLAN-M34.md`. | ✅ |
 
 ---
 

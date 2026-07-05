@@ -13,11 +13,23 @@ Claude reads this when `/suite-fix` is invoked.
 
 - [ ] Dealroom onepager MOUSE: add the content — still not in (content/data sync, Roman handling separately)
 - [ ] Update the local MOUSE onepager into the online Dealroom (content/data sync)
-- [x] UX: sections in Cockpit still not unified — fixed 2026-06-26. Meeting view now uses `view-wide` (no max-width centering), content left-edge matches Workstreams/Timeline
-- [x] [UX decision] Cockpit Board view: hover-gated prereqs — fixed 2026-06-26. `.tcard-need` hidden by default, revealed on card hover (matches Workstreams table pattern)
+
+
 - [ ] AGents: How to setup & run is hidden beneath, same as recently updated. if there is a long queue, those section are difficult to see. Maybe separate Agents into Agents Workflow and Agents Review and have its own section? Something like this?
-- [x] When you add a task make the deliverable only show the workstreams and then when you click on the wokrstream show the deliverables underneath — fixed 2026-06-26. Custom two-level picker: workstreams → click to expand → deliverables
-- [x] Instead of Weekly Meeting call it Meeting — fixed 2026-06-26. NAV + palette updated
+
+Investor Mode
+- [ ] LOI Scorecard comparison Add Total (out of 40) and in the score column just keep the number (29, 34, etc.). Also call it Total Score instead of Total only, so that one understands what the coefficient leads to. 
+- [ ] Add comment below. Higher Score / Multiple equals more "value for money" acquisitoin - change as how you see fit
+- [ ] I find Sources & Uses, espeically in the comparison hard to read, there is a lot of numbers - leave maybe morewhite space in between or change to illions instead of K€? What do you think is better? there is inconsistency between using "-" as 0 and 0 as 0.
+- [ ] Custmer Interviews Provider is still WIP
+- [ ] Structuring Tax KG is Ebner Stolz, YPOG is only our own 
+- [ ] Operative Cash Flow: Maybe instead of a complex comment, add a small table on the right of sources and souces to show calculation and vailability of "operating cash flow"
+- [ ] add that the sources & uses are preliminary as a comment below
+- [ ] change position of mouse and cat
+- [ ] Sources and Uses for Mouse and Cat should not be streatched out but have same format as Fox and Mantis
+- [ ] Formatting of the individual scorecards looks bad, they are creating stupdi white space (e. g. value creation potential is only one category, no need to have 3/4 on the left in vertical writing which no one can read)
+- [ ] FOX EBITDA is 0,36 - why is the scorecard saying 432k and eBITDA margin of 12% - this is invented - please make sure and check that the scorecard bvlaues are correct for the 4 companies, especially the historical growth as well. Fox shows 432k, Mantis shows 0,8 M€, inconsistent - fix this
+
 
 ---
 ## Open — architecture / from Codex deep review (needs Roman or deferred)
@@ -51,4 +63,4 @@ Deployed fixes are pruned on each `/suite-fix` run. See git history of this file
 - [x] +1d slow/broken — fixed 2026-06-26. Added `api.bumpDue` fast path: parses PATCH response, updates version in-place, fires `refreshFromServer` in background. Rapid clicks now work.
 - [x] Dead `view-relations.jsx` removed — 2026-06-26 (10.6KB, not in JSX_FILES, CSS already cleaned in prior session)
 - [x] DEALROOM_REQUIRE_DB wired in fly.toml — 2026-06-26 (env guard was implemented but inert; now active in prod)
-- [x] Cockpit blank white page (all modules) — fixed 2026-06-29. Three causes: (1) Caddy crash from invalid Caddyfile syntax in /diag handler (respond block with subdirective — fixed syntax), (2) machine auto-stop with min_machines=0 causing 503 on cold starts (changed to suspend + min=1), (3) stale vendor script cache (added ?v=N params + NoCacheStaticMiddleware + Caddy no-cache headers on all proxy routes). 4e68197 + suite deploy v74
+- [x] Cockpit blank white page (all modules) — fixed 2026-06-29 (v76). Root causes across v71-v75: (1) Caddy crash from invalid Caddyfile syntax in /diag handler, (2) machine auto_stop with min=0 causing 503, (3) Cache-Control headers inside handle_path blocks (reverted v75). **Actual root cause of persistent blank pages (v75 still broken):** Caddy `handle /` is a catch-all prefix matcher that swallows ALL paths including `/cockpit`, `/allex`, `/deals` before their `handle /xxx { redir }` blocks fire. Fix: replaced `handle /xxx { redir }` with top-level `redir /xxx /xxx/ permanent` directives (run before handle blocks) + changed landing page links to use trailing slashes (`/cockpit/` not `/cockpit`).

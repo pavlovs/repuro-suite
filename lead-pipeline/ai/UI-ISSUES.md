@@ -23,7 +23,7 @@ Features
 - [ ] Briefvorbereitung: Please move Ansprechpartner (Brief), Anrede and Salutation to "Stammdaten"
 - [ ] For reference: You can find all classifier context in this folder: @C:\Users\flori\OneDrive - Kamu Kapital\Dokumente - Kamu Kapital\CLAUDE_REPURO\classifier.
 - [x] Kategorie: Please categorize every company in the Batch section by default to "Prio 1". Once we change the Priorität to "Prio 2" or "Duplicate" it should automaticelly disappear in the Batch section and be stored in the database → **resolved 2026-05-27**: Prio 2 records hidden from Review queue (already) + Lead-Liste (new toggle "Prio 2 anzeigen", off by default). Prio 2 records remain in DB, visible when filter toggled on.
-- [x] Briefvorbereitung Kompliment-Logik + Defaults → **moved to M34** (`ai/PLAN-M34.md`)
+- [x] Briefvorbereitung Kompliment-Logik + Defaults → **M34 delivered** (incrementally across M16–M32; verified 2026-06-29). Prompt cascade, about-page scraping, category defaults, compliment_guide.md updated with Flo's verbatim cascade.
 
 ---
 

@@ -1,6 +1,6 @@
 # M34 — Briefvorbereitung Kompliment-Logik & Defaults
 
-**Status:** Planned
+**Status:** ✅ Delivered (incrementally across M16–M32 sessions; verified 2026-06-29)
 **Source:** FF feature request (UI-ISSUES.md, 2026-05-06)
 **Scope:** Automate compliment generation logic and set field defaults for the letter preparation workflow.
 
@@ -68,22 +68,20 @@ Depends on Leistung 1 value:
 - `backfill-leistung` CLI command (`backfill.py:278`) — AI-generates leistung_text, leistung_absatz_2, mehrwerte
 - `compliment_guide.md` style guide loaded into prompt context
 
-## What changes
+## What changed (delivered incrementally)
 
-1. **Replace `_COMPLIMENT_PROMPT_BASE`** with structured prompt encoding the K1/K2 phrasing hierarchies above. The AI still generates the text, but the prompt constrains it to pick from the correct tier.
-2. **Add about-page scraping** to `scrape.py` — check the URL suffixes listed above during the scrape pass, store about-page text alongside `scraped_text`. Ties into M25 but can be implemented independently as a targeted subpage fetch.
-3. **Deterministic defaults in `normalize`** — pre-fill Leistung 1/2 with defaults when empty (no AI call needed). Apply Mehrwerte conditional based on Leistung 1 value.
-4. **Remove export-time compliment generation** (`_fill_missing_compliments`) — all compliments must be generated during `backfill-compliments` stage. Export should fail loudly on missing compliments, not silently generate them.
+1. **`_COMPLIMENT_PROMPT_BASE` replaced** — `export.py:104-153` encodes the 3-tier K1 + 4-tier K2 cascades with Flo's exact template strings. `_K2_ONLY_PROMPT` in `backfill.py:409-438` mirrors the K2 cascade for pass-2 retries.
+2. **About-page scraping added** — `fetch_about_page_text` in `web.py:335` checks 30+ URL suffixes (`_ABOUT_SUFFIXES`). Called during scrape pass, appended to `scraped_text` as `--- ABOUT PAGE ({suffix}) ---`.
+3. **Deterministic defaults in `category_defaults.py`** — per-category `leistung_text`, `leistung_absatz_2`, and `mehrwerte` for all 6 category codes (DEA/INT/SER_PLA_1/SER_PLA_2/SER_MAI/SER_ITS). Applied at ingest via `apply_category_defaults()`.
+4. **Export-time compliment generation removed** — `_fill_missing_compliments` is dead code (defined but never called). Export flow warns and tells user to run `backfill-compliments` first (export.py:434-445).
+5. **`compliment_guide.md` updated (2026-06-29)** — Flo's verbatim cascade added as Section 0 ("MANDATORY") at the top. This file is loaded into the AI prompt as context via `_load_compliment_guide()`.
 
-## Dependencies
+## Acceptance Criteria — Verification (2026-06-29)
 
-- About-page discovery overlaps with M25 (scraper refactor) but can be done as a targeted addition without the full M25 scope.
-
-## Acceptance Criteria
-
-- K1 generated using the 3-tier hierarchy; correct tier selected based on available data
-- K2 generated using the 4-tier hierarchy; correct tier selected based on available data
-- Leistung 1/2 pre-filled with defaults when empty
-- Mehrwerte auto-filled based on Leistung 1 value
-- About-page URLs checked when main page lacks foundation year / slogan / metrics
-- All generated text uses proper German umlauts and grammar
+- ✅ K1 generated using the 3-tier hierarchy; prompt encodes exact template strings
+- ✅ K2 generated using the 4-tier hierarchy; prompt encodes exact template strings
+- ✅ Leistung 1/2 pre-filled with defaults when empty (via `apply_category_defaults`)
+- ✅ Mehrwerte auto-filled based on category (via `category_defaults.py`)
+- ✅ About-page URLs checked during scrape pass (30+ suffixes in `_ABOUT_SUFFIXES`)
+- ✅ All generated text uses proper German umlauts (umlaut restoration in `normalize.py`)
+- ✅ `_fill_missing_compliments` dead — export warns on missing K1/K2 instead of silently generating

@@ -2,7 +2,41 @@
 
 ---
 
-## 0. General Guidelines (from Roman)
+## 0. MANDATORY — Phrasing Decision Trees (from Flo)
+
+**These cascades are the PRIMARY generation logic. Check the company website (landing page, about/ueber-uns pages) and pick the FIRST tier that matches. Do NOT skip to a lower tier when a higher one is available.**
+
+### K1 — 3-Tier Cascade (check in this order)
+
+1. **Year of founding found** → `"Ihre umfassende Erfahrung und Expertise, die Sie seit der Gründung im Jahr {YEAR} aufgebaut haben"`
+2. **Duration of existence found** (e.g. "20 Jahren", "zwei Jahrzehnten") → `"Ihre umfassende Erfahrung und Expertise, die Sie in mehr als {DURATION} gesammelt haben"`
+3. **Neither found** → `"die hohe Spezialisierung und Expertise im Bereich {SPECIALIZATION}"` — use the company's own wording for their specialization from the website. If no specific wording available, use a generic phrase for their product offering.
+
+### K2 — 4-Tier Cascade (check in this order)
+
+1. **Slogan found** → `"Ihr Leitbild mit den Schwerpunkten "{SLOGAN}" hat"` or `"Ihr starker Kundenfokus gemäß der Maxime "{SLOGAN}", hat"`
+2. **Quantitative metric found** (customer count, product count, manufacturer count) → e.g. `"das breite und hochwertige Sortiment von mehr als {N} Produkten hat"` or `"die große Auswahl qualitativ hochwertiger Markenartikel von über {N} Herstellern hat"`
+3. **Generic portfolio** → `"das breite Leistungsportfolio, von hochwertigen Geräten bis zum technischen Service, hat"` — replace "Geräte" and "technischen Service" with company-specific product categories if available. Alternative: `"das breite Sortiment, von hochwertigen Instrumenten bis zu Praxis- und Sprechstundenbedarf, hat"`
+4. **Backup** → `"der starke Fokus auf hohe Qualität und zuverlässigen Service hat"`
+
+### Where to look on the website
+
+Check these URL suffixes for founding year, slogan, metrics:
+`/ueber-uns`, `/ueberuns`, `/über-uns`, `/unternehmen`, `/das-unternehmen`, `/mein-unternehmen`, `/unser-unternehmen`, `/mein-betrieb`, `/wir-ueber-uns`, `/wer-wir-sind`, `/das-sind-wir`, `/about`, `/about-us`, `/profil`, `/firma`, `/firmenprofil`, `/firmenportrait`, `/firmengeschichte`, `/unternehmensgeschichte`, `/philosophie`, `/unsere-philosophie`, `/leitbild`, `/portrait`, `/historie`, `/geschichte`, `/unsere-geschichte`, `/team`, `/unser-team`, `/kompetenz`, `/kompetenzen`, `/company`, `/mission`, `/vision`
+
+### Mehrwerte — Conditional on Leistung 1
+
+- If Leistung 1 = "Medizintechnik-Experten" → Mehrwerte: `"neuen Wachstumsinitiativen, der Digitalisierung und beim Qualitätsmanagement"`
+- If Leistung 1 = "Medizinprodukt-Händler" → Mehrwerte: `"neuen Wachstumsinitiativen, bei der Digitalisierung, im Einkauf und der Logistik"`
+
+### Field Defaults
+
+- **Leistung 1** default: `"Experten für Medizinprodukte"`
+- **Leistung 2** default: `"Unternehmen im Bereich Medizintechnik & -produkte"`
+
+---
+
+## 1. General Guidelines (from Roman)
 
 - **Weniger Adjektive, weniger Honig ums Maul.** Cut filler adjectives ("umfassend", "professionell", "hervorragend") unless they carry real meaning.
 - **Nicht zu offensiv/pushy wie Vertriebler.** The tone is a peer noticing quality, not a salesperson flattering a prospect.
@@ -11,7 +45,7 @@
 
 ---
 
-## 1. Kompliment 1 (K1)
+## 2. Kompliment 1 (K1) — Style & Examples
 
 **Position:** Opening paragraph. Introduces the company and establishes why Repuro noticed them. Anchors the letter in something specific and verifiable about the company.
 
@@ -78,7 +112,7 @@ Nominative noun phrase — the entire K1 is the grammatical subject of a sentenc
 
 ---
 
-## 2. Kompliment 2 (K2)
+## 3. Kompliment 2 (K2) — Style & Examples
 
 **Position:** Second paragraph. Zooms in on what makes the company's offering distinctive — a service concept, product niche, business model principle, geographic fit, or customer philosophy. Must be meaningfully different from K1.
 
@@ -146,7 +180,7 @@ Nominative noun phrase that ends with `hat` (singular) or `haben` (plural) — c
 
 ---
 
-## 3. Anti-Examples — What NOT to Write
+## 4. Anti-Examples — What NOT to Write
 
 These are real examples marked "zu allgemein, verbessern" in review. They illustrate the exact failure modes to avoid.
 
@@ -162,7 +196,7 @@ These are real examples marked "zu allgemein, verbessern" in review. They illust
 
 ---
 
-## 4. General Rules
+## 5. General Rules
 
 **Specificity is the only quality signal.** Any K1 or K2 that could be copy-pasted unchanged into a letter for a different company is weak. The test: would the reader think "they actually looked at our website"?
 

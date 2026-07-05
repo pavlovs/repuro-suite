@@ -4,6 +4,29 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.16 — 2026-07-05
+
+### Cockpit — Artifact previews + curated agent playbook
+- **Inline artifact review**: agents upload the produced artifact as a preview
+  (`POST /api/agent/upload-preview/{id}`, live-claimant-gated); the review card
+  renders `.md` inline, `.pdf` embedded, images directly — the reviewer sees the
+  actual output, never just a file path. Office artifacts are exported to PDF
+  before upload (runner rule). `previewUrl` now respects the `/cockpit` mount
+  (was silently broken on prod).
+- **Curated playbook (learning loop)**: runners submit one-line candidate lessons
+  (`POST /api/agent/learning`, deduped, ≤300 chars); humans adopt/edit/dismiss in
+  the Agents view ("Proposed lessons" / "Playbook"); active rules (hard cap 40)
+  ride with every `/api/agent/queue` fetch. Nothing enters the playbook without
+  a human click.
+- **Security hardening (Codex, 4 rounds → PASS)**: human preview door human-only;
+  agent door requires live claim; `.html` previews removed (stored-XSS), legacy
+  served as download; markdown renderer escapes quotes (href breakout);
+  `X-Remote-User` trust opt-in via `COCKPIT_TRUSTED_PROXY` on both `principal()`
+  and the SSE endpoint; promote re-runs dedupe on final text.
+- 107 pytest; plugin v0.4.0 (`preview` + `lesson` commands, playbook-aware loop).
+
+---
+
 ## v2.1.15 — 2026-07-05
 
 ### Cockpit — Agentic workflow v2 (closed review loop, SPEC-agentic-workflow)

@@ -511,24 +511,79 @@ def test_agent_preview_upload_claimant_only_and_md(client):
     # served with markdown media type
     got = client.get(url)
     assert got.status_code == 200 and b"# Smoke" in got.content
-    # humans use their own door (unchanged), agents can't use the human one
+    # the human door is human-only — an agent token must not overwrite
+    # arbitrary tasks' previews through it (codex #1)
     assert (
         client.post(
             f"/api/task/{t['id']}/upload-preview",
             files=files,
             headers=auth(AGENT_TOKEN),
         ).status_code
-        == 201
-        or True
-    )  # principal-door accepts any authenticated principal — agent door adds the claimant gate
-    # unsupported type still rejected
-    bad = {"file": ("x.exe", b"MZ", "application/octet-stream")}
+        == 403
+    )
     assert (
         client.post(
-            f"/api/agent/upload-preview/{t['id']}", files=bad, headers=auth(AGENT_TOKEN)
+            f"/api/task/{t['id']}/upload-preview", files=files, headers=auth()
         ).status_code
-        == 422
+        == 201
     )
+    # unsupported types rejected — incl. .html (stored-XSS vector, codex #4)
+    for bad in (
+        {"file": ("x.exe", b"MZ", "application/octet-stream")},
+        {"file": ("x.html", b"<script>1</script>", "text/html")},
+    ):
+        assert (
+            client.post(
+                f"/api/agent/upload-preview/{t['id']}",
+                files=bad,
+                headers=auth(AGENT_TOKEN),
+            ).status_code
+            == 422
+        )
+    # after result the claim is no longer live — preview locked (codex #2)
+    client.post(
+        f"/api/agent/result/{t['id']}",
+        json={"idempotency_key": "kp", "evidence": "done"},
+        headers=auth(AGENT_TOKEN),
+    )
+    assert (
+        client.post(
+            f"/api/agent/upload-preview/{t['id']}",
+            files=files,
+            headers=auth(AGENT_TOKEN),
+        ).status_code
+        == 409
+    )
+
+
+def test_bearer_cannot_ride_x_remote_user(client):
+    """A direct caller with a Bearer token must not escalate to a human
+    principal via a client-set X-Remote-User header (codex #5)."""
+    agent_task(client)
+    r = client.post(
+        "/api/task/t-1/approve",
+        headers={**auth(AGENT_TOKEN), "X-Remote-User": "roman"},
+    )
+    assert r.status_code == 403  # agent stays agent — header ignored
+
+
+def test_promote_with_edited_duplicate_text_rejected(client):
+    """Dedupe re-runs on the FINAL promoted text (codex #6)."""
+    a = client.post(
+        "/api/agent/learning", json={"text": "rule A"}, headers=auth(AGENT_TOKEN)
+    ).json()
+    b = client.post(
+        "/api/agent/learning", json={"text": "rule B"}, headers=auth(AGENT_TOKEN)
+    ).json()
+    client.post(
+        f"/api/learning/{a['id']}/decide", json={"action": "promote"}, headers=auth()
+    )
+    r = client.post(
+        f"/api/learning/{b['id']}/decide",
+        json={"action": "promote", "text": "Rule A"},
+        headers=auth(),
+    )
+    assert r.status_code == 409 and "duplicate" in r.json()["detail"]
 
 
 def test_learning_candidate_promote_dismiss_flow(client):

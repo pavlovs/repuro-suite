@@ -106,6 +106,11 @@ def principal(
     authorization: str | None = Header(default=None),
     x_remote_user: str | None = Header(default=None),
 ):
+    # X-Remote-User is only trustworthy when Caddy set it from basic auth.
+    # A request carrying its own Bearer token is a direct caller — never let
+    # it ALSO assert a human identity via a client-set header (codex #5).
+    if authorization:
+        x_remote_user = None
     if x_remote_user and x_remote_user in _CADDY_USER_MAP:
         pid = _CADDY_USER_MAP[x_remote_user]
         row = (
@@ -1455,6 +1460,17 @@ def decide_learning(lid: int, payload: dict = Body(...), p=Depends(human_only)):
             kind = payload.get("kind") or row["kind"]
             if kind not in ("constraint", "heuristic"):
                 raise HTTPException(422, f"invalid kind: {kind!r}")
+            # re-run dedupe on the FINAL text — an edited promotion must not
+            # smuggle in a duplicate of an existing rule (codex #6)
+            dup = conn.execute(
+                "SELECT id FROM learnings WHERE status!='dismissed' AND id!=? "
+                "AND lower(text)=lower(?) AND (lane IS NULL OR lane IS ? OR lane=?)",
+                (lid, text, row["lane"], row["lane"]),
+            ).fetchone()
+            if dup:
+                raise HTTPException(
+                    409, f"duplicate of learning l-{dup['id']} — dismiss one"
+                )
             conn.execute(
                 "UPDATE learnings SET status='active', text=?, kind=?, "
                 "decided_by=?, decided_at=? WHERE id=?",
@@ -1687,7 +1703,10 @@ _PREVIEW_DIR = (
 _MAX_PREVIEW_MB = 50
 
 
-_PREVIEW_EXTS = (".pdf", ".png", ".jpg", ".jpeg", ".html", ".md")
+# no .html: an uploaded HTML file served on the app origin is a stored-XSS
+# vector against the reviewer (codex 2026-07-05 #4). md/pdf/png cover the
+# real cases — Office artifacts are exported to PDF before upload.
+_PREVIEW_EXTS = (".pdf", ".png", ".jpg", ".jpeg", ".md")
 
 
 def _store_preview(conn, actor_id, tid, num, file):
@@ -1725,8 +1744,10 @@ def _store_preview(conn, actor_id, tid, num, file):
 
 
 @app.post("/api/task/{tid}/upload-preview", status_code=201)
-def upload_preview(tid: str, file: UploadFile = File(...), p=Depends(principal)):
-    """Store a preview file (PDF, PNG, HTML, MD) for the review UI."""
+def upload_preview(tid: str, file: UploadFile = File(...), p=Depends(human_only)):
+    """Human door for preview files (PDF, PNG, MD). Agents use their own
+    claimant-gated door — leaving this open to agent tokens would let any agent
+    overwrite any task's preview (codex 2026-07-05 #1)."""
     conn = db.get_conn()
     num = _tid(tid)
     _get_task(conn, num)
@@ -1738,12 +1759,17 @@ def upload_preview(tid: str, file: UploadFile = File(...), p=Depends(principal))
 @app.post("/api/agent/upload-preview/{tid}", status_code=201)
 def agent_upload_preview(tid: str, file: UploadFile = File(...), p=Depends(agent_only)):
     """Agent door for artifact previews (Caddy exempts /api/agent/* on Bearer).
-    Claimant-only, while the claim is held — upload BEFORE posting the result."""
+    Live claimant only, while the task is still in_progress — upload BEFORE
+    posting the result; a submitted or lease-expired run cannot rewrite the
+    preview under the reviewer (codex 2026-07-05 #2)."""
     conn = db.get_conn()
     num = _tid(tid)
+    _reap_expired_claims(conn)
     row = _get_task(conn, num)
-    if row["claimed_by"] != p["id"]:
-        raise HTTPException(409, "not the claimant — upload previews before result")
+    if row["claimed_by"] != p["id"] or row["status"] != "in_progress":
+        raise HTTPException(
+            409, "not the live claimant — upload previews before result"
+        )
     out = _store_preview(conn, p["id"], tid, num, file)
     _broadcast(p["id"])
     return out
@@ -1761,9 +1787,16 @@ def serve_preview(tid: str, filename: str):
         ".png": "image/png",
         ".jpg": "image/jpeg",
         ".jpeg": "image/jpeg",
-        ".html": "text/html",
         ".md": "text/markdown; charset=utf-8",
     }.get(path.suffix.lower(), "application/octet-stream")
+    # legacy .html previews (no longer uploadable): force download, never
+    # execute on the app origin
+    if path.suffix.lower() in (".html", ".htm"):
+        return FileResponse(
+            path,
+            media_type="application/octet-stream",
+            headers={"Content-Disposition": f'attachment; filename="{path.name}"'},
+        )
     return FileResponse(path, media_type=media)
 
 

@@ -9,9 +9,13 @@ var HANDOVER_INITIALS = { RD: "RC", FF: "FC" };
 function renderMarkdown(text) {
   if (!text || !text.trim()) return null;
 
-  /* 1. Escape HTML entities in a plain string */
+  /* 1. Escape HTML entities in a plain string — quotes INCLUDED, because
+     escaped text is also interpolated into href="" attribute context; an
+     unescaped quote there breaks out of the attribute (stored XSS via
+     uploaded .md previews — codex 2026-07-05 #3). */
   function esc(s) {
-    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
 
   /* 2. Apply inline formatting to an already-escaped string → inner HTML string.
@@ -125,9 +129,8 @@ function ArtifactPreview(props) {
       </div>
     );
   }
-  if (/\.html?$/i.test(url)) {
-    return <iframe src={url} sandbox="" className="ag-rev-iframe" title="Artifact preview" />;
-  }
+  /* .html previews are no longer uploadable (stored-XSS vector) — the server
+     force-downloads any legacy ones; everything else renders as an image */
   return <img src={url} className="ag-rev-img" alt="Preview" />;
 }
 
@@ -326,6 +329,9 @@ function LessonRow(props) {
   var l = props.l;
   var editState = React.useState(l.text);
   var editVal = editState[0], setEdit = editState[1];
+  /* resync the draft when the server text changes (SSE refresh mutates the
+     lesson object in place) — otherwise a stale draft can be adopted */
+  React.useEffect(function() { setEdit(l.text); }, [l.id, l.text]);
   return (
     <div className="ag-lesson-row">
       <span className={"ag-lesson-kind ag-lesson-" + l.kind}>{l.kind === "constraint" ? "hard" : "soft"}</span>

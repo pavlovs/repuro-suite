@@ -1027,6 +1027,32 @@ def _owner_tag_map(conn):
     }
 
 
+def _task_readiness(conn, row):
+    """(ready, blocked_by_hard_refs) for one task row — shared by queue (display)
+    and claim (enforcement). A dropped deliverable counts as cleared, matching
+    assemble_state's dropped->done normalization."""
+
+    def _status_of(ref):
+        try:
+            prefix, num = models.parse_ref(ref)
+        except ValueError:
+            return None
+        table = "tasks" if prefix == "t" else "deliverables"
+        hit = conn.execute(f"SELECT status FROM {table} WHERE id=?", (num,)).fetchone()
+        if not hit:
+            return None
+        return "done" if prefix == "d" and hit["status"] == "dropped" else hit["status"]
+
+    prereqs = json.loads(row["prereqs"] or "[]")
+    color = compute.readiness(prereqs, _status_of)
+    blocked_by = [
+        p_["ref"]
+        for p_ in prereqs
+        if p_.get("hardness", "hard") == "hard" and _status_of(p_["ref"]) != "done"
+    ]
+    return color != compute.RED, blocked_by
+
+
 @app.get("/api/agent/queue")
 def agent_queue(scope: str = Query(default="mine"), p=Depends(agent_only)):
     """scope=mine (default) → only the caller's own lane, derived from the token;
@@ -1059,28 +1085,9 @@ def agent_queue(scope: str = Query(default="mine"), p=Depends(agent_only)):
     rows = conn.execute(sql, params).fetchall()
     owner_of = _owner_tag_map(conn)
 
-    def _status_of(ref):
-        try:
-            prefix, num = models.parse_ref(ref)
-        except ValueError:
-            return None
-        table = "tasks" if prefix == "t" else "deliverables"
-        hit = conn.execute(f"SELECT status FROM {table} WHERE id=?", (num,)).fetchone()
-        return hit["status"] if hit else None
-
-    def _readiness(r):
-        prereqs = json.loads(r["prereqs"] or "[]")
-        color = compute.readiness(prereqs, _status_of)
-        blocked_by = [
-            p_["ref"]
-            for p_ in prereqs
-            if p_.get("hardness", "hard") == "hard" and _status_of(p_["ref"]) != "done"
-        ]
-        return color != compute.RED, blocked_by
-
     out = []
     for r in rows:
-        ready, blocked_by = _readiness(r)
+        ready, blocked_by = _task_readiness(conn, r)
         out.append(
             {
                 "id": models.task_id(r["id"]),
@@ -1117,6 +1124,13 @@ def agent_claim(tid: str, p=Depends(agent_only)):
             raise HTTPException(409, "task is not agent-executable")
         if row["status"] != "open" or row["claimed_by"]:
             raise HTTPException(409, f"task not claimable (status={row['status']})")
+        # enforce the readiness invariant at the mutation boundary — a runner
+        # (old client, stale queue view) must not start work behind a hard gate
+        ready, blocked_by = _task_readiness(conn, row)
+        if not ready:
+            raise HTTPException(
+                409, f"task is blocked by unmet prereqs: {', '.join(blocked_by)}"
+            )
         expires = (datetime.now(timezone.utc) + timedelta(hours=4)).strftime(
             "%Y-%m-%dT%H:%M:%SZ"
         )

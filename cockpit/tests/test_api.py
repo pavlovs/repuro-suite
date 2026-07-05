@@ -408,6 +408,59 @@ def test_agent_block_and_human_answer_flow(client):
     )
 
 
+def test_claim_rejects_unready_task(client):
+    """Server enforces readiness at the mutation boundary — an old client or a
+    stale queue view must not claim a task behind an unmet hard prereq."""
+    gate = make_task(client, text="gate")
+    blocked = make_task(
+        client,
+        text="gated agent job",
+        execution="agent_supervised",
+        acceptance_criteria="ac",
+        prereqs=[{"ref": gate["id"], "hardness": "hard"}],
+    )
+    r = client.post(f"/api/agent/claim/{blocked['id']}", headers=auth(AGENT_TOKEN))
+    assert r.status_code == 409 and gate["id"] in r.json()["detail"]
+    # gate done -> claimable
+    client.patch(
+        f"/api/task/{gate['id']}",
+        json={"version": 1, "status": "done"},
+        headers=auth(),
+    )
+    r = client.post(f"/api/agent/claim/{blocked['id']}", headers=auth(AGENT_TOKEN))
+    assert r.status_code == 200
+
+
+def test_dropped_deliverable_prereq_counts_as_cleared(client):
+    """assemble_state normalizes deliverable dropped->done; the queue and claim
+    readiness must agree, or a task gated on a dropped deliverable is stuck."""
+    ws = make_ws(client)
+    d = make_deliv(client, ws)
+    t = make_task(
+        client,
+        text="gated on deliverable",
+        execution="agent_supervised",
+        acceptance_criteria="ac",
+        prereqs=[{"ref": d, "hardness": "hard"}],
+    )
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
+    assert q[0]["id"] == t["id"] and q[0]["ready"] is False
+    r = client.patch(
+        f"/api/deliverable/{d}",
+        json={"version": 1, "status": "dropped"},
+        headers=auth(),
+    )
+    assert r.status_code == 200, r.text
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
+    assert q[0]["ready"] is True and q[0]["blocked_by"] == []
+    assert (
+        client.post(
+            f"/api/agent/claim/{t['id']}", headers=auth(AGENT_TOKEN)
+        ).status_code
+        == 200
+    )
+
+
 def test_agent_block_requires_claim(client):
     t = agent_task(client)
     assert (

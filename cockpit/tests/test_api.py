@@ -556,15 +556,19 @@ def test_agent_preview_upload_claimant_only_and_md(client):
     )
 
 
-def test_bearer_cannot_ride_x_remote_user(client):
-    """A direct caller with a Bearer token must not escalate to a human
-    principal via a client-set X-Remote-User header (codex #5)."""
+def test_x_remote_user_not_trusted_by_default(client):
+    """X-Remote-User is honored ONLY behind a trusted proxy (env opt-in) and
+    NEVER together with a Bearer token (codex #5)."""
     agent_task(client)
+    # Bearer + spoofed header -> header ignored, agent stays agent
     r = client.post(
         "/api/task/t-1/approve",
         headers={**auth(AGENT_TOKEN), "X-Remote-User": "roman"},
     )
-    assert r.status_code == 403  # agent stays agent — header ignored
+    assert r.status_code == 403
+    # header-only spoof without COCKPIT_TRUSTED_PROXY -> anonymous -> 401
+    r = client.post("/api/task/t-1/approve", headers={"X-Remote-User": "roman"})
+    assert r.status_code == 401
 
 
 def test_promote_with_edited_duplicate_text_rejected(client):

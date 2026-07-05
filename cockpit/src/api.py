@@ -106,9 +106,14 @@ def principal(
     authorization: str | None = Header(default=None),
     x_remote_user: str | None = Header(default=None),
 ):
-    # X-Remote-User is only trustworthy when Caddy set it from basic auth.
-    # A request carrying its own Bearer token is a direct caller — never let
-    # it ALSO assert a human identity via a client-set header (codex #5).
+    # X-Remote-User is only trustworthy when a reverse proxy we control set it
+    # from basic auth (prod: Caddy overwrites the header on every request).
+    # Two gates (codex #5): the deployment must opt in via COCKPIT_TRUSTED_PROXY
+    # (set in suite/fly.toml, never on a directly-exposed instance), and a
+    # request carrying its own Bearer token is a direct caller — it never ALSO
+    # gets to assert a human identity via a client-set header.
+    if x_remote_user and os.environ.get("COCKPIT_TRUSTED_PROXY") != "1":
+        x_remote_user = None
     if authorization:
         x_remote_user = None
     if x_remote_user and x_remote_user in _CADDY_USER_MAP:

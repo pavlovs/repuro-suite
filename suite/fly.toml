@@ -19,6 +19,9 @@ primary_region = "fra"
   COCKPIT_DB = "/data/cockpit.db"
   COCKPIT_DEALROOM_DB = "/data/dealroom.db"
   COCKPIT_BASE_PATH = "/cockpit"
+  # X-Remote-User is only honored behind Caddy (which overwrites the header
+  # from basic auth). Never set this on a directly-exposed instance.
+  COCKPIT_TRUSTED_PROXY = "1"
   # INVESTOR ROOM (AUTH_INVESTOR_HASH is a Fly secret, not set here — Strada access deferred)
   INVESTOR_DB = "/data/investor.db"
   INVESTOR_DEALROOM_DB = "/data/dealroom.db"

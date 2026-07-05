@@ -262,3 +262,28 @@ existing token).
   routing.md updated.
 - **Open (deferred by decision)**: devbox runner for `runner:any` (Phase 3);
   `runner` picker in quick-add (everything defaults `local` until devbox exists).
+
+## 10. Round 2 (2026-07-05, same day) — artifact previews + curated playbook
+
+Trigger: Roman — "why is the .md not directly loaded in the review? how do I review
+a PDF/Excel/LOI?" + go on the learning loop ("must not blow up into unusable feedback").
+
+- **Artifact previews**: the reviewer sees the ACTUAL output in the review card —
+  `.md` rendered inline, `.pdf` embedded, images direct; Office artifacts exported
+  to PDF by the runner before upload (`preview` client cmd → agent door
+  `POST /api/agent/upload-preview/{id}`, live-claimant-gated). Mandatory runner
+  step before `result`.
+- **Curated playbook** (ACE-style generate→reflect→curate, human as curator):
+  runners submit ≤1 one-line candidate lesson per run (only from redo rounds /
+  answered questions, general rules only); Roman adopts/edits/dismisses in the
+  Agents view; active rules (constraints binding, heuristics defaults, HARD CAP
+  40) ride with every queue fetch. Anti-blow-up guards: cap, dedupe (submission
+  AND promotion), one-line limit, human gate, "if in doubt submit nothing".
+- **Codex 4 rounds → PASS**; fixed en route: agent-writable human preview door,
+  post-result preview overwrite, markdown href XSS, stored-XSS via .html previews
+  (support removed), X-Remote-User header spoof (COCKPIT_TRUSTED_PROXY opt-in on
+  principal + SSE), promote-dedupe gap, LessonRow SSE staleness.
+- **Deployed**: suite v2.1.16; plugin v0.4.0. 107 pytest, bundle compile, e2e
+  0 pageerrors, screenshots read (md preview card, lessons strip, playbook).
+- **First candidates seeded on prod** (l-1 adjusted-EBITDA, l-2 audience number
+  format) — awaiting Roman's Adopt as the first curation act.

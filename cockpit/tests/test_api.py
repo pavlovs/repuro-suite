@@ -461,6 +461,36 @@ def test_dropped_deliverable_prereq_counts_as_cleared(client):
     )
 
 
+def test_deliverable_cleared_by_done_children_unblocks_queue(client):
+    """An OPEN deliverable whose live child tasks are all done is effectively
+    cleared in canonical state — queue/claim readiness must agree."""
+    ws = make_ws(client)
+    d = make_deliv(client, ws)
+    child = make_task(client, text="child work", deliverable_id=d)
+    gated = make_task(
+        client,
+        text="gated on deliverable via children",
+        execution="agent_supervised",
+        acceptance_criteria="ac",
+        prereqs=[{"ref": d, "hardness": "hard"}],
+    )
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
+    assert q[0]["id"] == gated["id"] and q[0]["ready"] is False
+    client.patch(
+        f"/api/task/{child['id']}",
+        json={"version": 1, "status": "done"},
+        headers=auth(),
+    )
+    q = client.get("/api/agent/queue", headers=auth(AGENT_TOKEN)).json()["queue"]
+    assert q[0]["ready"] is True and q[0]["blocked_by"] == []
+    assert (
+        client.post(
+            f"/api/agent/claim/{gated['id']}", headers=auth(AGENT_TOKEN)
+        ).status_code
+        == 200
+    )
+
+
 def test_agent_block_requires_claim(client):
     t = agent_task(client)
     assert (

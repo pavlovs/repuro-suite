@@ -1029,19 +1029,33 @@ def _owner_tag_map(conn):
 
 def _task_readiness(conn, row):
     """(ready, blocked_by_hard_refs) for one task row — shared by queue (display)
-    and claim (enforcement). A dropped deliverable counts as cleared, matching
-    assemble_state's dropped->done normalization."""
+    and claim (enforcement). Mirrors assemble_state's prereq resolver exactly:
+    staging -> None; deliverable done/dropped -> done; an open deliverable whose
+    live child tasks are all done -> done."""
 
     def _status_of(ref):
         try:
             prefix, num = models.parse_ref(ref)
         except ValueError:
             return None
-        table = "tasks" if prefix == "t" else "deliverables"
-        hit = conn.execute(f"SELECT status FROM {table} WHERE id=?", (num,)).fetchone()
-        if not hit:
+        if prefix == "t":
+            hit = conn.execute(
+                "SELECT status, staging FROM tasks WHERE id=?", (num,)
+            ).fetchone()
+            return None if not hit or hit["staging"] else hit["status"]
+        hit = conn.execute(
+            "SELECT status, staging FROM deliverables WHERE id=?", (num,)
+        ).fetchone()
+        if not hit or hit["staging"]:
             return None
-        return "done" if prefix == "d" and hit["status"] == "dropped" else hit["status"]
+        if hit["status"] in ("done", "dropped"):
+            return "done"
+        live = conn.execute(
+            "SELECT COUNT(*) AS n, SUM(status='done') AS d FROM tasks "
+            "WHERE deliverable_id=? AND staging=0",
+            (num,),
+        ).fetchone()
+        return "done" if live["n"] and live["n"] == live["d"] else "open"
 
     prereqs = json.loads(row["prereqs"] or "[]")
     color = compute.readiness(prereqs, _status_of)

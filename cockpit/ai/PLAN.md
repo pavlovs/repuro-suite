@@ -20,12 +20,15 @@ model for counterparty-driven M&A work, auto-generated workstream visualization,
 |---|---|---|
 | M1 | Backend core: schema, deal_mirror sync (dealroom.db ro), API + auth + audit, MD import/export, agent queue endpoints, seed import (staging) | ✅ **done** 2026-06-11 — validated, see PLAN-M1.md |
 | M2 | Workstreams view (Blockers & Waiting panel) + Today view (shared lane) | ✅ done 2026-06-11 (PLAN-M2-M4.md) |
-| M3 | /cockpit-push + /cockpit-pull skills, deals.md generated section, local trial as daily driver, workplan curation pass | ✅ built 2026-06-11 — trial + curation = Roman's part (PLAN-M3.md) |
+| M3 | /cockpit-push + /cockpit-pull skills, deals.md generated section, local trial as daily driver, workplan curation pass | ✅ superseded 2026-07-05 by Agentic workflow v2 (skills retired) |
 | M4 | Timeline (milestone fidelity) + Agent queue UI | ✅ done 2026-06-11 (PLAN-M2-M4.md) |
-| M5 | Fly.io deploy, encrypted backups, token rotation, Flo onboarding | prepared (Dockerfile + fly.toml) — deploy gated on trial |
-| v1.1 | Scheduled agent poller, agent_auto, CMA integration, deal_actions deprecation w/ dealroom | not started |
+| M5 | Fly.io deploy, encrypted backups, token rotation, Flo onboarding | ✅ live — repuro-suite.fly.dev/cockpit/ (suite deploy) |
+| Agentic workflow v2 | One queue (cockpit) / one runner (/repuro:loop + RepuroAgentLoop schedule) / one review surface; closed review loop (block/answer, feedback re-queue, loop-safe reject, readiness-enforced claim, agent enqueue) | ✅ **done** 2026-07-05 — validated, see SPEC-agentic-workflow.md §9; deployed v2.1.15; plugin v0.3.0 |
+| v1.1 | agent_auto, devbox runner (`runner:any`), CMA integration, deal_actions deprecation w/ dealroom | not started (scheduled poller ✅ delivered 2026-07-05) |
 
 ## Current state
-M1 backend live: API on localhost:8099 (66 tests green), 14 deals mirrored from dealroom.db,
-workplan seeded as 43 staging tasks across 4 workstreams. Tokens for rd/rc-agent in `.env`.
-Next: M2 (Workstreams + Today views).
+Prod on Fly (suite v2.1.15) is the ONLY real DB; local :8099 is a diverged sandbox.
+Agentic workflow live end-to-end: enqueue (browser / `/repuro:add`) → scheduled runner
+(logon + 13:00) → Needs your review / Waiting on you in the Agents view → verdicts
+re-queue with feedback. 102 tests green. Flo: `/plugin install repuro` update to v0.3.0
+is the only step. Next: v1.1 automation items when Roman calls for them.

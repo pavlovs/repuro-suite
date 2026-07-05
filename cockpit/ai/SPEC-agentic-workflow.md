@@ -233,3 +233,32 @@ logon; ad-hoc `/repuro:loop` anytime for an immediate drain.
 AC for the build: the loop works end-to-end and Roman can start the agentic workflow
 after the build — and Flo can too (plugin update via GitHub, no new setup beyond his
 existing token).
+
+## 9. Validation results (built 2026-07-05, same session)
+
+- **Shipped**: suite v2.1.15 on Fly (commits c7f2d58 + 3acdd0f + 1c490b7); plugin
+  v0.3.0 pushed (eb040e0). All 4 backends 200 post-deploy; all routes 401 unauth.
+- **Tests**: 102 pytest (was 99 pre-existing +13 new for the loop endpoints/readiness);
+  JSX bundle babel-compiles; e2e 0 pageerrors.
+- **Codex review**: 3 rounds → PASS. R1 found 2 real defects (claim didn't enforce
+  readiness server-side; dropped-deliverable prereqs never cleared), R2 found the
+  resolver still diverged from canonical state (children-done deliverables). All
+  fixed with regression tests.
+- **Latent bug fixed en passant**: DDL lacked migration-10 columns — fresh DBs
+  (tests, new installs) broke on preview/review fields.
+- **Live UI verification (screenshots read)**: review card with evidence+verdict bar;
+  Waiting-on-you card with inline answer → live requeue (toast, SSE refresh);
+  Round-2 badge + feedback line on send-back card; blocked tasks no longer hide in Queue.
+- **Prod smoke**: `queue` returns new fields against live Fly (7 real RC tasks);
+  t-424 executed by a headless Sonnet run (`claude -p "/repuro:run t-424"`, the exact
+  scheduler path) → artifact created → in_review on prod.
+- **Phase 2 live**: scheduled task `RepuroAgentLoop` (logon+5min, daily 13:00) →
+  `CLAUDE_COWORK/scripts/run-repuro-loop.ps1`, logs to Claude_Context/runner-logs/,
+  runs `--permission-mode bypassPermissions` (nobody watching; hard boundaries live
+  in the loop skill — flag to Roman if he wants it tighter).
+- **Queue unification done**: TASKS.md [AGENT] items migrated → t-420..t-423 (ASF
+  business case NOT migrated — ASF dead 01.07, flagged for drop-confirmation);
+  /agent-loop, /cockpit-pull, /cockpit-push retired to pointer stubs; execution.md +
+  routing.md updated.
+- **Open (deferred by decision)**: devbox runner for `runner:any` (Phase 3);
+  `runner` picker in quick-add (everything defaults `local` until devbox exists).

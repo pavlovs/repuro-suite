@@ -81,6 +81,7 @@ React via Babel in-browser (no build step). Vendor libs in `static/vendor/`.
 ## Status
 - M1 backend: ✅ 2026-06-11 — API on :8099, 75 tests, 14 deals mirrored, workplan seeded (staging)
 - M2+M4 frontend: ✅ 2026-06-11 — SPA at `/` (Workstreams+Blockers, Today, Timeline, Agent Queue)
-- M3 agent layer: ✅ built — /cockpit-pull + /cockpit-push skills, deals.md generated block. **Trial + curation pass = Roman's part, open.**
+- M3 agent layer: ✅ superseded by **Agentic workflow v2** (below). /cockpit-pull + /cockpit-push RETIRED 2026-07-05 (targeted the diverged :8099).
 - M5 hosting: live on Fly.io via suite/Dockerfile — served at `/cockpit/`
+- **Agentic workflow v2: ✅ 2026-07-05, deployed v2.1.15** — spec `ai/SPEC-agentic-workflow.md`. One queue (cockpit prod), one runner (`/repuro:loop`, plugin v0.3.0, scheduled task `RepuroAgentLoop` logon+13:00 → `CLAUDE_COWORK/scripts/run-repuro-loop.ps1`), one review surface (Agents view: Needs your review / Waiting on you / Running / Queue). Closed loop: request-changes re-queues WITH feedback (`review_round`/`review_feedback` in `/api/agent/queue`); agent questions → `POST /api/agent/block` → inline answer (`POST /api/task/{id}/answer`) → re-queue; reject flips `execution→me` (loop-safe); claim enforces prereq readiness server-side; agents enqueue via `POST /api/agent/task` (AC mandatory). TASKS.md [AGENT] queue killed — cockpit is the only agent queue.
 - Server: auto-starts at logon (Startup `RepuroCockpit.cmd` → `start_cockpit.ps1`); manual: run the ps1

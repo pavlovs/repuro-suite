@@ -1,6 +1,7 @@
 # SPEC — Agents view v2: Inbox-first sub-tabs
 
-Status: **SPEC for review** — not built. Author: Claude · Date: 2026-07-06
+Status: **REVISED after Opus review (§6) — v2.1 recommendation is the two-tab cut.**
+Not built. Author: Claude · Date: 2026-07-06
 Trigger: Roman — "with the long queue, Recently completed, Playbook, How-to-set-up
 kinda gets lost in the single Agent tab. Rethink how a sensible agent UX/UI would work."
 Supersedes: SPEC-agents-view.md (2026-06-23, tabs proposed, stack built instead —
@@ -87,3 +88,38 @@ INBOX (default when n>0)          QUEUE                    PLAYBOOK
 Default tab when Inbox is empty: **Queue** (recommended — next-most-useful) or
 always land on Inbox to confirm "nothing needs you"? Recommendation: Queue, with
 the Inbox tab still showing its zero state when clicked.
+
+---
+
+## 6. Opus review (2026-07-06) + revised recommendation — v2.1
+
+Opus verdict: **SHIP WITH CHANGES.** Key findings, all adopted:
+
+1. **The real "long queue" fix is density, not location** (MUST): queue items
+   become compact single-line rows (`#pos · title · lane · ready/blocked · deal`),
+   not 2-col cards with full AC text — ~3-4x height cut. AC/detail show in the
+   task drawer on click. Review cards keep full width; queue rows don't need it.
+2. **The three-tab cut was one tab too many** (Opus's strongest point, accepted):
+   splitting Review from Queue breaks the §7 watch-model — the SSE card motion
+   (Queue → Running → Needs your review, live in the open tab) degrades to a
+   badge tick on a tab you're not watching. **v2.1 = TWO tabs:**
+   - **Work** (default): Needs your review → Waiting on you → Proposed lessons
+     (visually subordinate strip, own muted count — never the same amber badge
+     as blocking items) → Running (with lease-staleness chip) → compact Queue
+     (+ new agent task). One canvas, the live motion preserved, reference noise gone.
+   - **Reference**: Playbook (rules) → Recently completed (audit) → nothing else.
+   - **Setup FAQ** leaves the stack entirely → persistent "?" help affordance in
+     the Agents header (it was the named "gets lost" item; burying it under a
+     "Playbook" label would make that worse).
+3. **Sticky tabs** (SHOULD, adopted): initial land = Work; never auto-switch after
+   an action empties a section — zero states instead.
+4. **Counts follow the active lane filter** (ambiguity resolved): all badges and
+   section counts reflect the selected lane; switching lane re-counts.
+5. **Deal grouping/filter**: deferred — premature at 10-15 tasks; revisit when the
+   queue spans 4+ deals regularly.
+6. **Mobile**: explicitly desktop-first (existing grid collapses to one column;
+   no further responsive work in this scope).
+
+Net effect vs the original stack: same single-canvas workflow, minus the three
+reference sections, minus the queue-card bloat, plus correct priority for
+lesson candidates. Smaller change than v2.0, closer to the complaint.

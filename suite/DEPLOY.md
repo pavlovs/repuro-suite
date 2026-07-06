@@ -6,12 +6,13 @@ Single Fly.io app hosting ALLEX + DEALROOM + COCKPIT behind Caddy reverse proxy.
 
 ```
 repuro-suite.fly.dev
-├── /         → landing page
-├── /allex/   → ALLEX Pipeline (basic auth)
-├── /deals/   → Dealroom (basic auth)
-└── /cockpit/ → Cockpit (bearer token auth)
+├── /          → landing page
+├── /allex/    → ALLEX Pipeline (basic auth)
+├── /deals/    → Dealroom (basic auth)
+├── /cockpit/  → Cockpit (bearer token auth)
+└── /investor/ → Investor Room (basic auth; `investor` user confined to /investor)
 
-/data/ volume: pipeline.db, dealroom.db, cockpit.db
+/data/ volume: pipeline.db, dealroom.db, cockpit.db, investor.db
 ```
 
 ## First-time setup
@@ -79,6 +80,7 @@ The Docker build context is `CLAUDE_REPURO/` (parent of suite/) so it can copy a
 - ALLEX: `https://repuro-suite.fly.dev/allex/`
 - Dealroom: `https://repuro-suite.fly.dev/deals/`
 - Cockpit: `https://repuro-suite.fly.dev/cockpit/`
+- Investor Room: `https://repuro-suite.fly.dev/investor/`
 
 ## Auth
 
@@ -87,6 +89,7 @@ The Docker build context is `CLAUDE_REPURO/` (parent of suite/) so it can copy a
 | ALLEX | HTTP Basic (Caddy) | roman / [password] | florian / [password] |
 | Dealroom | HTTP Basic (Caddy) | roman / [password] | florian / [password] |
 | Cockpit | Bearer token | RD token | FF token |
+| Investor Room | HTTP Basic (Caddy) | roman / [password] | `investor` user (Strada; `AUTH_INVESTOR_HASH` secret), confined to `/investor/*` |
 
 ## Updating
 

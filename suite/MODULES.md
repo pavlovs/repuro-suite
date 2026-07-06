@@ -10,6 +10,11 @@ Deploy: `suite/Dockerfile` + `suite/fly.toml` via `/deploy` skill. All modules s
 | ALLEX | `lead-pipeline/` | 8081 | `pipeline.py dashboard --serve` | `/allex/` | pipeline.db |
 | DEALRoom | `dealroom/` | 8082 | `DEALROOM.py dashboard --serve` | `/deals/` | dealroom.db |
 | Cockpit | `cockpit/` | 8083 | `cockpit.py serve` | `/cockpit/` | cockpit.db |
+| Investor Room | `boardroom/` | 8084 | `boardroom.py serve` | `/investor/` | investor.db (+ read-only: dealroom/pipeline/cockpit) |
+
+Investor Room deviates from the convention: investor-view HTML is assembled at
+request time from `boardroom/templates/` (see `boardroom/SPEC-investor-split.md`);
+`investor` Caddy user is confined to `/investor/*` (403 elsewhere).
 
 ## Module Structure Convention
 

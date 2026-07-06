@@ -15,20 +15,7 @@ Claude reads this when `/suite-fix` is invoked.
 - [ ] Update the local MOUSE onepager into the online Dealroom (content/data sync)
 
 
-- [ ] AGents: How to setup & run is hidden beneath, same as recently updated. if there is a long queue, those section are difficult to see. Maybe separate Agents into Agents Workflow and Agents Review and have its own section? Something like this?
-
-Investor Mode
-- [ ] LOI Scorecard comparison Add Total (out of 40) and in the score column just keep the number (29, 34, etc.). Also call it Total Score instead of Total only, so that one understands what the coefficient leads to. 
-- [ ] Add comment below. Higher Score / Multiple equals more "value for money" acquisitoin - change as how you see fit
-- [ ] I find Sources & Uses, espeically in the comparison hard to read, there is a lot of numbers - leave maybe morewhite space in between or change to illions instead of K€? What do you think is better? there is inconsistency between using "-" as 0 and 0 as 0.
-- [ ] Custmer Interviews Provider is still WIP
-- [ ] Structuring Tax KG is Ebner Stolz, YPOG is only our own 
-- [ ] Operative Cash Flow: Maybe instead of a complex comment, add a small table on the right of sources and souces to show calculation and vailability of "operating cash flow"
-- [ ] add that the sources & uses are preliminary as a comment below
-- [ ] change position of mouse and cat
-- [ ] Sources and Uses for Mouse and Cat should not be streatched out but have same format as Fox and Mantis
-- [ ] Formatting of the individual scorecards looks bad, they are creating stupdi white space (e. g. value creation potential is only one category, no need to have 3/4 on the left in vertical writing which no one can read)
-- [ ] FOX EBITDA is 0,36 - why is the scorecard saying 432k and eBITDA margin of 12% - this is invented - please make sure and check that the scorecard bvlaues are correct for the 4 companies, especially the historical growth as well. Fox shows 432k, Mantis shows 0,8 M€, inconsistent - fix this
+- [ ] AGents: How to setup & run is hidden beneath, same as recently updated. if there is a long queue, those section are difficult to see. Maybe separate Agents into Agents Workflow and Agents Review and have its own section? Something like this? *(flagged 2026-07-06: UX restructure — Claude recommends splitting the Agents view into "Queue & Review" [default] and "Setup & Playbook" [collapsed second section]; needs Roman's go before building)*
 
 
 ---
@@ -58,9 +45,20 @@ Investor Mode
 ## Resolved
 Deployed fixes are pruned on each `/suite-fix` run. See git history of this file for the full log.
 
-- [x] Dealroom resolves to 502 — fixed 2026-06-24 (missing `import threading` in `dealroom/src/dashboard.py`; backend was crash-looping on `NameError`. Verified live: `localhost:8082 -> 200` post-deploy). a4f1815
-- [x] Cockpit Workstreams "Blocked By" reveals only on hover — fixed 2026-06-24 (`TRow` wrapped in `.trow-hovergroup`; prereq rows `display:none` until parent task hovered; per-row separators preserved). a4f1815
-- [x] +1d slow/broken — fixed 2026-06-26. Added `api.bumpDue` fast path: parses PATCH response, updates version in-place, fires `refreshFromServer` in background. Rapid clicks now work.
-- [x] Dead `view-relations.jsx` removed — 2026-06-26 (10.6KB, not in JSX_FILES, CSS already cleaned in prior session)
-- [x] DEALROOM_REQUIRE_DB wired in fly.toml — 2026-06-26 (env guard was implemented but inert; now active in prod)
-- [x] Cockpit blank white page (all modules) — fixed 2026-06-29 (v76). Root causes across v71-v75: (1) Caddy crash from invalid Caddyfile syntax in /diag handler, (2) machine auto_stop with min=0 causing 503, (3) Cache-Control headers inside handle_path blocks (reverted v75). **Actual root cause of persistent blank pages (v75 still broken):** Caddy `handle /` is a catch-all prefix matcher that swallows ALL paths including `/cockpit`, `/allex`, `/deals` before their `handle /xxx { redir }` blocks fire. Fix: replaced `handle /xxx { redir }` with top-level `redir /xxx /xxx/ permanent` directives (run before handle blocks) + changed landing page links to use trailing slashes (`/cockpit/` not `/cockpit`).
+- [x] Login loop on all modules ("stuck at auth", roman locked out since 05.07 deploy) — fixed 2026-07-06 (v2.1.17). Root cause: floating `caddy:2-alpine` tag pulled Caddy 2.11.4 in the 05.07 image build; 2.11.4 no longer injects `header_up X-Remote-User {http.auth.user.id}` after basic_auth (placeholder resolves in `respond` but not in reverse_proxy upstream headers) → backends saw authed users as anonymous. Diagnosed live with a temporary debug basic-auth user; @needsAuth matcher and route-based config variants ruled out (version-bound, not config-bound). Fix: pin `caddy:2.10-alpine` in suite/Dockerfile.
+- [x] Investor portfolio table Lion/Wolf EV+multiple stale vs latest models — fixed 2026-07-06: Lion 4.8/5.9x → 3.7/5.6x (Golmed v15, 26.06), Wolf 5.2/5.1x → 4.3/5.4x (KVG v5, 12.06); matches dealroom.db overrides synced 05.07 (handoff item the v16 port session skipped).
+
+All Investor Mode items — fixed 2026-07-06 by applying the pending `boardroom/review/proposal-fresh-v16.html` through `boardroom/templates/` (reverse-split, byte-verified) + deploying the template split (92f0bba) and scorecard re-source (8251375) that were committed but never shipped:
+
+- [x] LOI Scorecard comparison: "Total Score (out of 40)" row label, score column plain numbers — fixed 2026-07-06 (v16)
+- [x] Comment below comparison: Score/Multiple = value-for-money explainer — fixed 2026-07-06 (v16)
+- [x] Sources & Uses readability: more cell padding (9px/16px), kept K€; "—" = n/a vs 0 = true zero — fixed 2026-07-06 (v16)
+- [x] Customer Interviews provider → TBD — fixed 2026-07-06 (v16)
+- [x] Structuring/Tax KG → Ebner Stolz only (YPOG removed) — fixed 2026-07-06 (v16)
+- [x] Operating cash flow: side table (eo-panel) right of S&U instead of prose comment — fixed 2026-07-06 (v16)
+- [x] "Preliminary" note below all S&U views — fixed 2026-07-06 (v16)
+- [x] Mouse and Cat positions swapped (tabs, panels, all comparison columns) — fixed 2026-07-06 (v16 + `_PAGE_DEALS` order in boardroom/src/api.py)
+- [x] Mouse + Cat S&U same layout as Fox/Mantis (su-layout grid, no stretch) — fixed 2026-07-06 (v16)
+- [x] Individual scorecard formatting: horizontal category rows, no vertical labels — fixed 2026-07-06 (was committed 8251375, undeployed)
+- [x] Fox scorecard 432k/12% invented values — re-sourced from in-doc P&Ls, all 4 deals cross-checked (Fox 0.36 M€/10.3%, Mantis 0.81, Mouse 0.65, Cat 0.93; CAGRs match deals.md) — fixed 2026-07-06 (was committed 8251375, undeployed)
+- [x] Fox valuation earn-out table EVs inconsistent with EV 1,753 (963/1,463 → 1,253/1,753/1,903) — fixed 2026-07-06 (v16)

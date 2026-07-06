@@ -4,6 +4,29 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.17 — 2026-07-06
+
+### Suite — HOTFIX: login loop (Caddy version pin)
+- **Root cause**: `suite/Dockerfile` copied Caddy from the floating `caddy:2-alpine`
+  tag; the 2026-07-05 image build silently picked up Caddy **2.11.4**, which no
+  longer injects `header_up X-Remote-User {http.auth.user.id}` into reverse_proxy
+  upstream headers after `basic_auth` (the placeholder still resolves in `respond`).
+  Every backend saw authenticated users as anonymous → 401 on `/api/state` etc. →
+  login loop for roman/florian across all modules.
+- **Diagnosis**: reproduced on prod with a temporary debug basic-auth user; the
+  `@needsAuth` matcher and a route-based variant were ruled out — the regression
+  is version-bound, not config-bound.
+- **Fix**: pin `caddy:2.10-alpine`. Caddyfile unchanged.
+
+### Investor Room — v16 content + model-corrected Lion/Wolf
+- Ships the v16 template port (done 05.07 evening session: Cat/Mouse reorder,
+  scorecard re-source, S&U layout, provider fixes — see ISSUES.md Resolved).
+- Portfolio table Lion EV/multiple 4.8/5.9x → **3.7/5.6x** (Golmed model v15),
+  Wolf 5.2/5.1x → **4.3/5.4x** (KVG model v5) — aligned with dealroom.db
+  overrides synced from the 05.07 model sweep.
+
+---
+
 ## v2.1.16 — 2026-07-05
 
 ### Cockpit — Artifact previews + curated agent playbook

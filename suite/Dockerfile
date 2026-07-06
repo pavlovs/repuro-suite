@@ -1,7 +1,12 @@
 FROM python:3.12-slim AS base
 
-# Install Caddy
-COPY --from=caddy:2-alpine /usr/bin/caddy /usr/bin/caddy
+# Install Caddy — PINNED. caddy 2.11.4 (pulled by the floating :2 tag on the
+# 2026-07-05 build) broke `header_up X-Remote-User {http.auth.user.id}` after
+# basic_auth: the placeholder resolves in `respond` but is no longer injected
+# into reverse_proxy upstream headers → every module 401s authed users ("login
+# loop"). Verified on prod 2026-07-06 with a debug basic-auth user. Do NOT
+# unpin without re-running that test (scratchpad: caddy_fix_validate.py).
+COPY --from=caddy:2.10-alpine /usr/bin/caddy /usr/bin/caddy
 
 # Install Litestream (continuous SQLite replication)
 ADD https://github.com/benbjohnson/litestream/releases/download/v0.3.13/litestream-v0.3.13-linux-amd64.tar.gz /tmp/litestream.tar.gz

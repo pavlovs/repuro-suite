@@ -4,6 +4,23 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.20 — 2026-07-06
+
+### Cockpit — Agents view v2 (three views)
+- **Inbox / Queue / Playbook sub-navigation** replaces the single scroll
+  (SPEC-agents-view-v2, Opus-reviewed): Inbox = reviews → agent questions →
+  subordinate lessons strip; Queue = running (lease-staleness chip) + compact
+  single-line rows + "+ new agent task" + recently-completed tail; Playbook =
+  rules only. Setup FAQ moved to a "?" header overlay.
+- Sticky tabs (land on Inbox only when something blocks; never auto-switch);
+  all badges follow the lane filter (incl. learnings); redo review cards show
+  the Round-N badge AND the sent-back feedback text.
+- Verified per spec §7b: 108 pytest, bundle compile, seeded e2e 0 pageerrors,
+  two context-free verifier agents (code + visual) PASS on all 10 ACs after
+  2 fix rounds (lane-filtered learnings, feedback render).
+
+---
+
 ## v2.1.19 — 2026-07-06
 
 ### Investor Room — codex-gate fixes on the v16 port (/suite-fix run)

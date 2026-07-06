@@ -32,7 +32,7 @@ _USE_V2: bool = False
 _USE_V1: bool = False
 _USE_DEV: bool = False  # --dev flag: serve on separate port, shows [DEV] badge
 
-DASHBOARD_VERSION = "v2.1.17"  # bump on every prod deploy; shown in LIVE badge
+DASHBOARD_VERSION = "v2.1.18"  # bump on every prod deploy; shown in LIVE badge
 
 
 def _template_name() -> str:

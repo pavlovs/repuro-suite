@@ -7,6 +7,15 @@
 </div>
 
 <script>
+// Chrome no longer replays cached basic-auth credentials on background fetch()
+// calls — force credentials or whoami/inline-edit 401 behind Caddy (2026-07-06).
+var _origFetch = window.fetch;
+window.fetch = function (url, opts) {
+  opts = opts || {};
+  if (!opts.credentials) opts.credentials = "include";
+  return _origFetch.call(window, url, opts);
+};
+
 // ---- agenda rail -> jump + active state ----
 var items=[].slice.call(document.querySelectorAll('.agenda-item'));
 function go(id){var el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});}

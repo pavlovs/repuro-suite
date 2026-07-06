@@ -4,6 +4,17 @@
 (function () {
   "use strict";
 
+  /* Chrome no longer replays cached basic-auth credentials on background
+     fetch() calls (page navigations still carry them) — force credentials on
+     every request or every API call 401s behind Caddy and the UI traps users
+     in the token prompt (login-loop incident 2026-07-06). */
+  var _origFetch = window.fetch;
+  window.fetch = function (url, opts) {
+    opts = opts || {};
+    if (!opts.credentials) opts.credentials = "include";
+    return _origFetch.call(window, url, opts);
+  };
+
   /* ---- toast notifications (replaces alert() for non-blocking feedback) ---- */
   var _toastEl;
   function ensureToast() {
@@ -588,23 +599,38 @@
   /* ---------- boot ---------- */
   async function fetchState() {
     var r = await authedFetch("/api/state");
-    if (r.status === 401) return null;
+    if (r.status === 401) { sessionStorage.removeItem("cockpit_token"); return null; }
     if (!r.ok) throw new Error("state fetch failed: " + r.status);
     return r.json();
   }
 
-  async function boot() {
-    var state = null;
-    var base = window.COCKPIT_BASE || '';
-    // Caddy path: plain fetch — no Authorization header so browser sends cached Basic auth
+  // Caddy path. credentials:'include' is REQUIRED: modern Chrome no longer
+  // replays cached basic-auth credentials on background fetch() calls (page
+  // navigations still carry them — the shell loads, the data call 401s and
+  // the UI trapped users in the token prompt, 2026-07-06).
+  async function fetchStateBasic(base) {
     try {
-      var r = await fetch((base || '') + '/api/state');
-      if (r.ok) { state = await r.json(); sessionStorage.removeItem("cockpit_token"); }
+      var r = await fetch((base || '') + '/api/state', { credentials: 'include' });
+      if (r.ok) {
+        var s = await r.json();
+        sessionStorage.removeItem("cockpit_token");
+        return s;
+      }
     } catch (e) {}
+    return null;
+  }
+
+  async function boot() {
+    var base = window.COCKPIT_BASE || '';
+    var state = await fetchStateBasic(base);
     // Direct-access fallback: stored Bearer token
     if (!state && getToken()) state = await fetchState();
     while (!state) {
-      await showLogin(state === null && getToken() ? "Invalid token — try again" : undefined);
+      // re-try the basic-auth path each round — a bad token must never
+      // permanently trap a user who has valid Caddy credentials
+      state = await fetchStateBasic(base);
+      if (state) break;
+      await showLogin(getToken() ? "Invalid token — try again" : undefined);
       state = await fetchState();
     }
     window.COCKPIT_DATA = mapState(state);

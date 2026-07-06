@@ -1079,6 +1079,15 @@
 </div>
 
 <script>
+// Chrome no longer replays cached basic-auth credentials on background fetch()
+// calls — force credentials or every API call 401s behind Caddy (2026-07-06).
+const _origFetch = window.fetch;
+window.fetch = function (url, opts) {
+  opts = opts || {};
+  if (!opts.credentials) opts.credentials = "include";
+  return _origFetch.call(window, url, opts);
+};
+
 // ===================== Data bootstrap =====================
 const SERVE_MODE = __SERVE_MODE_JS__;
 const EMBEDDED_DATA = __DATA_JSON__;

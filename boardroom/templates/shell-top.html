@@ -194,8 +194,6 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .val-deal.active{display:block}
 .su-deal{display:none}
 .su-deal.active{display:block}
-.ddi-deal{display:none}
-.ddi-deal.active{display:block}
 .val-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
 @media(max-width:760px){.val-grid{grid-template-columns:1fr}}
 .val-layout{display:grid;grid-template-columns:1fr minmax(260px,0.45fr);gap:24px;align-items:start;margin-top:10px}
@@ -364,9 +362,6 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .cdd2-score{font-weight:700;font-size:15px;color:var(--ci-ink);font-variant-numeric:tabular-nums;text-align:center;display:block}
 .cdd-ko{display:inline;font-size:8.5px;font-weight:700;color:var(--ci-muted);background:rgba(0,0,0,.05);border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle;letter-spacing:.03em;white-space:nowrap}
 .cdd2-legend{font-size:11px;color:var(--ci-muted);margin-top:10px;line-height:1.5}
-.cdd2-empty{display:flex;align-items:flex-start;gap:13px;padding:18px 20px;border:1px dashed var(--ci-line);border-radius:10px;background:var(--ci-canvas);font-size:13px;color:var(--ci-text);line-height:1.5}
-.cdd2-empty .ic{flex-shrink:0;width:30px;height:30px;border-radius:8px;background:var(--ci-surface);border:1px solid var(--ci-line);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--ci-muted);font-weight:700}
-.cdd2-empty b{color:var(--ci-ink)}
 @media(max-width:760px){.cdd2-table col.cc-cmt{width:0}.cdd2-cmt{display:none}.cdd2-table .cc-cmt-cell{display:none}}
 
 /* ---------- ACT 4: timeline ---------- */
@@ -422,7 +417,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .su-table tbody tr.su-tot td{font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);padding:8px 12px;background:var(--ci-canvas)}
 .su-table tbody tr.su-empty td{color:var(--ci-muted)}
 .op-stage--io{background:var(--stage-indicative_offer)}
-.su-layout{display:grid;grid-template-columns:1fr 280px;gap:24px;align-items:start}
+.su-layout{display:grid;grid-template-columns:auto minmax(300px,340px);gap:28px;align-items:start;justify-content:start}
 @media(max-width:900px){.su-layout{grid-template-columns:1fr}}
 .su-comment{font-size:12.5px;color:var(--ci-text);line-height:1.55;padding:14px 16px;background:var(--ci-canvas);border:1px solid var(--ci-line);border-radius:var(--radius-sm)}
 .su-comment b{color:var(--ci-ink)}
@@ -433,7 +428,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .comp-table{max-width:780px;border-collapse:collapse;font-size:12.5px;font-family:var(--ci-font)}
 .comp-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:8px 14px;text-align:center}
 .comp-table thead th:first-child{text-align:left;min-width:200px}
-.comp-table tbody td{padding:7px 14px;border-bottom:1px solid var(--ci-line);text-align:center;font-variant-numeric:tabular-nums}
+.comp-table tbody td{padding:9px 16px;border-bottom:1px solid var(--ci-line);text-align:center;font-variant-numeric:tabular-nums}
 .comp-table tbody td:first-child{text-align:left;font-weight:600;color:var(--ci-ink)}
 .comp-table .comp-cat td{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ci-muted);padding:10px 12px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
 .comp-table .comp-tot td{font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);padding:8px 12px;background:var(--ci-canvas)}
@@ -449,7 +444,6 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .fn-v{font-size:24px}
 .fn-l{font-size:13px}
 .fn-sub{font-size:12px}
-.stage-nbo{background:var(--stage-indicative_offer)}
 /* LOI scorecard comparison — +1 font size, wider column spacing (scorecard view only) */
 .cdd-wrap .comp-table{font-size:13.5px}
 .cdd-wrap .comp-table tbody td{padding:7px 18px}

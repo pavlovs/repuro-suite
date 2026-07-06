@@ -38,9 +38,6 @@ function applyDeal(deal){
   document.querySelectorAll('.su-deal').forEach(function(c){
     c.classList.toggle('active',c.id==='su-'+deal);
   });
-  document.querySelectorAll('.ddi-deal').forEach(function(c){
-    c.classList.toggle('active',c.id==='ddi-'+deal);
-  });
   var isOverview=(deal==='overview');
   allViewTabs.forEach(function(vt){
     var v=vt.getAttribute('data-view');

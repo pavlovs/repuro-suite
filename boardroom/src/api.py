@@ -504,7 +504,7 @@ def unpublish_publication(pub_id: int, p=Depends(admin_only)):
 
 _TPL = os.path.join(os.path.dirname(__file__), "..", "templates")
 _PAGE_SECTIONS = ("ONEPAGER", "SCORECARD", "SU", "VALUATION")
-_PAGE_DEALS = ("_overview", "fox", "mantis", "mouse", "cat")
+_PAGE_DEALS = ("_overview", "fox", "mantis", "cat", "mouse")
 _MARKER_RE = re.compile(r"^<!--\s*(ONEPAGER|SCORECARD|SU|VALUATION)\s*-->\s*$")
 
 

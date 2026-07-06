@@ -123,3 +123,77 @@ Opus verdict: **SHIP WITH CHANGES.** Key findings, all adopted:
 Net effect vs the original stack: same single-canvas workflow, minus the three
 reference sections, minus the queue-card bloat, plus correct priority for
 lesson candidates. Smaller change than v2.0, closer to the complaint.
+
+---
+
+## 7. FINAL — Roman's call (2026-07-06): THREE views + all orthogonal Opus MUSTs
+
+Roman chose the three-view cut (Opus decision #1 → three). Build target:
+
+| View | Contents (top→bottom) |
+|---|---|
+| **Inbox** (default when blocking items > 0) | Review cards (full width, unchanged) → Waiting on you (inline answer) → Proposed lessons (SUBORDINATE strip: muted styling + separate muted count — never the amber badge) |
+| **Queue** | Running (pinned, claimed_by + lease-staleness chip: amber when lease < 60 min or heartbeat stale) → compact single-line queue rows (`#pos · title · Round-N · lane · deal · ready/blocked`) with drag-unaffected order display + "+ new agent task" → Recently completed (collapsed, tail of the lifecycle) |
+| **Playbook** | Active rules only (hard/soft chips, retire) |
+
+Cross-cutting (Opus MUSTs/SHOULDs, all in scope):
+- **FAQ → "?" help affordance** in the Agents header (opens the setup guide as an overlay/panel) — not inside any tab.
+- **Tab badges**: Inbox badge = reviews + questions ONLY (amber when >0); lessons get their own small muted count on the tab (e.g. `Inbox (2) ·1`) or inside only. Queue tab shows `Queue (n) · k running`.
+- **All counts follow the active lane filter**; lane switch re-counts everything.
+- **Sticky tabs**: initial land = Inbox if (reviews+questions) > 0 else Queue; NEVER auto-switch after an action; emptied sections show zero states.
+- **Zero states** for all three views.
+- **Queue rows compact**: no AC text on the row; click opens the task drawer.
+- Desktop-first (existing responsive collapse only).
+
+### 7a. Acceptance criteria (verifier checklist — context-free agents get THIS verbatim)
+
+AC1. Agents view shows a 3-segment sub-nav: Inbox, Queue, Playbook. No other
+     top-level sections exist on the page outside the active view.
+AC2. Inbox contains, in order: in_review verdict cards; blocked-with-question
+     cards with a working inline answer input; a visually subordinate
+     "Proposed lessons" strip. It contains NO queue cards, NO running cards,
+     NO playbook rules, NO FAQ.
+AC3. The Inbox tab badge counts ONLY in_review + blocked items and uses the
+     attention (amber) style when > 0; lesson candidates are NOT in that number.
+AC4. Queue view: running tasks pinned on top showing claimed_by and a lease
+     indicator; queue items are single-line rows (< 40px tall) WITHOUT
+     acceptance-criteria text; row click opens the task drawer; a
+     "+ new agent task" affordance exists; Recently completed appears
+     collapsed at the bottom of Queue.
+AC5. Playbook view lists active rules with hard/soft kind chips and a retire
+     action — and nothing else.
+AC6. The setup FAQ is reachable via a "?" affordance in the Agents header and
+     is NOT rendered inside any of the three views.
+AC7. Switching lane (All/RC/FC) changes tab badge numbers and view contents
+     consistently.
+AC8. Approving the last review in Inbox does NOT auto-switch the tab; Inbox
+     shows a zero state naming the queued/running counts.
+AC9. A task with review_round > 0 shows a Round-N badge and the feedback text
+     — in Inbox on its review card when in_review, and on its compact queue
+     row (badge at minimum) when re-queued.
+AC10. All existing flows still work end-to-end: answer→requeue, adopt/dismiss
+      lesson, approve/request-changes/reject/escalate, artifact preview pane
+      (md rendered, pdf embedded).
+
+### 7b. Verification design — context-free, generator≠reviewer
+
+Deterministic first (all must pass before any agent verdict):
+1. JSX bundle babel-compiles.
+2. Full pytest (API untouched — must stay green).
+3. Seeded e2e (local sandbox): fixtures = 1 in_review with md preview, 1 blocked
+   with question, 1 round-2 queued, 6+ plain queued, 1 running (claimed), 2
+   lesson candidates, 1 active playbook rule. Script drives: all 3 tabs +
+   lane switch + answer flow + adopt flow + "?" help open. Screenshots each
+   state. Zero PAGEERROR required.
+
+Then two FRESH-CONTEXT verifier agents (Sonnet; they get ONLY what's listed):
+- **V1 code verifier**: inputs = AC checklist verbatim + view-agents.jsx +
+  boot.js + cockpit-extras.css paths. Job: for each AC, cite the code that
+  satisfies it (file:line) or flag FAIL. No screenshots — code truth only.
+- **V2 visual verifier**: inputs = AC checklist verbatim + the e2e screenshots
+  ONLY (no code, no spec §1-6). Job: judge each AC as a fresh user looking at
+  the pixels; explicitly hunt for Opus's failure modes (queue still noisy?
+  lessons visually equal to reviews? FAQ visible in a tab?).
+- Verdict rule: every AC needs PASS from BOTH verifiers (V1 code + V2 visual
+  where visually observable). Any FAIL → fix → re-run THAT verifier. Max 2
+  correction loops, then surface to Roman.

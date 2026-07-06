@@ -74,7 +74,8 @@ function QuickAdd({ open, onClose, prefill }) {
       setMode(t);
       setF({
         text: "", d: (prefill && prefill.d) || "", ws: (prefill && prefill.ws) || "",
-        owners: ["RD"], due: TODAY, priority: "", execution: "me", ac: "",
+        owners: ["RD"], due: TODAY, priority: "",
+        execution: (prefill && prefill.execution) || "me", ac: "",
         status: (prefill && prefill.status) || "open", target: TODAY,
         inputFrom: "", inputQuestion: "",
       });

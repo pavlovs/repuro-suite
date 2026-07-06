@@ -75,16 +75,10 @@
 /* agents lens — independent cards */
 .ag-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); gap: 16px; margin-top: 12px; }
 .ag-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 22px 26px; }
-.ag-card.ag-verdict { border-left: 3px solid var(--amber); background: #fffdf5; }
 .ag-card.ag-running { border-left: 3px solid var(--brand); }
-.ag-card.ag-queued { border-left: 3px solid var(--faint); }
-.ag-card.ag-done { opacity: .6; border-left: 3px solid var(--green); }
 .ag-card-top { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
 .ag-state-badge { font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; }
-.ag-state-badge.ag-verdict { background: #fef3c7; color: #92400e; }
 .ag-state-badge.ag-running { background: #e0f7fa; color: var(--brand-700); }
-.ag-state-badge.ag-queued { background: var(--surface-2); color: var(--ink-2); }
-.ag-state-badge.ag-done-badge { background: #dcfce7; color: #166534; }
 .ag-card-ws { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; font-weight: 700; }
 .ag-card-title { font-size: 15px; font-weight: 600; line-height: 1.4; cursor: pointer; }
 .ag-card-title:hover { color: var(--brand); }
@@ -107,7 +101,6 @@
 .ag-waiting-input:focus { outline: none; border-color: var(--brand); }
 /* artifact preview variants (md rendered, html sandboxed) */
 .ag-rev-mdprev { background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; max-height: 420px; overflow: auto; font-size: 13px; line-height: 1.5; }
-.ag-rev-iframe { width: 100%; height: 420px; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
 /* playbook / proposed lessons — deliberately small: one line per rule */
 .ag-lessons { display: flex; flex-direction: column; gap: 8px; }
 .ag-lesson-row { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; }
@@ -119,6 +112,44 @@
 .ag-lesson-text:focus { outline: none; border-color: var(--brand); }
 .ag-lesson-static { flex: 1; font-size: 13px; color: var(--ink); }
 .ag-lesson-src { font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; flex: none; }
+/* ===== Agents v2 — three views (Inbox / Queue / Playbook) ===== */
+.ag-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 22px; flex-wrap: wrap; }
+.ag-tabs { display: flex; align-items: center; gap: 4px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+.ag-tab { display: inline-flex; align-items: center; gap: 6px; font: 600 13.5px var(--font); color: var(--ink-2); background: none; border: none; border-radius: 8px; padding: 7px 14px; cursor: pointer; }
+.ag-tab:hover { color: var(--ink); }
+.ag-tab.on { background: #fff; color: var(--ink); box-shadow: var(--shadow-card); font-weight: 700; }
+.ag-tab-n { font-size: 11.5px; font-weight: 700; background: var(--line); color: var(--ink-2); padding: 1px 8px; border-radius: 999px; }
+.ag-tab.on .ag-tab-n { background: var(--surface-2); }
+.ag-tab-n.attn { background: var(--amber); color: #3a2c00; }
+.ag-tab-sub { font-size: 11px; color: var(--muted); font-weight: 600; }
+.ag-tab-extra { font-size: 11px; color: var(--brand-700); font-weight: 600; }
+.ag-help-btn { width: 28px; height: 28px; margin-left: 4px; border-radius: 50%; border: 1px solid var(--line); background: #fff; color: var(--ink-2); font: 700 13px var(--font); cursor: pointer; }
+.ag-help-btn:hover { color: var(--brand); border-color: var(--brand); }
+.ag-zero { font-size: 14px; color: var(--ink-2); padding: 26px 0 10px; }
+.ag-zero code { font-family: ui-monospace, monospace; font-size: 12.5px; background: var(--brand-50); color: var(--brand); padding: 1px 6px; border-radius: 4px; }
+/* subordinate section — lessons are curation, not blockers */
+.ag-sec--subordinate { opacity: .92; }
+.ag-sec-h--sub { font-size: 14px; font-weight: 700; color: var(--ink-2); border-bottom: 1px solid var(--line); }
+/* compact queue rows — the "long queue" fix: one line, no AC text */
+.ag-qrows { display: flex; flex-direction: column; gap: 6px; }
+.ag-qrow { display: flex; align-items: center; gap: 10px; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; min-height: 0; }
+.ag-qrow:hover { border-color: var(--brand); }
+.ag-qrow--done { opacity: .6; }
+.ag-qrow-pos { font-size: 11.5px; font-weight: 700; color: var(--muted); font-family: ui-monospace, monospace; width: 28px; flex: none; }
+.ag-qrow-title { flex: 1; font-size: 13.5px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-qrow-deal { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .4px; color: var(--brand); flex: none; }
+.ag-qrow-state { font-size: 11px; font-weight: 700; flex: none; width: 52px; text-align: right; }
+.ag-qrow-ready { color: var(--green); }
+.ag-qrow-blocked { color: var(--rose); }
+.ag-qadd { margin-left: auto; font-size: 12.5px; }
+/* running lease freshness */
+.ag-lease-chip { font-size: 11px; font-weight: 700; color: var(--muted); background: var(--surface-2); padding: 2px 8px; border-radius: 4px; margin-left: auto; }
+.ag-lease-chip.stale { background: var(--amber); color: #3a2c00; }
+/* help overlay */
+.ag-help-scrim { position: fixed; inset: 0; background: rgba(15, 40, 50, .45); display: flex; align-items: flex-start; justify-content: center; padding: 60px 16px; z-index: 90; }
+.ag-help-panel { background: #fff; border-radius: 12px; padding: 22px 26px; max-width: 720px; width: 100%; max-height: 80vh; overflow: auto; box-shadow: var(--shadow-card); }
+.ag-help-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.ag-help-head h3 { margin: 0; font-size: 16px; }
 .ag-recent-toggle { background: none; border: none; font: 13px var(--font); color: var(--muted); cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 0; }
 .ag-recent-toggle:hover { color: var(--ink); }
 

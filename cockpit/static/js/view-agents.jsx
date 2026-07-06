@@ -180,6 +180,11 @@ function AgentReviewCard(props) {
         </div>
       )}
 
+      {/* on a redo: the instruction the agent was sent back with (verifier AC9) */}
+      {t.reviewRound > 0 && t.reviewFeedback && (
+        <div className="ag-card-feedback"><b>Your feedback (R{t.reviewRound}):</b> {t.reviewFeedback}</div>
+      )}
+
       {/* ---- Split: left (summary) + right (preview) ---- */}
       <div className={hasPreview ? "ag-rev-split" : "ag-rev-split ag-rev-split--full"}>
         <div className="ag-rev-left">
@@ -242,31 +247,72 @@ function AgentReviewCard(props) {
   );
 }
 
-/* AgentCard — hoisted for the same reason as AgentReviewCard */
-function AgentQueueCard(props) {
-  var t = props.t, ws = props.ws, queuePosition = props.queuePosition, openTask = props.openTask;
-  var r = readiness(t);
-  var qpos = (t.status === "open") ? queuePosition[t.id] : null;
-  var st = (t.status === "in_progress")
-    ? { label: "Running", cls: "ag-running", icon: "bolt" }
-    : { label: "Queued", cls: "ag-queued", icon: "table" };
+/* Lease freshness for a running task — amber once under 60 min so a stalled
+   agent is visible from the Queue tab (SPEC v2 §7, Opus MUST). */
+function leaseInfo(t) {
+  if (!t.claim_expires_at) return null;
+  var mins = Math.round((new Date(t.claim_expires_at) - Date.now()) / 60000);
+  if (mins <= 0) return { label: "lease expired", stale: true };
+  return { label: "lease " + (mins >= 90 ? Math.round(mins / 60) + "h" : mins + "m"), stale: mins < 60 };
+}
+
+/* RunningCard — pinned on top of the Queue view: who runs what, is it alive */
+function AgentRunningCard(props) {
+  var t = props.t, ws = props.ws, openTask = props.openTask;
+  var lease = leaseInfo(t);
   return (
-    <div className={"ag-card " + st.cls}>
+    <div className="ag-card ag-running">
       <div className="ag-card-top">
-        <span className={"ag-state-badge " + st.cls}><Icon name={st.icon} size={11} /> {st.label}</span>
-        {qpos && <span className="ag-queue-pos">#{qpos}</span>}
+        <span className="ag-state-badge ag-running"><Icon name="bolt" size={11} /> Running</span>
         {t.reviewRound > 0 && <span className="ag-round-chip">Round {t.reviewRound + 1}</span>}
         {t.lane && <span className={"ag-lane-chip ag-lane-" + t.lane}>{t.lane}</span>}
         {ws && <span className="ag-card-ws">{ws.name}</span>}
+        {lease && <span className={"ag-lease-chip" + (lease.stale ? " stale" : "")}>{lease.label}</span>}
       </div>
       <div className="ag-card-title tc-click" onClick={function() { openTask(t.id); }}>{t.text}</div>
-      {t.ac && <div className="ag-card-ac"><b>Done when:</b> {t.ac}</div>}
-      {/* a send-back rides with the human's instruction — show it on the card */}
-      {t.reviewRound > 0 && t.reviewFeedback &&
-        <div className="ag-card-feedback"><b>Your feedback:</b> {t.reviewFeedback}</div>}
-      {t.status === "in_progress" && t.claimed_by && <div className="ag-card-meta">Claimed by {t.claimed_by}</div>}
-      {t.status === "open" && r === "red" && t.need && <div className="ag-card-blocked">Blocked: {t.need}</div>}
-      {t.status === "open" && r === "green" && <div className="ag-card-ready">Ready to pick up</div>}
+      {t.claimed_by && <div className="ag-card-meta">Claimed by {t.claimed_by}</div>}
+    </div>
+  );
+}
+
+/* AgentQueueRow — compact single-line queue entry (Opus MUST: density, not
+   location, is the "long queue" fix). No AC text — the drawer has it. */
+function AgentQueueRow(props) {
+  var t = props.t, pos = props.pos, openTask = props.openTask;
+  var r = readiness(t);
+  return (
+    <div className="ag-qrow tc-click" onClick={function() { openTask(t.id); }}>
+      <span className="ag-qrow-pos">#{pos}</span>
+      <span className="ag-qrow-title">{t.text}</span>
+      {t.reviewRound > 0 && <span className="ag-round-chip">R{t.reviewRound + 1}</span>}
+      {t.lane && <span className={"ag-lane-chip ag-lane-" + t.lane}>{t.lane}</span>}
+      {t.dealCode && <span className="ag-qrow-deal">{t.dealCode}</span>}
+      {r === "red"
+        ? <span className="ag-qrow-state ag-qrow-blocked">blocked</span>
+        : <span className="ag-qrow-state ag-qrow-ready">ready</span>}
+    </div>
+  );
+}
+
+/* HelpPanel — the setup guide, reachable ONLY via the "?" header affordance
+   (Opus MUST: docs get a labeled home, not a burial under another tab). */
+function AgentsHelpPanel(props) {
+  return (
+    <div className="ag-help-scrim" onClick={props.onClose}>
+      <div className="ag-help-panel" onClick={function(e) { e.stopPropagation(); }}>
+        <div className="ag-help-head">
+          <h3>How to set up &amp; run <code className="ag-sec-code">/repuro</code></h3>
+          <button className="btn" onClick={props.onClose}>Close</button>
+        </div>
+        <ol className="ag-faq-body">
+          <li><b>What it is.</b> Agent tasks are run by Claude via the <code>/repuro</code> plugin — it executes the task and posts the result to <b>Inbox</b> for your verdict. Nothing auto-closes.</li>
+          <li><b>Set up once</b> (in Claude Code): <code>/plugin marketplace add pavlovs/repuro-cockpit-skills</code> → <code>/plugin install repuro</code> → <code>/repuro:setup &lt;your-token&gt;</code>. Ask Roman for your token; it sets your lane (RC / FC) automatically. Update later with <code>/plugin update repuro@repuro</code>.</li>
+          <li><b>Run it.</b> <code>/repuro:loop</code> drains your whole queue (also runs on a schedule); <code>/repuro:run &lt;id | #position | words&gt;</code> runs one task; <code>/repuro:add</code> queues a new task from any session. Add <code>--all</code> to work across both lanes.</li>
+          <li><b>Review — everything happens in the Inbox, not in the terminal.</b> <b>Approve</b> closes a task, <b>Request changes</b> sends it back with your feedback (the next loop pass redoes it), <b>Reject</b> takes it off the agent lane. Agent questions appear as <b>Waiting on you</b> — answer inline and the task re-queues itself.</li>
+          <li><b>Playbook.</b> Runners propose one-line lessons; adopt or dismiss them in the Inbox. Adopted rules ride with every future run (hard = binding, soft = default).</li>
+          <li><b>Repo:</b> <a href="https://github.com/pavlovs/repuro-cockpit-skills" target="_blank" rel="noreferrer">github.com/pavlovs/repuro-cockpit-skills</a></li>
+        </ol>
+      </div>
     </div>
   );
 }
@@ -354,16 +400,38 @@ function AgentsView({ openTask, person }) {
   /* re-prefilter if the active person changes mid-session (person-switch toggle) */
   React.useEffect(function() { setLane(HANDOVER_INITIALS[person] || "all"); }, [person]);
   var agents = laneVal === "all" ? allAgents : allAgents.filter(function(t) { return t.lane === laneVal; });
-  var recent = agents.filter(function(t) { return t.status === "done"; }).slice(-5).reverse();
-  var showRecentState = React.useState(false);
-  var showRecentVal = showRecentState[0], setShowRecent = showRecentState[1];
-  var showFaqState = React.useState(false);
-  var showFaqVal = showFaqState[0], setShowFaq = showFaqState[1];
-  var showPlaybookState = React.useState(false);
-  var showPlaybookVal = showPlaybookState[0], setShowPlaybook = showPlaybookState[1];
-  var learnings = window.LEARNINGS || [];
+
+  /* learnings are lane-scoped like tasks (lane 'rd'/'ff', null = both lanes) —
+     the lane filter applies to their counts and lists too (verifier AC7) */
+  var LANE_KEY = { RC: "rd", FC: "ff" };
+  var laneMatch = function(l) {
+    return laneVal === "all" || !l.lane || l.lane === LANE_KEY[laneVal];
+  };
+  var learnings = (window.LEARNINGS || []).filter(laneMatch);
   var lessonCandidates = learnings.filter(function(l) { return l.status === "candidate"; });
   var playbook = learnings.filter(function(l) { return l.status === "active"; });
+
+  var review = agents.filter(function(t) { return t.status === "in_review"; });
+  var running = agents.filter(function(t) { return t.status === "in_progress" && t.claimed_by; });
+  /* statusRaw: boot.js maps blocked->open for the general views; here blocked
+     tasks are "Waiting on you" items, never queue rows */
+  var waiting = agents.filter(function(t) { return t.statusRaw === "blocked"; });
+  var queued = agents.filter(function(t) { return t.status === "open" && t.statusRaw !== "blocked"; });
+  var recent = agents.filter(function(t) { return t.status === "done"; }).slice(-8).reverse();
+
+  /* blocking = items an agent is parked on (reviews + questions). Lessons are
+     curation, not blockers — they never share the amber badge (Opus MUST). */
+  var blocking = review.length + waiting.length;
+
+  /* sticky tabs: land on Inbox only if something blocks, else Queue; after
+     that the user navigates — an action emptying the Inbox NEVER yanks the
+     tab away (zero states instead). useState initializer = initial land only. */
+  var tabState = React.useState(blocking > 0 ? "inbox" : "queue");
+  var tabVal = tabState[0], setTab = tabState[1];
+  var showRecentState = React.useState(false);
+  var showRecentVal = showRecentState[0], setShowRecent = showRecentState[1];
+  var helpState = React.useState(false);
+  var helpVal = helpState[0], setHelp = helpState[1];
 
   /* lane filter counts — active tasks only, ignore current filter */
   var laneN = function(l) {
@@ -373,20 +441,11 @@ function AgentsView({ openTask, person }) {
   };
   var LANES = [["all", "All"], ["RC", "RC"], ["FC", "FC"]];
 
-  var review = agents.filter(function(t) { return t.status === "in_review"; });
-  var running = agents.filter(function(t) { return t.status === "in_progress" && t.claimed_by; });
-  /* statusRaw: boot.js maps blocked->open for the general views; here blocked
-     tasks get their own "Waiting on you" section instead of hiding in Queue */
-  var waiting = agents.filter(function(t) { return t.statusRaw === "blocked"; });
-  var queued = agents.filter(function(t) { return t.status === "open" && t.statusRaw !== "blocked"; });
-
   var parseId = function(id) { return parseInt((id || "").replace("t-", ""), 10) || 0; };
   var queuedSorted = queued.slice().sort(function(a, b) {
     if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
     return parseId(a.id) - parseId(b.id);
   });
-  var queuePosition = {};
-  queuedSorted.forEach(function(t, i) { queuePosition[t.id] = i + 1; });
 
   var wsFor = function(t) {
     var d = DELIVERABLES.find(function(d) { return d.id === t.d; });
@@ -394,155 +453,159 @@ function AgentsView({ openTask, person }) {
     return WORKSTREAMS.find(function(w) { return w.id === d.ws; });
   };
 
+  var newAgentTask = function() {
+    window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { type: "task", execution: "agent" } }));
+  };
+
+  /* all tab badges follow the active lane filter (Opus SHOULD 6) */
+  var TABS = [
+    { key: "inbox", label: "Inbox", n: blocking, attn: blocking > 0, sub: lessonCandidates.length },
+    { key: "queue", label: "Queue", n: queued.length, extra: running.length > 0 ? running.length + " running" : null },
+    { key: "playbook", label: "Playbook", n: playbook.length },
+  ];
+
   return (
     <div className="agq">
-      {/* ---- Lane filter (RC / FC) ---- */}
-      <div className="ag-lanebar">
-        <span className="ag-lanebar-label">Lane</span>
-        <div className="ag-seg">
-          {LANES.map(function(l) {
+      {/* ---- header row: view tabs + help + lane filter ---- */}
+      <div className="ag-topbar">
+        <div className="ag-tabs">
+          {TABS.map(function(tb) {
             return (
-              <button key={l[0]} className={"ag-seg-btn" + (laneVal === l[0] ? " on" : "")}
-                onClick={function() { setLane(l[0]); }}>
-                {l[1]} <span className="ag-seg-n">{laneN(l[0])}</span>
+              <button key={tb.key} className={"ag-tab" + (tabVal === tb.key ? " on" : "")}
+                onClick={function() { setTab(tb.key); }}>
+                {tb.label}
+                <span className={"ag-tab-n" + (tb.attn ? " attn" : "")}>{tb.n}</span>
+                {tb.sub > 0 && <span className="ag-tab-sub" title="proposed lessons">·{tb.sub}</span>}
+                {tb.extra && <span className="ag-tab-extra">{tb.extra}</span>}
               </button>
             );
           })}
+          <button className="ag-help-btn" title="How to set up & run /repuro" onClick={function() { setHelp(true); }}>?</button>
+        </div>
+        <div className="ag-lanebar">
+          <span className="ag-lanebar-label">Lane</span>
+          <div className="ag-seg">
+            {LANES.map(function(l) {
+              return (
+                <button key={l[0]} className={"ag-seg-btn" + (laneVal === l[0] ? " on" : "")}
+                  onClick={function() { setLane(l[0]); }}>
+                  {l[1]} <span className="ag-seg-n">{laneN(l[0])}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* ---- Needs your review ---- */}
-      <section className="ag-sec">
-        <h2 className="ag-sec-h">
-          Needs your review
-          {review.length > 0 && <span className="ag-sec-count ag-count-attn">{review.length}</span>}
-        </h2>
-        {review.length > 0
-          ? review.map(function(t) {
-              return <AgentReviewCard key={t.id} t={t} ws={wsFor(t)} openTask={openTask} person={person} />;
-            })
-          : <div className="ag-sec-empty">Nothing waiting on you. Finished agent tasks land here for approval.</div>}
-      </section>
-
-      {/* ---- Waiting on you (agent questions) ---- */}
-      {waiting.length > 0 && (
-        <section className="ag-sec">
-          <h2 className="ag-sec-h">
-            Waiting on you
-            <span className="ag-sec-count ag-count-attn">{waiting.length}</span>
-          </h2>
-          <div className="ag-cards">
-            {waiting.map(function(t) {
-              return <AgentBlockedCard key={t.id} t={t} ws={wsFor(t)} openTask={openTask} />;
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* ---- Running ---- */}
-      {running.length > 0 && (
-        <section className="ag-sec">
-          <h2 className="ag-sec-h">Running <span className="ag-sec-count">{running.length}</span></h2>
-          <div className="ag-cards">
-            {running.map(function(t) {
-              return <AgentQueueCard key={t.id} t={t} ws={wsFor(t)} queuePosition={queuePosition} openTask={openTask} />;
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* ---- Queue ---- */}
-      <section className="ag-sec">
-        <h2 className="ag-sec-h">Queue <span className="ag-sec-count">{queued.length}</span></h2>
-        {queuedSorted.length > 0
-          ? <div className="ag-cards">
-              {queuedSorted.map(function(t) {
-                return <AgentQueueCard key={t.id} t={t} ws={wsFor(t)} queuePosition={queuePosition} openTask={openTask} />;
+      {/* ================= INBOX — everything that waits on a human ================= */}
+      {tabVal === "inbox" && (
+        <React.Fragment>
+          {blocking === 0 && lessonCandidates.length === 0 && (
+            <div className="ag-zero">Nothing needs you — {queued.length} queued, {running.length} running.</div>
+          )}
+          {review.length > 0 && (
+            <section className="ag-sec">
+              <h2 className="ag-sec-h">Needs your review <span className="ag-sec-count ag-count-attn">{review.length}</span></h2>
+              {review.map(function(t) {
+                return <AgentReviewCard key={t.id} t={t} ws={wsFor(t)} openTask={openTask} person={person} />;
               })}
-            </div>
-          : <div className="ag-sec-empty">Queue empty. Add a task with execution <b>Claude (agent)</b>, or <code>/repuro:add</code> from any Claude session.</div>}
-      </section>
+            </section>
+          )}
+          {waiting.length > 0 && (
+            <section className="ag-sec">
+              <h2 className="ag-sec-h">Waiting on you <span className="ag-sec-count ag-count-attn">{waiting.length}</span></h2>
+              <div className="ag-cards">
+                {waiting.map(function(t) {
+                  return <AgentBlockedCard key={t.id} t={t} ws={wsFor(t)} openTask={openTask} />;
+                })}
+              </div>
+            </section>
+          )}
+          {lessonCandidates.length > 0 && (
+            <section className="ag-sec ag-sec--subordinate">
+              <h2 className="ag-sec-h ag-sec-h--sub">Proposed lessons <span className="ag-sec-count">{lessonCandidates.length}</span></h2>
+              <div className="ag-lessons">
+                {lessonCandidates.map(function(l) { return <LessonRow key={l.id} l={l} />; })}
+              </div>
+            </section>
+          )}
+        </React.Fragment>
+      )}
 
-      {/* ---- Recently completed — collapsible, same .ag-sec pattern ---- */}
-      {recent.length > 0 && (
+      {/* ================= QUEUE — the machine's side ================= */}
+      {tabVal === "queue" && (
+        <React.Fragment>
+          {running.length > 0 && (
+            <section className="ag-sec">
+              <h2 className="ag-sec-h">Running <span className="ag-sec-count">{running.length}</span></h2>
+              <div className="ag-cards">
+                {running.map(function(t) {
+                  return <AgentRunningCard key={t.id} t={t} ws={wsFor(t)} openTask={openTask} />;
+                })}
+              </div>
+            </section>
+          )}
+          <section className="ag-sec">
+            <h2 className="ag-sec-h">
+              Queue <span className="ag-sec-count">{queued.length}</span>
+              <button className="btn ag-qadd" onClick={newAgentTask}><Icon name="plus" size={13} /> New agent task</button>
+            </h2>
+            {queuedSorted.length > 0
+              ? <div className="ag-qrows">
+                  {queuedSorted.map(function(t, i) {
+                    return <AgentQueueRow key={t.id} t={t} pos={i + 1} openTask={openTask} />;
+                  })}
+                </div>
+              : <div className="ag-zero">Queue empty. Add a task here or <code>/repuro:add</code> from any Claude session.</div>}
+          </section>
+          {recent.length > 0 && (
+            <section className="ag-sec">
+              <h2 className="ag-sec-h ag-sec-h--toggle" onClick={function() { setShowRecent(!showRecentVal); }}>
+                <span className={"caret" + (showRecentVal ? " open" : "")}><Icon name="chevron" size={13} /></span>
+                Recently completed
+                <span className="ag-sec-count">{recent.length}</span>
+              </h2>
+              {showRecentVal && (
+                <div className="ag-qrows">
+                  {recent.map(function(t) {
+                    return (
+                      <div key={t.id} className="ag-qrow ag-qrow--done tc-click" onClick={function() { openTask(t.id); }}>
+                        <span className="ag-qrow-pos"><Icon name="check" size={11} /></span>
+                        <span className="ag-qrow-title">{t.text}</span>
+                        {t.lane && <span className={"ag-lane-chip ag-lane-" + t.lane}>{t.lane}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
+          )}
+        </React.Fragment>
+      )}
+
+      {/* ================= PLAYBOOK — the curated rules, nothing else ================= */}
+      {tabVal === "playbook" && (
         <section className="ag-sec">
-          <h2 className="ag-sec-h ag-sec-h--toggle" onClick={function() { setShowRecent(!showRecentVal); }}>
-            <span className={"caret" + (showRecentVal ? " open" : "")}><Icon name="chevron" size={13} /></span>
-            Recently completed
-            <span className="ag-sec-count">{recent.length}</span>
-          </h2>
-          {showRecentVal && (
-            <div className="ag-cards">
-              {recent.map(function(t) {
-                return (
-                  <div key={t.id} className="ag-card ag-done tc-click" onClick={function() { openTask(t.id); }}>
-                    <div className="ag-card-top">
-                      <span className="ag-state-badge ag-done-badge"><Icon name="check" size={11} /> Done</span>
+          <h2 className="ag-sec-h">Playbook <span className="ag-sec-count" title="hard cap — a full playbook forces pruning">{playbook.length} of max 40</span></h2>
+          {playbook.length > 0
+            ? <div className="ag-lessons">
+                {playbook.map(function(l) {
+                  return (
+                    <div key={l.id} className="ag-lesson-row ag-lesson-row--active">
+                      <span className={"ag-lesson-kind ag-lesson-" + l.kind}>{l.kind === "constraint" ? "hard" : "soft"}</span>
+                      <span className="ag-lesson-static">{l.text}</span>
+                      {l.source_task && <span className="ag-lesson-src">{l.source_task}</span>}
+                      <button className="btn" title="Retire from playbook"
+                        onClick={function() { api.decideLearning(l, "dismiss"); }}>Retire</button>
                     </div>
-                    <div className="ag-card-title">{t.text}</div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            : <div className="ag-zero">No adopted rules yet. Runners propose lessons after redo rounds — adopt them in the Inbox and they ride with every future run.</div>}
         </section>
       )}
 
-      {/* ---- Proposed lessons — runner candidates awaiting your curation ---- */}
-      {lessonCandidates.length > 0 && (
-        <section className="ag-sec">
-          <h2 className="ag-sec-h">
-            Proposed lessons
-            <span className="ag-sec-count ag-count-attn">{lessonCandidates.length}</span>
-          </h2>
-          <div className="ag-lessons">
-            {lessonCandidates.map(function(l) { return <LessonRow key={l.id} l={l} />; })}
-          </div>
-        </section>
-      )}
-
-      {/* ---- Playbook — the curated rules every runner gets (capped at 40) ---- */}
-      {playbook.length > 0 && (
-        <section className="ag-sec">
-          <h2 className="ag-sec-h ag-sec-h--toggle" onClick={function() { setShowPlaybook(!showPlaybookVal); }}>
-            <span className={"caret" + (showPlaybookVal ? " open" : "")}><Icon name="chevron" size={13} /></span>
-            Playbook
-            <span className="ag-sec-count">{playbook.length}/40</span>
-          </h2>
-          {showPlaybookVal && (
-            <div className="ag-lessons">
-              {playbook.map(function(l) {
-                return (
-                  <div key={l.id} className="ag-lesson-row ag-lesson-row--active">
-                    <span className={"ag-lesson-kind ag-lesson-" + l.kind}>{l.kind === "constraint" ? "hard" : "soft"}</span>
-                    <span className="ag-lesson-static">{l.text}</span>
-                    {l.source_task && <span className="ag-lesson-src">{l.source_task}</span>}
-                    <button className="btn" title="Retire from playbook"
-                      onClick={function() { api.decideLearning(l, "dismiss"); }}>Retire</button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* ---- How to set up & run /repuro — collapsible, same .ag-sec pattern ---- */}
-      <section className="ag-sec">
-        <h2 className="ag-sec-h ag-sec-h--toggle" onClick={function() { setShowFaq(!showFaqVal); }}>
-          <span className={"caret" + (showFaqVal ? " open" : "")}><Icon name="chevron" size={13} /></span>
-          How to set up &amp; run <code className="ag-sec-code">/repuro</code>
-        </h2>
-        {showFaqVal && (
-          <ol className="ag-faq-body">
-            <li><b>What it is.</b> Agent tasks are run by Claude via the <code>/repuro</code> plugin — it executes the task and posts the result above for your verdict. Nothing auto-closes.</li>
-            <li><b>Set up once</b> (in Claude Code): <code>/plugin marketplace add pavlovs/repuro-cockpit-skills</code> → <code>/plugin install repuro</code> → <code>/repuro:setup &lt;your-token&gt;</code>. No clone, no scripts — ask Roman for your token; it sets your lane (RC / FC) automatically.</li>
-            <li><b>Run it.</b> <code>/repuro:loop</code> drains your whole queue (also runs on a schedule); <code>/repuro:run &lt;id | #position | words&gt;</code> runs one task; <code>/repuro:add</code> queues a new task from any session. Add <code>--all</code> to work across both lanes.</li>
-            <li><b>Review — everything happens here, not in the terminal.</b> Results land under <b>Needs your review</b>: <b>Approve</b> to close, <b>Request changes</b> to send back with feedback (the next loop pass redoes it), <b>Reject</b> to take it off the agent lane. Agent questions land under <b>Waiting on you</b> — answer inline and the task re-queues itself.</li>
-            <li><b>Repo</b> (auto-updates): <a href="https://github.com/pavlovs/repuro-cockpit-skills" target="_blank" rel="noreferrer">github.com/pavlovs/repuro-cockpit-skills</a></li>
-          </ol>
-        )}
-      </section>
+      {helpVal && <AgentsHelpPanel onClose={function() { setHelp(false); }} />}
     </div>
   );
 }

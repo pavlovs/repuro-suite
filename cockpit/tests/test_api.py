@@ -574,6 +574,29 @@ def test_x_remote_user_not_trusted_by_default(client):
     assert r.status_code == 401
 
 
+def test_x_remote_user_with_basic_auth_is_honored(client, monkeypatch):
+    """The prod browser case: Caddy authenticates via HTTP Basic, sets
+    X-Remote-User, AND forwards the browser's `Authorization: Basic ...`
+    upstream. Basic must NOT nuke the proxy identity — only Bearer marks a
+    direct caller. Regression: 2026-07-05 deploy rejected ALL browser traffic
+    through Caddy (login loop)."""
+    monkeypatch.setenv("COCKPIT_TRUSTED_PROXY", "1")
+    r = client.get(
+        "/api/state",
+        headers={
+            "X-Remote-User": "roman",
+            "Authorization": "Basic cm9tYW46aHVudGVyMg==",
+        },
+    )
+    assert r.status_code == 200
+    # Bearer still wins over the header (direct caller, codex #5)
+    r = client.get(
+        "/api/state",
+        headers={"X-Remote-User": "roman", "Authorization": "Bearer nonsense"},
+    )
+    assert r.status_code == 401
+
+
 def test_promote_with_edited_duplicate_text_rejected(client):
     """Dedupe re-runs on the FINAL promoted text (codex #6)."""
     a = client.post(

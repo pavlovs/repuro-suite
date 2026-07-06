@@ -114,7 +114,12 @@ def principal(
     # gets to assert a human identity via a client-set header.
     if x_remote_user and os.environ.get("COCKPIT_TRUSTED_PROXY") != "1":
         x_remote_user = None
-    if authorization:
+    # Only a BEARER Authorization marks a direct caller. Browsers behind Caddy
+    # necessarily send "Authorization: Basic ..." (the Caddy login itself) and
+    # Caddy forwards it upstream alongside the X-Remote-User it sets — nuking
+    # the identity on ANY Authorization header rejected all browser traffic
+    # through the proxy (login-loop incident 2026-07-05/06).
+    if authorization and authorization.startswith("Bearer "):
         x_remote_user = None
     if x_remote_user and x_remote_user in _CADDY_USER_MAP:
         pid = _CADDY_USER_MAP[x_remote_user]

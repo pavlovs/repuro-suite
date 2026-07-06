@@ -58,12 +58,15 @@ def sync_deal_mirror(conn):
                 (code_name, stage, note, now),
             )
         # Drop mirror rows for deals no longer present upstream — same transaction
-        # as the upserts so the mirror exactly reflects the source set.
-        existing_mirror = [
-            r[0] for r in conn.execute("SELECT codename FROM deal_mirror").fetchall()
-        ]
-        for codename in existing_mirror:
-            if codename not in upstream_codes:
+        # as the upserts so the mirror exactly reflects the source set. NEVER drop
+        # a cockpit-owned row: those are not sourced from dealroom.db and their
+        # absence upstream is expected, not a signal to delete (would orphan the
+        # linked workstreams and their tasks).
+        existing_mirror = conn.execute(
+            "SELECT codename, owner_mode FROM deal_mirror"
+        ).fetchall()
+        for codename, owner_mode in existing_mirror:
+            if codename not in upstream_codes and owner_mode != "cockpit-owned":
                 conn.execute("DELETE FROM deal_mirror WHERE codename=?", (codename,))
         # Auto-create M&A projects for deals without a matching workstream (§4.6)
         mna = conn.execute("SELECT id FROM spaces WHERE slug='mna'").fetchone()

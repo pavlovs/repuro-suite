@@ -1,4 +1,7 @@
-fastapi
-uvicorn[standard]
-httpx
-python-multipart
+# Pinned to compatible-release ranges (~=): patch/minor updates allowed,
+# breaking major/minor bumps blocked so a rebuild can't silently install an
+# incompatible FastAPI/uvicorn. Bump deliberately, then redeploy + smoke-test.
+fastapi~=0.136.0
+uvicorn[standard]~=0.49.0
+httpx~=0.28.0
+python-multipart~=0.0.32

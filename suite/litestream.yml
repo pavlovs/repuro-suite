@@ -19,3 +19,8 @@ dbs:
     replicas:
       - type: s3
         url: ${LITESTREAM_REPLICA_URL}/cockpit.db
+
+  - path: /data/investor.db
+    replicas:
+      - type: s3
+        url: ${LITESTREAM_REPLICA_URL}/investor.db

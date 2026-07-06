@@ -14,6 +14,7 @@ Claude reads this when `/suite-fix` is invoked.
 - [ ] Dealroom onepager MOUSE: add the content — still not in (content/data sync, Roman handling separately)
 - [ ] Update the local MOUSE onepager into the online Dealroom (content/data sync)
 - [ ] +1D still does not work correctly
+- [ ] Agent tasks should only be in COCKPIT if they require feedback
 
 
 - [ ] AGents: How to setup & run is hidden beneath, same as recently updated. if there is a long queue, those section are difficult to see. Maybe separate Agents into Agents Workflow and Agents Review and have its own section? Something like this? *(flagged 2026-07-06: UX restructure — Claude recommends splitting the Agents view into "Queue & Review" [default] and "Setup & Playbook" [collapsed second section]; needs Roman's go before building)*

@@ -6,6 +6,7 @@ function TimelineView({ openTask, openDeliv, mutate, filtersOpen, setFiltersOpen
   const [filter, setFilter] = React.useState("dated"); // all | dated | undated
   const [showAllDeals, setShowAllDeals] = React.useState(false);
   const toggle = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
+  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
 
   const activeFilterCount = filter !== "all" ? 1 : 0;
   // Issue 29: report active-filter count to the topbar Filter button
@@ -150,8 +151,8 @@ function TimelineView({ openTask, openDeliv, mutate, filtersOpen, setFiltersOpen
                               {d.deal && <span className="gantt-deal">{d.deal.codename}</span>}
                               <button className="rep-act rep-act--edit" title="edit deliverable"
                                 onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }} />
-                              <button className="rep-act rep-act--add" title="add task to this deliverable"
-                                onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />
+                              {!readOnly && <button className="rep-act rep-act--add" title="add task to this deliverable"
+                                onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />}
                               <span className="deliv-sp" />
                               <span className="gantt-prog-inline" title={s.done + " of " + s.total + " done"}>
                                 <span className="gantt-prog-bar"><span style={{ width: pct + "%", background: RDOT[s.readiness] }} /></span>

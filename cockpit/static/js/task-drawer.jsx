@@ -1,5 +1,6 @@
 /* ===== Shared task drawer — the single editing surface, everything inline ===== */
-function FieldInput({ value, onSave, type = "text", placeholder, className, big }) {
+function FieldInput({ value, onSave, type = "text", placeholder, className, big, readOnly: ro }) {
+  if (ro) return <span className={className}>{value || ""}</span>;
   // uncontrolled + save-on-blur/Enter: no per-keystroke writes, no stale closures
   return (
     <input type={type} className={className} key={value || "empty"} defaultValue={value || ""}
@@ -20,6 +21,7 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
     return () => window.removeEventListener("keydown", onEsc);
   }, [task && task.id]);
   if (!task) return null;
+  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
 
   const ws = wsOf(task), deal = dealOf(task), deliv = delivOf(task);
   const pre = (task.prereqs || []).map((r) => byTask[r]).filter(Boolean);
@@ -54,12 +56,14 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
           {deal && <span className="drawer-stage">{deal.codename} · {STAGE_LABEL[deal.stage] || deal.stage} <span className="muted">(stage from dealroom)</span></span>}
         </div>
 
-        <FieldInput big className="drawer-title-input" value={task.text}
+        <FieldInput big className="drawer-title-input" value={task.text} readOnly={readOnly}
           onSave={(v) => v && api.save(task, { text: v })} placeholder="task" />
 
-        <textarea className="drawer-note" key={"n" + task.id} defaultValue={task.detail || ""}
-          placeholder="add a note — context, links, next step…"
-          onBlur={(e) => { if (e.target.value !== (task.detail || "")) api.save(task, { detail: e.target.value || null }); }} />
+        {readOnly
+          ? <div className="drawer-note">{task.detail || ""}</div>
+          : <textarea className="drawer-note" key={"n" + task.id} defaultValue={task.detail || ""}
+              placeholder="add a note — context, links, next step…"
+              onBlur={(e) => { if (e.target.value !== (task.detail || "")) api.save(task, { detail: e.target.value || null }); }} />}
 
         {task.ac && <p className="drawer-detail"><b>Done when:</b> {task.ac}</p>}
         {task.evidence && <div className="drawer-detail drawer-evidence">{renderMarkdown(task.evidence)}</div>}
@@ -78,30 +82,34 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
         )}
 
         <div className="drawer-sec-lbl">Status</div>
-        <div className="drawer-status">
-          {STATUS_ORDER.map((s) => (
-            <button key={s} className={task.status === s ? "on" : ""} data-status={s} onClick={() => setStatus(s)}>{STATUS_LABEL[s]}</button>
-          ))}
-        </div>
+        {!readOnly && (
+          <div className="drawer-status">
+            {STATUS_ORDER.map((s) => (
+              <button key={s} className={task.status === s ? "on" : ""} data-status={s} onClick={() => setStatus(s)}>{STATUS_LABEL[s]}</button>
+            ))}
+          </div>
+        )}
 
         {task.status === "waiting" && task.waiting && (
           <div className="drawer-wait editable">
             <Icon name="clock" size={13} /> with
-            <FieldInput className="dw-party" value={task.waiting.party}
+            <FieldInput className="dw-party" value={task.waiting.party} readOnly={readOnly}
               onSave={(v) => api.save(task, { waiting: { ...task.waiting, party: v || "—" } })} />
-            <select className="dm-select" value={task.waiting.type || "counterparty"}
-              onChange={(e) => api.save(task, { waiting: { ...task.waiting, type: e.target.value } })}>
-              <option>counterparty</option><option>advisor</option><option>investor</option><option>internal</option>
-            </select>
+            {!readOnly && (
+              <select className="dm-select" value={task.waiting.type || "counterparty"}
+                onChange={(e) => api.save(task, { waiting: { ...task.waiting, type: e.target.value } })}>
+                <option>counterparty</option><option>advisor</option><option>investor</option><option>internal</option>
+              </select>
+            )}
             chase
-            <FieldInput type="date" className="dm-date" value={task.waiting.chase}
+            <FieldInput type="date" className="dm-date" value={task.waiting.chase} readOnly={readOnly}
               onSave={(v) => api.save(task, { waiting: { ...task.waiting, chase: v } })} />
           </div>
         )}
 
         <div className="drawer-meta">
           <div><span className="dm-k">Owner</span><span className="dm-v dm-edit">
-            {["RD", "FF"].map((p) => (
+            {!readOnly && ["RD", "FF"].map((p) => (
               <button key={p} className={"own-toggle" + ((task.owners || []).includes(p) ? " on" : "")}
                 title={(task.owners || []).includes(p) ? "remove " + PEOPLE[p].name : "add " + PEOPLE[p].name}
                 onClick={() => {
@@ -114,16 +122,16 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
               <span className="dm-ext" title={task.ownersRaw}>{task.ownersRaw}</span>}
           </span></div>
           <div><span className="dm-k">Due</span><span className="dm-v">
-            <FieldInput type="date" className="dm-date" value={task.ownDue}
+            <FieldInput type="date" className="dm-date" value={task.ownDue} readOnly={readOnly}
               onSave={(v) => api.save(task, { due: v })} />
           </span></div>
-          <div><span className="dm-k">Priority</span><span className="dm-v">
+          {!readOnly && <div><span className="dm-k">Priority</span><span className="dm-v">
             <select className="dm-select" value={task.priority || ""}
               onChange={(e) => api.save(task, { priority: e.target.value || null })}>
               <option value="">—</option><option value="high">High</option><option value="med">Medium</option><option value="low">Low</option>
             </select>
-          </span></div>
-          <div><span className="dm-k">Deliverable</span><span className="dm-v">
+          </span></div>}
+          {!readOnly && <div><span className="dm-k">Deliverable</span><span className="dm-v">
             <select className="dm-select" value={task.d || ""}
               onChange={(e) => api.save(task, { d: e.target.value || null })}>
               <option value="">(standalone)</option>
@@ -137,16 +145,16 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
                 );
               }))}
             </select>
-          </span></div>
-          <div><span className="dm-k">Kind</span><span className="dm-v">
+          </span></div>}
+          {!readOnly && <div><span className="dm-k">Kind</span><span className="dm-v">
             <select className="dm-select" value={task.kind || "workplan"}
               onChange={(e) => api.save(task, { kind: e.target.value })}>
               <option value="workplan">Workplan</option><option value="followup">Follow-up</option>
               <option value="approval">Approval</option><option value="agent_job">Agent job</option>
               <option value="personal">Personal</option>
             </select>
-          </span></div>
-          <div><span className="dm-k">Worked by</span><span className="dm-v">
+          </span></div>}
+          {!readOnly && <div><span className="dm-k">Worked by</span><span className="dm-v">
             <select className="dm-select" value={task.execution || "me"}
               onChange={(e) => {
                 const v = e.target.value;
@@ -159,11 +167,11 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
               }}>
               <option value="me">Me</option><option value="together">Together</option><option value="agent">Claude (agent)</option>
             </select>
-          </span></div>
+          </span></div>}
           <div><span className="dm-k">Readiness</span><span className="dm-v"><span className="rdot" data-level={r} style={{ width: 9, height: 9, marginRight: 6 }} />{{ green: "Ready", amber: "Prereqs running", red: "Blocked" }[r]}
-            <button className={"pin-btn" + (task.pinned ? " on" : "")} style={{ marginLeft: 10 }} title={task.pinned ? "unpin" : "pin to today"} onClick={() => api.save(task, { pinned: !task.pinned })}><Icon name="pin" size={13} /></button>
+            {!readOnly && <button className={"pin-btn" + (task.pinned ? " on" : "")} style={{ marginLeft: 10 }} title={task.pinned ? "unpin" : "pin to today"} onClick={() => api.save(task, { pinned: !task.pinned })}><Icon name="pin" size={13} /></button>}
           </span></div>
-          <div><span className="dm-k">Input from</span><span className="dm-v dm-edit">
+          {!readOnly && <div><span className="dm-k">Input from</span><span className="dm-v dm-edit">
             <select className="dm-select" value={task.inputFrom || ""}
               onChange={(e) => {
                 const v = e.target.value || null;
@@ -172,10 +180,10 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
               <option value="">— none —</option>
               {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p].name}</option>)}
             </select>
-          </span></div>
+          </span></div>}
           {task.inputFrom && (
             <div><span className="dm-k">Question</span><span className="dm-v">
-              <FieldInput className="dm-date" style={{width:"100%"}} value={task.inputQuestion}
+              <FieldInput className="dm-date" style={{width:"100%"}} value={task.inputQuestion} readOnly={readOnly}
                 placeholder="what's needed from them"
                 onSave={(v) => api.save(task, { inputQuestion: v })} />
             </span></div>
@@ -183,7 +191,7 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
         </div>
 
         <div className="drawer-sec-lbl">Dependencies — must finish first <span className="dm-n">{pre.length}</span>
-          <button className="mini-btn dm-add" onClick={() => setAddingPre(!addingPre)}>{addingPre ? "close" : "+ add dependency"}</button>
+          {!readOnly && <button className="mini-btn dm-add" onClick={() => setAddingPre(!addingPre)}>{addingPre ? "close" : "+ add dependency"}</button>}
         </div>
         {addingPre && (
           <div className="dm-pre-add">
@@ -216,8 +224,8 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
               <span className="dlr-txt">{p.text}</span>
               <StatusPill status={p.status} />
             </button>
-            <button className="dlr-rm" title="remove dependency"
-              onClick={() => api.save(task, { prereqs: (task.prereqs || []).filter((x) => x !== p.id) })}>×</button>
+            {!readOnly && <button className="dlr-rm" title="remove dependency"
+              onClick={() => api.save(task, { prereqs: (task.prereqs || []).filter((x) => x !== p.id) })}>×</button>}
           </div>
         )) : <div className="empty">none — this can start any time</div>}
 
@@ -233,9 +241,11 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
         <div className="drawer-sec-lbl">History</div>
         <TaskHistory taskId={task.id} />
 
-        <div className="drawer-foot">
-          <button className="drawer-delete" onClick={() => api.deleteTask(task)}>Delete task</button>
-        </div>
+        {!readOnly && (
+          <div className="drawer-foot">
+            <button className="drawer-delete" onClick={() => api.deleteTask(task)}>Delete task</button>
+          </div>
+        )}
       </aside>
     </>
   );
@@ -251,6 +261,7 @@ function DelivDrawer({ deliv, onClose, mutate, openTask }) {
     return () => window.removeEventListener("keydown", onEsc);
   }, [deliv && deliv.id]);
   if (!deliv) return null;
+  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
 
   const ws = byWs[deliv.ws];
   const deal = deliv.deal || null;
@@ -271,12 +282,12 @@ function DelivDrawer({ deliv, onClose, mutate, openTask }) {
           {deal && <span className="drawer-stage">{deal.codename}</span>}
         </div>
 
-        <FieldInput big className="drawer-title-input" value={deliv.name}
+        <FieldInput big className="drawer-title-input" value={deliv.name} readOnly={readOnly}
           onSave={(v) => v && api.saveDeliv(deliv, { name: v })} placeholder="deliverable name" />
 
         <div className="drawer-meta">
           <div><span className="dm-k">Target</span><span className="dm-v">
-            <FieldInput type="date" className="dm-date" value={deliv.target}
+            <FieldInput type="date" className="dm-date" value={deliv.target} readOnly={readOnly}
               onSave={(v) => api.saveDeliv(deliv, { target_date: v || null })} />
           </span></div>
           <div><span className="dm-k">Status</span><span className="dm-v">

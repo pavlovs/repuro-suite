@@ -89,6 +89,7 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
   const [showAllDeals, setShowAllDeals] = React.useState(false);
   const [delivDragId, setDelivDragId] = React.useState(null);
   const [delivOverId, setDelivOverId] = React.useState(null);
+  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
   const toggle = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
   const toggleWs = (id) => setWsOpen((o) => ({ ...o, [id]: !o[id] }));
   const allExpanded = Object.values(wsOpen).every(Boolean);
@@ -176,11 +177,11 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
                     {w.displayNum && <span className="num-prefix">{w.displayNum}</span>}
                     <span className="ws-name">{w.name}</span>
                     <button className="rep-act rep-act--edit" title="Rename workstream" onClick={(e) => { e.stopPropagation(); editWs(w); }} />
-                    <button className="rep-act rep-act--add" title="add a deliverable (milestone) to this workstream"
+                    {!readOnly && <button className="rep-act rep-act--add" title="add a deliverable (milestone) to this workstream"
                       onClick={(e) => {
                         e.stopPropagation();
                         window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { type: "deliverable", ws: w.id } }));
-                      }} />
+                      }} />}
                     <span className="deliv-sp" />
                     {w.deal && w.dealStage && (
                       <span className="ws-stage" data-active={w.visibility === "expanded" ? "true" : "false"}
@@ -239,8 +240,8 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
                             <span className="deliv-name">{d.name}</span>
                             <button className="rep-act rep-act--edit" title="rename / set target date"
                               onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }} />
-                            <button className="rep-act rep-act--add" title="add task"
-                              onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />
+                            {!readOnly && <button className="rep-act rep-act--add" title="add task"
+                              onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />}
                             <span className="deliv-sp" />
                             {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")}>{du < 0 ? "overdue " : "due "}{fdate(d.target)}</span>}
                           </div>
@@ -278,6 +279,7 @@ window.TableView = TableView;
 function DeliverableView({ mutate, openTask, openDeliv }) {
   const [expanded, setExpanded] = React.useState({});
   const toggle = (id) => setExpanded((o) => ({ ...o, [id]: !o[id] }));
+  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
 
   function personGroups(person) {
     const out = [];
@@ -325,8 +327,8 @@ function DeliverableView({ mutate, openTask, openDeliv }) {
                     <span className="wk-deliv-name">{d.name}</span>
                     <button className="rep-act rep-act--edit" title="rename / set target date"
                       onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }} />
-                    <button className="rep-act rep-act--add" title="add task to this deliverable"
-                      onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />
+                    {!readOnly && <button className="rep-act rep-act--add" title="add task to this deliverable"
+                      onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />}
                     {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")} style={{ fontSize: 11 }}>{fdate(d.target)}</span>}
                   </div>
                   {isOpen && (

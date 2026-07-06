@@ -9,7 +9,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 11
+SCHEMA_VERSION = 12
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -148,13 +148,27 @@ def open_readonly(path):
 
 
 DDL = """
+CREATE TABLE role_profiles (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  module_access TEXT NOT NULL,
+  read_only INTEGER NOT NULL DEFAULT 0,
+  sort_order INTEGER NOT NULL DEFAULT 0
+);
+INSERT INTO role_profiles (id, name, module_access, read_only, sort_order)
+  VALUES ('owner', 'Owner', '["overview","week","workstreams","timeline","agents","relations"]', 0, 1);
+INSERT INTO role_profiles (id, name, module_access, read_only, sort_order)
+  VALUES ('advisor', 'Advisor', '["workstreams","timeline"]', 1, 2);
+INSERT INTO role_profiles (id, name, module_access, read_only, sort_order)
+  VALUES ('viewer', 'Viewer', '["workstreams"]', 1, 3);
 CREATE TABLE users (
   id TEXT PRIMARY KEY,
   name TEXT NOT NULL,
   initials TEXT,
   token_hash TEXT,
   role TEXT NOT NULL CHECK(role IN ('human','agent')),
-  represents TEXT
+  represents TEXT,
+  profile TEXT REFERENCES role_profiles(id)
 );
 CREATE TABLE deal_mirror (
   codename TEXT PRIMARY KEY,
@@ -189,7 +203,8 @@ CREATE TABLE workstreams (
   status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','parked','done')),
   deal_codename TEXT,
   version INTEGER NOT NULL DEFAULT 1,
-  objective TEXT
+  objective TEXT,
+  allowed_profiles TEXT
 );
 CREATE UNIQUE INDEX uq_workstreams_space_name ON workstreams(space_id, name);
 CREATE TABLE deliverables (
@@ -371,6 +386,27 @@ MIGRATIONS = {
              decided_at TEXT
            )""",
     ],
+    12: [
+        # Multi-user access control (SPEC-multi-user-access): role profiles,
+        # per-user profile column, per-workstream allowed_profiles scoping.
+        """CREATE TABLE IF NOT EXISTS role_profiles (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            module_access TEXT NOT NULL,
+            read_only INTEGER NOT NULL DEFAULT 0,
+            sort_order INTEGER NOT NULL DEFAULT 0
+        )""",
+        """INSERT OR IGNORE INTO role_profiles (id, name, module_access, read_only, sort_order) VALUES
+            ('owner',   'Owner',   '["overview","week","workstreams","timeline","agents","relations"]', 0, 1),
+            ('advisor', 'Advisor', '["workstreams","timeline"]',                                       1, 2),
+            ('viewer',  'Viewer',  '["workstreams"]',                                                  1, 3)
+        """,
+        lambda c: _add_column_if_missing(
+            c, "users", "profile", "TEXT REFERENCES role_profiles(id)"
+        ),
+        "UPDATE users SET profile = 'owner' WHERE role = 'human'",
+        lambda c: _add_column_if_missing(c, "workstreams", "allowed_profiles", "TEXT"),
+    ],
 }
 
 
@@ -381,9 +417,14 @@ def _add_column_if_missing(conn, table, column, typedef):
 
 
 def init_db(conn):
-    conn.executescript(DDL)
-    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
-    conn.commit()
+    # Atomic: wrap the whole DDL + user_version stamp in ONE transaction so a
+    # crash mid-init can't leave tables created with user_version still 0 — that
+    # state makes the next boot re-run init_db and fail on "table already exists".
+    # executescript() would auto-commit pending work, so run its BEGIN/COMMIT
+    # inside the script itself and stamp the version before COMMIT.
+    conn.executescript(
+        "BEGIN;\n" + DDL + f"\nPRAGMA user_version = {SCHEMA_VERSION};\nCOMMIT;"
+    )
 
 
 def migrate_db(conn, from_version):

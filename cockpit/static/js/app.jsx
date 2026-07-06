@@ -21,13 +21,15 @@ function RepuroMark({ size = 30 }) {
   );
 }
 
-const NAV = [
-  { id: "overview", label: "Cockpit", icon: "cockpit", crumb: "Intelligence overview" },
-  { id: "week", label: "Meeting", icon: "week", crumb: "Meeting focus" },
-  { id: "table", label: "Workstreams", icon: "table", crumb: "All work — table or board" },
-  { id: "timeline", label: "Timeline", icon: "timeline", crumb: "Milestones & windows" },
-  { id: "agents", label: "Agents", icon: "bolt", crumb: "Claude works · you approve" },
+const NAV_ALL = [
+  { id: "overview", module: "overview", label: "Cockpit", icon: "cockpit", crumb: "Intelligence overview" },
+  { id: "week", module: "week", label: "Meeting", icon: "week", crumb: "Meeting focus" },
+  { id: "table", module: "workstreams", label: "Workstreams", icon: "table", crumb: "All work — table or board" },
+  { id: "timeline", module: "timeline", label: "Timeline", icon: "timeline", crumb: "Milestones & windows" },
+  { id: "agents", module: "agents", label: "Agents", icon: "bolt", crumb: "Claude works · you approve" },
 ];
+const _ckModules = (window.COCKPIT && window.COCKPIT.modules) || NAV_ALL.map(n => n.module);
+const NAV = NAV_ALL.filter(n => _ckModules.includes(n.module));
 
 /* Workstreams tab: one dataset, two layouts (table / board), shared filters */
 function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setFiltersOpen, setFilterCount }) {
@@ -100,7 +102,12 @@ const HASH_TO_TAB = { "#cockpit": "overview", "#week": "week", "#workstreams": "
 const VALID_TABS = new Set(Object.keys(TAB_TO_HASH));
 function tabFromHash() {
   const tab = HASH_TO_TAB[window.location.hash];
-  if (!tab) { history.replaceState(null, "", TAB_TO_HASH.overview); return "overview"; }
+  const first = NAV[0] ? NAV[0].id : "overview";
+  const firstHash = TAB_TO_HASH[first] || "#cockpit";
+  if (!tab || !NAV.find(n => n.id === tab)) {
+    history.replaceState(null, "", firstHash);
+    return first;
+  }
   return tab;
 }
 
@@ -176,6 +183,9 @@ function App() {
 
   return (
     <div className="app" data-direction={t.direction} data-density={t.density} data-nav={t.nav}>
+      {(window.COCKPIT && window.COCKPIT.readOnly) && (
+        <div className="read-only-banner">View-only access</div>
+      )}
       <aside className="sidebar">
         <a href="/" className="brand" style={{textDecoration:'none',color:'inherit'}}>
           <RepuroMark size={34} />
@@ -224,7 +234,9 @@ function App() {
           <button className="tb-undo" onClick={() => setActivityOpen(true)} title="Activity log">Activity</button>
           <button className="tb-undo" disabled={!api.undoDepth()} onClick={() => api.undo()}
             title={api.undoDepth() ? "undo last change (" + api.undoDepth() + ")" : "nothing to undo"}>↶ Undo</button>
-          <button className="btn primary" onClick={() => setQuickAdd(true)} title="Ctrl/⌘ Enter"><Icon name="plus" size={15} />New</button>
+          {(!window.COCKPIT || !window.COCKPIT.readOnly) && (
+            <button className="btn primary" onClick={() => setQuickAdd(true)} title="Ctrl/⌘ Enter"><Icon name="plus" size={15} />New</button>
+          )}
         </header>
 
         <main className="main">

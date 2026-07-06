@@ -3,6 +3,7 @@
 /* --- Weekly Meeting prep view — agenda-structured, both people, decision-first --- */
 function MeetingView({ mutate, openTask }) {
   const [mode, setMode] = React.useState("daily");
+  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
   const live = TASKS.filter((t) => t.status !== "done");
 
   // Deadlines — next upcoming milestone per active deal
@@ -192,8 +193,8 @@ function MeetingView({ mutate, openTask }) {
                               {d.displayNum && <span className="num-prefix">{d.displayNum}</span>}
                               <span className="wk-deliv-name tc-click" onClick={() => mtgEditDeliv(d)}>{shortName(d)}</span>
                               <button className="rep-act rep-act--edit" title="edit deliverable" onClick={(e) => { e.stopPropagation(); mtgEditDeliv(d); }} />
-                              <button className="rep-act rep-act--add" title="add task to this deliverable"
-                                onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />
+                              {!readOnly && <button className="rep-act rep-act--add" title="add task to this deliverable"
+                                onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />}
                               <span className="deliv-sp" />
                               <span className="wk-deliv-prog">
                                 <span className="prog-bar" style={{width:60}}><span style={{ width: pct + "%", background: d.wsObj ? d.wsObj.color : "#94a3b8" }} /></span>
@@ -462,7 +463,7 @@ function AgentQueue({ openTask }) {
 }
 
 function WeekView({ person, mutate, openTask, embedded }) {
-
+  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
   const live = TASKS.filter((t) => t.status !== "done");
   const mine = live.filter((t) => (t.owners || []).includes(person));
 
@@ -588,8 +589,8 @@ function WeekView({ person, mutate, openTask, embedded }) {
                   <span className="wk-deliv-name">{d.name}</span>
                   <button className="rep-act rep-act--edit" title="edit deliverable"
                     onClick={(e) => { e.stopPropagation(); editDeliv(d); }} />
-                  <button className="rep-act rep-act--add" title="add task to this deliverable"
-                    onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />
+                  {!readOnly && <button className="rep-act rep-act--add" title="add task to this deliverable"
+                    onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />}
                   <span className="deliv-sp" />
                   <span className="wk-deliv-prog">
                     <span className="prog-bar" style={{width:50}}><span style={{ width: (d.s.total ? d.s.done / d.s.total * 100 : 0) + "%", background: d.ws ? d.ws.color : "var(--brand)" }} /></span>

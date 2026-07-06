@@ -7,6 +7,8 @@ import hashlib
 import json
 import os
 import re
+import secrets
+import sqlite3
 import uuid
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta, timezone
@@ -34,10 +36,13 @@ _sse_clients: set[asyncio.Queue] = set()
 
 
 def _broadcast(actor: str) -> None:
-    """Notify all SSE clients that a change happened. Fire-and-forget."""
+    """Notify all SSE clients that a change happened. Fire-and-forget.
+    Iterate a snapshot: _broadcast runs on threadpool workers while the event
+    loop thread adds/removes queues in sse_events, so touching the live set here
+    would raise 'Set changed size during iteration'."""
     msg = f"data: {json.dumps({'type': 'refresh', 'by': actor})}\n\n"
     dead = set()
-    for q in _sse_clients:
+    for q in list(_sse_clients):
         try:
             q.put_nowait(msg)
         except asyncio.QueueFull:
@@ -78,7 +83,9 @@ async def _sync_loop(interval):
 
 
 app = FastAPI(title="Repuro Cockpit", version="0.1.0", lifespan=lifespan)
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.exception_handlers import http_exception_handler
 
 
 class NoCacheStaticMiddleware(BaseHTTPMiddleware):
@@ -90,6 +97,32 @@ class NoCacheStaticMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(NoCacheStaticMiddleware)
+
+
+def _rollback_pending():
+    """Discard any transaction left open on the shared connection. Endpoints run
+    execute()+commit() under one WRITE_LOCK hold, so a mid-mutation raise (an
+    HTTPException in a reorder loop, or a DB error) exits the block with writes
+    uncommitted; without this the NEXT request's commit would silently persist
+    them. rollback() is a no-op when nothing is pending — safe on every error."""
+    try:
+        db.get_conn().rollback()
+    except Exception:
+        pass
+
+
+@app.exception_handler(StarletteHTTPException)
+async def _http_exc_rollback(request, exc):
+    _rollback_pending()
+    return await http_exception_handler(request, exc)
+
+
+@app.exception_handler(Exception)
+async def _unhandled_exc_rollback(request, exc):
+    _rollback_pending()
+    raise exc
+
+
 app.mount(
     "/static",
     StaticFiles(directory=os.path.join(os.path.dirname(__file__), "..", "static")),
@@ -100,6 +133,49 @@ app.mount(
 # --------------------------------------------------------------------------
 # auth
 _CADDY_USER_MAP = {"roman": "rd", "florian": "ff"}
+
+
+def _build_principal(row):
+    """Build full principal dict from users LEFT JOIN role_profiles row."""
+    role = row["role"]
+    if role == "agent":
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "initials": row["initials"],
+            "role": role,
+            "profile": None,
+            "modules": ["agents"],
+            "read_only": False,
+        }
+    module_access = row["module_access"]
+    rp_read_only = row["rp_read_only"]
+    profile = row["profile"]
+    if module_access is not None:
+        modules = json.loads(module_access)
+        read_only = bool(rp_read_only)
+        effective_profile = profile
+    else:
+        # NULL profile: treat as owner (fail-open, backward compatible)
+        modules = [
+            "overview",
+            "week",
+            "workstreams",
+            "timeline",
+            "agents",
+            "relations",
+        ]
+        read_only = False
+        effective_profile = "owner"
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "initials": row["initials"],
+        "role": role,
+        "profile": effective_profile,
+        "modules": modules,
+        "read_only": read_only,
+    }
 
 
 def principal(
@@ -125,22 +201,32 @@ def principal(
         pid = _CADDY_USER_MAP[x_remote_user]
         row = (
             db.get_conn()
-            .execute("SELECT id, role FROM users WHERE id = ?", (pid,))
+            .execute(
+                "SELECT u.*, rp.module_access, rp.read_only AS rp_read_only "
+                "FROM users u LEFT JOIN role_profiles rp ON rp.id = u.profile "
+                "WHERE u.id = ?",
+                (pid,),
+            )
             .fetchone()
         )
         if row:
-            return {"id": row["id"], "role": row["role"]}
+            return _build_principal(row)
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(401, "missing bearer token")
     token_hash = hashlib.sha256(authorization[7:].strip().encode()).hexdigest()
     row = (
         db.get_conn()
-        .execute("SELECT id, role FROM users WHERE token_hash = ?", (token_hash,))
+        .execute(
+            "SELECT u.*, rp.module_access, rp.read_only AS rp_read_only "
+            "FROM users u LEFT JOIN role_profiles rp ON rp.id = u.profile "
+            "WHERE u.token_hash = ?",
+            (token_hash,),
+        )
         .fetchone()
     )
     if not row:
         raise HTTPException(401, "unknown token")
-    return {"id": row["id"], "role": row["role"]}
+    return _build_principal(row)
 
 
 def human_only(p=Depends(principal)):
@@ -152,6 +238,12 @@ def human_only(p=Depends(principal)):
 def agent_only(p=Depends(principal)):
     if p["role"] != "agent":
         raise HTTPException(403, "requires an agent principal")
+    return p
+
+
+def read_only_guard(p=Depends(principal)):
+    if p.get("read_only"):
+        raise HTTPException(403, "This account is read-only")
     return p
 
 
@@ -171,8 +263,13 @@ def _task_json(row, computed):
     t["deliverable_id"] = (
         models.deliv_id(row["deliverable_id"]) if row["deliverable_id"] else None
     )
+    # One row with malformed JSON here must not 500 the entire /api/state (and
+    # thus the whole SPA). Fall back to an empty list — fail visible, not fatal.
     for k in ("prereqs", "tags", "links"):
-        t[k] = json.loads(row[k])
+        try:
+            t[k] = json.loads(row[k]) if row[k] else []
+        except (json.JSONDecodeError, TypeError):
+            t[k] = []
     t["pinned_today"] = bool(row["pinned_today"])
     t["staging"] = bool(row["staging"])
     t["sort_order"] = row["sort_order"] if "sort_order" in row.keys() else 0
@@ -214,13 +311,22 @@ def _mirror_status(deal_codename, mirror):
     return "ok"
 
 
-def assemble_state(conn):
+def assemble_state(conn, me=None):
     _reap_expired_claims(conn)
     today = _today()
     space_rows = conn.execute("SELECT * FROM spaces ORDER BY sort_order").fetchall()
     ws_rows = conn.execute(
         "SELECT * FROM workstreams ORDER BY sort_order, id"
     ).fetchall()
+    # Option A workstream scoping for non-owner, non-agent profiles
+    if me and me.get("role") != "agent" and me.get("profile") not in (None, "owner"):
+        profile = me["profile"]
+        ws_rows = [
+            ws
+            for ws in ws_rows
+            if ws["allowed_profiles"] is not None
+            and profile in json.loads(ws["allowed_profiles"])
+        ]
     d_rows = conn.execute(
         "SELECT * FROM deliverables ORDER BY sort_order, id"
     ).fetchall()
@@ -741,7 +847,7 @@ def _scrub_state_personal(st, viewer):
 @app.get("/api/state")
 def state(p=Depends(principal)):
     conn = db.get_conn()
-    s = assemble_state(conn)
+    s = assemble_state(conn, me=p)
     s["principal"] = p
     s["learnings"] = [
         _learning_json(r)
@@ -756,7 +862,7 @@ def state(p=Depends(principal)):
 
 
 @app.post("/api/task", status_code=201)
-def create_task(payload: dict = Body(...), p=Depends(principal)):
+def create_task(payload: dict = Body(...), p=Depends(read_only_guard)):
     conn = db.get_conn()
     if not payload.get("text"):
         raise HTTPException(422, "text is required")
@@ -790,7 +896,7 @@ def assemble_task(conn, num):
 
 
 @app.patch("/api/task/{tid}")
-def patch_task(tid: str, payload: dict = Body(...), p=Depends(principal)):
+def patch_task(tid: str, payload: dict = Body(...), p=Depends(read_only_guard)):
     conn = db.get_conn()
     num = _tid(tid)
     if "version" not in payload:
@@ -811,7 +917,7 @@ def patch_task(tid: str, payload: dict = Body(...), p=Depends(principal)):
 
 
 @app.post("/api/workstream", status_code=201)
-def create_workstream(payload: dict = Body(...), p=Depends(principal)):
+def create_workstream(payload: dict = Body(...), p=Depends(read_only_guard)):
     conn = db.get_conn()
     if not payload.get("name"):
         raise HTTPException(422, "name is required")
@@ -838,7 +944,9 @@ def create_workstream(payload: dict = Body(...), p=Depends(principal)):
                     payload.get("deal_codename"),
                 ),
             )
-        except Exception:
+        except sqlite3.IntegrityError:
+            # Only the (space_id, name) unique index — a real DB error (disk full,
+            # corruption) must surface as 500, not a misleading "already exists".
             raise HTTPException(
                 422, f"workstream {payload['name']!r} already exists in this space"
             )
@@ -855,7 +963,7 @@ def create_workstream(payload: dict = Body(...), p=Depends(principal)):
 
 
 @app.patch("/api/workstream/{wid}")
-def patch_workstream(wid: str, payload: dict = Body(...), p=Depends(principal)):
+def patch_workstream(wid: str, payload: dict = Body(...), p=Depends(read_only_guard)):
     conn = db.get_conn()
     if "space_id" in payload:
         prefix, snum = _safe_ref(payload["space_id"])
@@ -884,7 +992,7 @@ def patch_workstream(wid: str, payload: dict = Body(...), p=Depends(principal)):
 
 
 @app.post("/api/deliverable", status_code=201)
-def create_deliverable(payload: dict = Body(...), p=Depends(principal)):
+def create_deliverable(payload: dict = Body(...), p=Depends(read_only_guard)):
     conn = db.get_conn()
     if not payload.get("name") or not payload.get("workstream_id"):
         raise HTTPException(422, "name and workstream_id are required")
@@ -929,7 +1037,7 @@ def create_deliverable(payload: dict = Body(...), p=Depends(principal)):
 
 
 @app.patch("/api/deliverable/{did}")
-def patch_deliverable(did: str, payload: dict = Body(...), p=Depends(principal)):
+def patch_deliverable(did: str, payload: dict = Body(...), p=Depends(read_only_guard)):
     conn = db.get_conn()
     # workstream_id needs FK validation before the generic patch path
     if "workstream_id" in payload:
@@ -968,7 +1076,9 @@ def patch_deliverable(did: str, payload: dict = Body(...), p=Depends(principal))
 
 
 @app.delete("/api/deliverable/{did}")
-def delete_deliverable(did: str, p=Depends(human_only)):
+def delete_deliverable(
+    did: str, p=Depends(human_only), _ro: dict = Depends(read_only_guard)
+):
     conn = db.get_conn()
     prefix, num = _safe_ref(did)
     if prefix != "d":
@@ -1341,7 +1451,12 @@ def agent_block(tid: str, payload: dict = Body(...), p=Depends(agent_only)):
 
 
 @app.post("/api/task/{tid}/answer")
-def answer_blocker(tid: str, payload: dict = Body(...), p=Depends(human_only)):
+def answer_blocker(
+    tid: str,
+    payload: dict = Body(...),
+    p=Depends(human_only),
+    _ro: dict = Depends(read_only_guard),
+):
     """Human answers a blocked task's question inline (SPEC §7b): the answer is
     appended to the evidence trail, the question cleared, the task re-opened —
     the next runner pass picks it up with the answer in context."""
@@ -1445,7 +1560,12 @@ def agent_submit_learning(payload: dict = Body(...), p=Depends(agent_only)):
 
 
 @app.post("/api/learning/{lid}/decide")
-def decide_learning(lid: int, payload: dict = Body(...), p=Depends(human_only)):
+def decide_learning(
+    lid: int,
+    payload: dict = Body(...),
+    p=Depends(human_only),
+    _ro: dict = Depends(read_only_guard),
+):
     """Human curation: promote a candidate into the playbook (optionally edited)
     or dismiss it. Also retires active entries (action=dismiss). The cap is a
     hard gate — a full playbook forces pruning before new promotions."""
@@ -1505,7 +1625,7 @@ def decide_learning(lid: int, payload: dict = Body(...), p=Depends(human_only)):
 
 
 @app.delete("/api/task/{tid}")
-def delete_task(tid: str, p=Depends(human_only)):
+def delete_task(tid: str, p=Depends(human_only), _ro: dict = Depends(read_only_guard)):
     """Hard delete (undo/cleanup). Strips the ref from other tasks' prereqs so
     dependents don't go red on a dangling gate."""
     conn = db.get_conn()
@@ -1538,7 +1658,11 @@ def delete_task(tid: str, p=Depends(human_only)):
 
 
 @app.patch("/api/tasks/reorder")
-def reorder_tasks(payload: dict = Body(...), p=Depends(human_only)):
+def reorder_tasks(
+    payload: dict = Body(...),
+    p=Depends(human_only),
+    _ro: dict = Depends(read_only_guard),
+):
     """Bulk-update sort_order for a list of task ids (in new display order).
     Payload: {task_ids: ["t-1", "t-3", "t-2", ...]}"""
     task_ids = payload.get("task_ids")
@@ -1549,7 +1673,7 @@ def reorder_tasks(payload: dict = Body(...), p=Depends(human_only)):
         for idx, tid_str in enumerate(task_ids):
             num = _tid(tid_str)
             conn.execute(
-                "UPDATE tasks SET sort_order=?, updated_at=? WHERE id=?",
+                "UPDATE tasks SET sort_order=?, updated_at=?, version=version+1 WHERE id=?",
                 (idx, db.now_iso(), num),
             )
         db.audit(conn, p["id"], "tasks_reorder", "bulk", after={"task_ids": task_ids})
@@ -1559,7 +1683,11 @@ def reorder_tasks(payload: dict = Body(...), p=Depends(human_only)):
 
 
 @app.patch("/api/workstreams/reorder")
-def reorder_workstreams(payload: dict = Body(...), p=Depends(human_only)):
+def reorder_workstreams(
+    payload: dict = Body(...),
+    p=Depends(human_only),
+    _ro: dict = Depends(read_only_guard),
+):
     ws_ids = payload.get("workstream_ids")
     if not ws_ids or not isinstance(ws_ids, list):
         raise HTTPException(422, "workstream_ids list is required")
@@ -1595,7 +1723,11 @@ def reorder_workstreams(payload: dict = Body(...), p=Depends(human_only)):
 
 
 @app.patch("/api/deliverables/reorder")
-def reorder_deliverables(payload: dict = Body(...), p=Depends(human_only)):
+def reorder_deliverables(
+    payload: dict = Body(...),
+    p=Depends(human_only),
+    _ro: dict = Depends(read_only_guard),
+):
     deliv_ids = payload.get("deliverable_ids")
     if not deliv_ids or not isinstance(deliv_ids, list):
         raise HTTPException(422, "deliverable_ids list is required")
@@ -1622,7 +1754,7 @@ def reorder_deliverables(payload: dict = Body(...), p=Depends(human_only)):
 
 
 @app.post("/api/task/{tid}/approve")
-def approve(tid: str, p=Depends(human_only)):
+def approve(tid: str, p=Depends(human_only), _ro: dict = Depends(read_only_guard)):
     conn = db.get_conn()
     num = _tid(tid)
     with db.WRITE_LOCK:
@@ -1640,7 +1772,12 @@ def approve(tid: str, p=Depends(human_only)):
 
 
 @app.post("/api/task/{tid}/reject")
-def reject(tid: str, payload: dict = Body(default={}), p=Depends(human_only)):
+def reject(
+    tid: str,
+    payload: dict = Body(default={}),
+    p=Depends(human_only),
+    _ro: dict = Depends(read_only_guard),
+):
     conn = db.get_conn()
     num = _tid(tid)
     comment = payload.get("comment", "")
@@ -1670,7 +1807,12 @@ def reject(tid: str, payload: dict = Body(default={}), p=Depends(human_only)):
 
 
 @app.post("/api/task/{tid}/request-changes")
-def request_changes(tid: str, payload: dict = Body(...), p=Depends(human_only)):
+def request_changes(
+    tid: str,
+    payload: dict = Body(...),
+    p=Depends(human_only),
+    _ro: dict = Depends(read_only_guard),
+):
     """Send task back to agent with structured feedback. Unlike reject (which
     just re-opens), this increments review_round and stores feedback so the
     next agent run gets it as mandatory context."""
@@ -1759,7 +1901,12 @@ def _store_preview(conn, actor_id, tid, num, file):
 
 
 @app.post("/api/task/{tid}/upload-preview", status_code=201)
-def upload_preview(tid: str, file: UploadFile = File(...), p=Depends(human_only)):
+def upload_preview(
+    tid: str,
+    file: UploadFile = File(...),
+    p=Depends(human_only),
+    _ro: dict = Depends(read_only_guard),
+):
     """Human door for preview files (PDF, PNG, MD). Agents use their own
     claimant-gated door — leaving this open to agent tokens would let any agent
     overwrite any task's preview (codex 2026-07-05 #1)."""
@@ -1794,7 +1941,12 @@ def agent_upload_preview(tid: str, file: UploadFile = File(...), p=Depends(agent
 def serve_preview(tid: str, filename: str):
     """Serve a stored preview file. No auth — previews are non-sensitive."""
     num = _tid(tid)
-    path = _PREVIEW_DIR / str(num) / filename
+    base = (_PREVIEW_DIR / str(num)).resolve()
+    path = (base / filename).resolve()
+    # Contain the resolved path under the task's preview dir — a filename with
+    # '..' (or a backslash segment on Windows dev) must not escape the store.
+    if base not in path.parents and path != base:
+        raise HTTPException(404, "preview not found")
     if not path.is_file():
         raise HTTPException(404, "preview not found")
     media = {
@@ -2095,7 +2247,12 @@ VALID_DEAL_STAGES = {
 
 
 @app.patch("/api/deal/{codename}")
-def patch_deal(codename: str, payload: dict = Body(...), p=Depends(human_only)):
+def patch_deal(
+    codename: str,
+    payload: dict = Body(...),
+    p=Depends(human_only),
+    _ro: dict = Depends(read_only_guard),
+):
     """Deal stage/note are MASTERED by DEALRoom (dealroom.db) and mirrored
     read-only into cockpit's deal_mirror. Writing them here is silently lost on
     the next sync, so we refuse and point the caller at the source of truth."""
@@ -2111,3 +2268,75 @@ def patch_deal(codename: str, payload: dict = Body(...), p=Depends(human_only)):
         "edit them in DEALRoom (dealroom.db) — cockpit mirror edits are "
         "overwritten on the next sync",
     )
+
+
+# --------------------------------------------------------------------------
+# admin: user provisioning + workstream access control
+
+
+@app.post("/api/admin/user", status_code=201)
+def admin_create_user(payload: dict = Body(...), p=Depends(human_only)):
+    if p.get("profile") != "owner":
+        raise HTTPException(403, "owner profile required")
+    uid = (payload.get("id") or "").strip()
+    name = (payload.get("name") or "").strip()
+    initials = (payload.get("initials") or "").strip() or None
+    profile_id = (payload.get("profile") or "").strip()
+    if not uid or not name or not profile_id:
+        raise HTTPException(422, "id, name, and profile are required")
+    conn = db.get_conn()
+    if not conn.execute(
+        "SELECT 1 FROM role_profiles WHERE id=?", (profile_id,)
+    ).fetchone():
+        raise HTTPException(422, f"unknown profile: {profile_id!r}")
+    if conn.execute("SELECT 1 FROM users WHERE id=?", (uid,)).fetchone():
+        raise HTTPException(409, f"user {uid!r} already exists")
+    token = secrets.token_urlsafe(32)
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    with db.WRITE_LOCK:
+        conn.execute(
+            "INSERT INTO users (id, name, initials, role, token_hash, profile) "
+            "VALUES (?,?,?,?,?,?)",
+            (uid, name, initials, "human", token_hash, profile_id),
+        )
+        db.audit(conn, p["id"], "user_create", uid, after={"profile": profile_id})
+        conn.commit()
+    return {"id": uid, "token": token}
+
+
+@app.patch("/api/workstream/{wid}/access")
+def patch_workstream_access(wid: str, payload: dict = Body(...), p=Depends(human_only)):
+    if p.get("profile") != "owner":
+        raise HTTPException(403, "owner profile required")
+    conn = db.get_conn()
+    prefix, num = _safe_ref(wid)
+    if prefix != "w":
+        raise HTTPException(422, "expected w-<n>")
+    row = conn.execute("SELECT * FROM workstreams WHERE id=?", (num,)).fetchone()
+    if not row:
+        raise HTTPException(404, f"{wid} not found")
+    allowed_profiles = payload.get("allowed_profiles")
+    if allowed_profiles is not None:
+        for pid in allowed_profiles:
+            if not conn.execute(
+                "SELECT 1 FROM role_profiles WHERE id=?", (pid,)
+            ).fetchone():
+                raise HTTPException(422, f"unknown profile: {pid!r}")
+        allowed_profiles_json = json.dumps(allowed_profiles)
+    else:
+        allowed_profiles_json = None
+    with db.WRITE_LOCK:
+        conn.execute(
+            "UPDATE workstreams SET allowed_profiles=? WHERE id=?",
+            (allowed_profiles_json, num),
+        )
+        db.audit(
+            conn,
+            p["id"],
+            "workstream_access_update",
+            wid,
+            after={"allowed_profiles": allowed_profiles},
+        )
+        conn.commit()
+    _broadcast(p["id"])
+    return {"id": wid, "allowed_profiles": allowed_profiles}

@@ -374,6 +374,33 @@
     if (window.rerender) window.rerender();
   }
 
+  /* ---- live updates via SSE ----
+     The backend broadcasts a refresh event on every mutation (any user/agent).
+     Without a client, a runner posting a result or Flo editing a task is
+     invisible until you mutate something yourself or reload. Connect to
+     /api/events and re-pull state (debounced) on each event. refreshFromServer
+     is idempotent in-place, so an event caused by our OWN write is harmless.
+     EventSource auto-reconnects (server sends retry:3000); no manual loop. */
+  var _es, _sseTimer;
+  function scheduleRefresh() {
+    clearTimeout(_sseTimer);
+    _sseTimer = setTimeout(function () { refreshFromServer(); }, 250);
+  }
+  function startEventStream() {
+    if (!window.EventSource || _es) return;
+    var base = window.COCKPIT_BASE || "";
+    // EventSource cannot set an Authorization header. Behind Caddy the browser
+    // replays basic-auth via credentials; for direct :8099 access pass the
+    // stored Bearer token as ?token= (the endpoint accepts either).
+    var token = getToken();
+    var url = base + "/api/events" + (token ? "?token=" + encodeURIComponent(token) : "");
+    try {
+      _es = new EventSource(url, { withCredentials: true });
+    } catch (e) { return; }
+    _es.onmessage = scheduleRefresh;
+    // onerror: EventSource reconnects on its own; nothing to do but let it.
+  }
+
   function conflictReload(r) {
     if (r.status === 409) {
       showToast("This item changed elsewhere (Flo or an agent). Reloading…", "info");
@@ -634,6 +661,10 @@
       state = await fetchState();
     }
     window.COCKPIT_DATA = mapState(state);
+    window.COCKPIT = {
+      modules: (state.principal && state.principal.modules) || ["overview","week","workstreams","timeline","agents","relations"],
+      readOnly: !!(state.principal && state.principal.read_only),
+    };
     if (state.principal && state.principal.id && !sessionStorage.getItem("cockpit_person")) {
       var pMap = {rd: "RD", ff: "FF"};
       if (pMap[state.principal.id]) sessionStorage.setItem("cockpit_person", pMap[state.principal.id]);
@@ -648,6 +679,7 @@
     var code = sources.map(function (s, i) { return "// ==== " + JSX_FILES[i] + "\n" + s; }).join("\n;\n");
     var compiled = Babel.transform(code, { presets: ["react"], sourceMaps: false }).code;
     (0, eval)(compiled); // single ordered bundle — no script-tag ordering races
+    startEventStream(); // live cross-user/agent updates now that the app is mounted
   }
 
   boot().catch(function (e) { window.onerror(e.message || String(e), "boot.js", 0); });

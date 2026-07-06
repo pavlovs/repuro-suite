@@ -4,6 +4,18 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.19 — 2026-07-06
+
+### Investor Room — codex-gate fixes on the v16 port (/suite-fix run)
+- 4 individual deal scorecards: total row now "Total Score (out of 40)" with a
+  plain number (29/34/31/27), matching the overview comparison table
+- ACT 1 Decision 2 cost bullet: "Notary, structuring = 23 K€" → 15 K€
+  (reconciles with the dd-costs detail table: notary 11 + structuring 4)
+- Codex commercial review on the assembled page: revise → ship
+  (`boardroom/ai/codex-reviews/2026-07-06-investor-v16-*`, untracked)
+
+---
+
 ## v2.1.18 — 2026-07-06
 
 ### Login-loop incident — ACTUAL root causes (supersedes the v2.1.17 analysis)

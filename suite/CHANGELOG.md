@@ -4,6 +4,36 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.22 — 2026-07-07
+
+### Cockpit — Multi-user access control (t-403)
+- **Role profiles** (`owner` / `advisor` / `viewer`): module-level nav gating +
+  read-only mode, per SPEC-multi-user-access. rd/ff backfilled as `owner` —
+  behavior unchanged; agents untouched.
+- **Per-workstream access whitelists** (Option A, private-by-default): non-owner
+  humans see only explicitly shared workstreams; deliverables/tasks cascade.
+- Server-side enforcement: `read_only_guard` 403s all mutation endpoints; new
+  owner-only `POST /api/admin/user` (token shown once) and
+  `PATCH /api/workstream/{wid}/access`.
+- UI: nav filtered by profile, disallowed-hash redirect, view-only banner,
+  quick-add/task-drawer/add-buttons in read-only mode.
+- DB migration v11→v12 (additive). 129 pytest green (21 new in test_access.py),
+  JSX bundle compile-checked.
+
+### Cockpit — contract-audit hardening (2026-07-06 review)
+- SSE broadcast snapshot iteration; rollback-on-error handlers (no half-written
+  transactions leaking into the next request's commit); preview path traversal
+  containment; reorder version bump; tolerant task JSON fields; atomic init_db.
+- SSE client in boot.js: live cross-user/agent refresh without reload.
+- dealroom_sync never drops cockpit-owned mirror rows; prod deps pinned (~=).
+
+### Suite — backup hardening
+- litestream replicates investor.db; entrypoint restores missing DBs from S3
+  before replication starts (fresh volume can no longer overwrite backups
+  with empty DBs).
+
+---
+
 ## v2.1.20 — 2026-07-06
 
 ### Cockpit — Agents view v2 (three views)

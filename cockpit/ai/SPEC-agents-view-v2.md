@@ -197,3 +197,19 @@ Then two FRESH-CONTEXT verifier agents (Sonnet; they get ONLY what's listed):
 - Verdict rule: every AC needs PASS from BOTH verifiers (V1 code + V2 visual
   where visually observable). Any FAIL → fix → re-run THAT verifier. Max 2
   correction loops, then surface to Roman.
+
+### 7c. Validation results (built + shipped 2026-07-06, suite v2.1.20)
+
+- Deterministic: bundle compile ✓, 108 pytest ✓, seeded e2e all 3 tabs +
+  lane switch + answer/adopt flows + help overlay, 0 pageerrors ✓.
+- **V2 visual verifier: PASS 10/10 ACs** first pass. Minor findings adopted:
+  Playbook count relabeled "N of max 40" (read as pagination); noted ·N lesson
+  marker learnability.
+- **V1 code verifier: FAIL round 1** — AC7 (lesson/playbook badges not
+  lane-filtered) + AC9 (reviewFeedback mapped but never rendered on the review
+  card). Both fixed; V1 re-run: **PASS 10/10**. Its "missing CSS" finding was
+  withdrawn (classes live in cockpit-views.css).
+- Fix round count: 1 of max 2. Orphaned card CSS removed with the restructure.
+- Non-blocking observations left open: approve flow also reassigns task owners
+  to the reviewer (pre-existing behavior, predates this build — flag to Roman
+  whether intended); "Adopt" button label vs API action "promote" naming drift.

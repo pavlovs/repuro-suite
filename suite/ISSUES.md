@@ -13,6 +13,7 @@ Claude reads this when `/suite-fix` is invoked.
 
 - [ ] Dealroom onepager MOUSE: add the content — still not in (content/data sync, Roman handling separately)
 - [ ] Update the local MOUSE onepager into the online Dealroom (content/data sync)
+- [ ] +1D still does not work correctly
 
 
 - [ ] AGents: How to setup & run is hidden beneath, same as recently updated. if there is a long queue, those section are difficult to see. Maybe separate Agents into Agents Workflow and Agents Review and have its own section? Something like this? *(flagged 2026-07-06: UX restructure — Claude recommends splitting the Agents view into "Queue & Review" [default] and "Setup & Playbook" [collapsed second section]; needs Roman's go before building)*
@@ -62,3 +63,4 @@ All Investor Mode items — fixed 2026-07-06 by applying the pending `boardroom/
 - [x] Individual scorecard formatting: horizontal category rows, no vertical labels — fixed 2026-07-06 (was committed 8251375, undeployed)
 - [x] Fox scorecard 432k/12% invented values — re-sourced from in-doc P&Ls, all 4 deals cross-checked (Fox 0.36 M€/10.3%, Mantis 0.81, Mouse 0.65, Cat 0.93; CAGRs match deals.md) — fixed 2026-07-06 (was committed 8251375, undeployed)
 - [x] Fox valuation earn-out table EVs inconsistent with EV 1,753 (963/1,463 → 1,253/1,753/1,903) — fixed 2026-07-06 (v16)
+- [x] Codex review findings on the v16 port (2026-07-06, verdict revise→ship): (1) "Total Score (out of 40)" + plain number propagated to the 4 individual scorecards (v16 only fixed the comparison — correction-sweep), (2) Decision 2 cost bullet "Notary, structuring = 23 K€" → 15 K€ (reconciles with dd-costs detail: notary 11 + structuring 4). Review: `boardroom/ai/codex-reviews/2026-07-06-investor-v16-commercial.md` + `-reverify.md`

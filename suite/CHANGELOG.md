@@ -4,19 +4,46 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.18 — 2026-07-06
+
+### Login-loop incident — ACTUAL root causes (supersedes the v2.1.17 analysis)
+Two independent bugs, both shipped/exposed by the 05.07 deploy:
+
+1. **Cockpit principal rejected all browser traffic through Caddy**
+   (`cockpit/src/api.py`): the agentic-v2 rewrite nuked `X-Remote-User` on ANY
+   `Authorization` header — but browsers behind Caddy necessarily send
+   `Authorization: Basic ...` (the Caddy login itself) and Caddy forwards it
+   upstream alongside the `X-Remote-User` it sets. Every `/api/state` via the
+   proxy → 401 → the UI fell back to its token prompt (a dead end on prod) and
+   trapped the user. Fix: only a **Bearer** Authorization marks a direct
+   caller. Regression tests added (Basic+header → 200, Bearer+header → 401).
+2. **UI fetch() calls relied on Chrome replaying basic-auth credentials**,
+   which current Chrome no longer does for background fetches (navigations
+   still carry them). Fix: `window.fetch` wrapper forcing
+   `credentials:'include'` in cockpit boot.js, investor shell-bottom.html,
+   allex dashboard.html (dealroom has no fetch sites). Cockpit boot.js also
+   now re-tries the basic-auth path every login-loop round and clears stale
+   tokens — a bad token can never permanently trap a user again.
+
+The v2.1.17 "Caddy 2.11.4 placeholder regression" analysis was **wrong** — an
+artifact of testing with a debug user that existed only in Caddy, so backends
+correctly rejected it as unknown. Verified via echo-backend probe: Caddy header
+injection works on both 2.10 and 2.11. The `caddy:2.10-alpine` pin stays
+(pinning > floating tag), but it fixed nothing.
+
 ## v2.1.17 — 2026-07-06
 
-### Suite — HOTFIX: login loop (Caddy version pin)
-- **Root cause**: `suite/Dockerfile` copied Caddy from the floating `caddy:2-alpine`
-  tag; the 2026-07-05 image build silently picked up Caddy **2.11.4**, which no
-  longer injects `header_up X-Remote-User {http.auth.user.id}` into reverse_proxy
-  upstream headers after `basic_auth` (the placeholder still resolves in `respond`).
-  Every backend saw authenticated users as anonymous → 401 on `/api/state` etc. →
-  login loop for roman/florian across all modules.
-- **Diagnosis**: reproduced on prod with a temporary debug basic-auth user; the
-  `@needsAuth` matcher and a route-based variant were ruled out — the regression
-  is version-bound, not config-bound.
-- **Fix**: pin `caddy:2.10-alpine`. Caddyfile unchanged.
+### Suite — Caddy version pin (analysis superseded by v2.1.18)
+- Pin `caddy:2.10-alpine` instead of floating `caddy:2-alpine`. Shipped under a
+  wrong root-cause theory for the login loop — see v2.1.18. Pin kept for
+  build reproducibility.
+
+### Investor Room — v16 content + model-corrected Lion/Wolf
+- Ships the v16 template port (done 05.07 evening session: Cat/Mouse reorder,
+  scorecard re-source, S&U layout, provider fixes — see ISSUES.md Resolved).
+- Portfolio table Lion EV/multiple 4.8/5.9x → **3.7/5.6x** (Golmed model v15),
+  Wolf 5.2/5.1x → **4.3/5.4x** (KVG model v5) — aligned with dealroom.db
+  overrides synced from the 05.07 model sweep.
 
 ### Investor Room — v16 content + model-corrected Lion/Wolf
 - Ships the v16 template port (done 05.07 evening session: Cat/Mouse reorder,

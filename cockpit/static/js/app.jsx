@@ -100,11 +100,19 @@ function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setF
 const TAB_TO_HASH = { overview: "#cockpit", week: "#week", table: "#workstreams", timeline: "#timeline", agents: "#agents", admin: "#admin" };
 const HASH_TO_TAB = { "#cockpit": "overview", "#week": "week", "#workstreams": "table", "#timeline": "timeline", "#agents": "agents", "#admin": "admin" };
 const VALID_TABS = new Set(Object.keys(TAB_TO_HASH));
+/* Admin is not part of NAV (rendered as a separate button), so the hash
+   validator must accept it explicitly for admins — otherwise setTab("admin")
+   fires hashchange, tabFromHash rejects it, and the tab bounces straight back. */
+const NAV_ADMIN = { id: "admin", label: "Admin", icon: "ops", crumb: "Users, teams & access" };
+function _isValidTab(tab) {
+  if (NAV.find((n) => n.id === tab)) return true;
+  return tab === "admin" && !!(window.COCKPIT && window.COCKPIT.isAdmin);
+}
 function tabFromHash() {
   const tab = HASH_TO_TAB[window.location.hash];
   const first = NAV[0] ? NAV[0].id : "overview";
   const firstHash = TAB_TO_HASH[first] || "#cockpit";
-  if (!tab || !NAV.find(n => n.id === tab)) {
+  if (!tab || !_isValidTab(tab)) {
     history.replaceState(null, "", firstHash);
     return first;
   }
@@ -165,7 +173,7 @@ function App() {
   const verdictN = TASKS.filter((x) => x.execution === "agent" && x.status === "in_review").length;
   const badge = { week: chaseN, agents: verdictN };
 
-  const cur = NAV.find((n) => n.id === tab) || NAV[0];
+  const cur = NAV.find((n) => n.id === tab) || (tab === "admin" ? NAV_ADMIN : NAV[0]);
   const showPerson = tab === "overview";
 
   const canWriteWorkstreams = window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw"));
@@ -182,7 +190,7 @@ function App() {
       ))}
       {window.COCKPIT && window.COCKPIT.isAdmin && (
         <button className={"nav-item" + (tab === "admin" ? " active" : "")} onClick={() => setTab("admin")}>
-          <Icon name="settings" size={18} />
+          <Icon name="ops" size={18} />
           <span>Admin</span>
         </button>
       )}

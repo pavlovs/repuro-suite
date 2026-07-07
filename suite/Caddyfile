@@ -93,10 +93,18 @@ a:hover{background:#0891B2;color:#fff}
 	}
 
 	handle_path /allex/* {
+		forward_auth localhost:8083 {
+			uri /api/authz?module=allex
+			header_up X-Remote-User {http.auth.user.id}
+		}
 		reverse_proxy localhost:8081
 	}
 
 	handle_path /deals/* {
+		forward_auth localhost:8083 {
+			uri /api/authz?module=dealroom
+			header_up X-Remote-User {http.auth.user.id}
+		}
 		reverse_proxy localhost:8082
 	}
 

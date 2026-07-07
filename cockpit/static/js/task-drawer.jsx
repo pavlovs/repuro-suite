@@ -21,7 +21,7 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
     return () => window.removeEventListener("keydown", onEsc);
   }, [task && task.id]);
   if (!task) return null;
-  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
+  const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
 
   const ws = wsOf(task), deal = dealOf(task), deliv = delivOf(task);
   const pre = (task.prereqs || []).map((r) => byTask[r]).filter(Boolean);
@@ -261,7 +261,7 @@ function DelivDrawer({ deliv, onClose, mutate, openTask }) {
     return () => window.removeEventListener("keydown", onEsc);
   }, [deliv && deliv.id]);
   if (!deliv) return null;
-  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
+  const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
 
   const ws = byWs[deliv.ws];
   const deal = deliv.deal || null;

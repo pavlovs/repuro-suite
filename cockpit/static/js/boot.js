@@ -103,7 +103,7 @@
     "tweaks-panel.jsx", "components.jsx", "task-drawer.jsx", "quick-add.jsx",
     "palette.jsx", "view-week.jsx", "view-overview.jsx", "view-board.jsx",
     "view-table.jsx", "view-timeline.jsx",
-    "view-agents.jsx", "activity.jsx", "app.jsx",
+    "view-agents.jsx", "activity.jsx", "view-admin.jsx", "app.jsx",
   ];
 
   var WS_STYLE = [ // palette/icon assignment by order; name overrides below
@@ -664,6 +664,8 @@
     window.COCKPIT = {
       modules: (state.principal && state.principal.modules) || ["overview","week","workstreams","timeline","agents","relations"],
       readOnly: !!(state.principal && state.principal.read_only),
+      perms: (state.principal && state.principal.perms) || {},
+      isAdmin: !!(state.principal && state.principal.is_admin),
     };
     if (state.principal && state.principal.id && !sessionStorage.getItem("cockpit_person")) {
       var pMap = {rd: "RD", ff: "FF"};

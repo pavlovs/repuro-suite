@@ -88,7 +88,7 @@ function QuickAdd({ open, onClose, prefill }) {
     return () => window.removeEventListener("keydown", onEsc);
   }, [open]);
   if (!open) return null;
-  if (window.COCKPIT && window.COCKPIT.readOnly) return null;
+  if (!(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")))) return null;
 
   const toggleOwner = (p) => setF((s) => ({ ...s, owners: s.owners.includes(p) ? s.owners.filter((x) => x !== p) : [...s.owners, p] }));
 

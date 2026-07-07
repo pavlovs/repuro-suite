@@ -25,7 +25,12 @@ from fastapi import (
     UploadFile,
 )
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, PlainTextResponse, StreamingResponse  # noqa: F401
+from fastapi.responses import (  # noqa: F401
+    FileResponse,
+    PlainTextResponse,
+    Response,
+    StreamingResponse,
+)
 
 from . import compute, db, dealroom_sync, mdio, models
 
@@ -178,6 +183,115 @@ def _build_principal(row):
     }
 
 
+_ALL_COCKPIT_MODS = [
+    "overview",
+    "week",
+    "workstreams",
+    "timeline",
+    "agents",
+    "relations",
+]
+
+
+def _build_principal_v13(conn, row):
+    """Build full principal dict (v13: teams/perms enriched)."""
+    role = row["role"]
+    if role == "agent":
+        return {
+            "id": row["id"],
+            "name": row["name"],
+            "initials": row["initials"],
+            "role": role,
+            "profile": None,
+            "modules": ["agents"],
+            "perms": {"agents": "rw"},
+            "is_admin": False,
+            "all_teams": False,
+            "teams": [],
+            "read_only": False,
+        }
+
+    user_id = row["id"]
+    team_rows = conn.execute(
+        "SELECT t.id, t.permissions, t.is_admin "
+        "FROM teams t JOIN team_members tm ON tm.team_id = t.id "
+        "WHERE tm.user_id = ? AND t.status = 'active'",
+        (user_id,),
+    ).fetchall()
+
+    team_ids = [t["id"] for t in team_rows]
+    is_admin = any(bool(t["is_admin"]) for t in team_rows)
+
+    try:
+        all_teams = bool(row["all_teams"]) if row["all_teams"] is not None else False
+    except (IndexError, KeyError):
+        all_teams = False
+
+    # Strongest-wins merge: rw > ro > none
+    _RANK = {"rw": 2, "ro": 1}
+    merged: dict = {}
+    for t in team_rows:
+        try:
+            t_perms = json.loads(t["permissions"] or "{}")
+        except (json.JSONDecodeError, TypeError):
+            t_perms = {}
+        for mod, lvl in t_perms.items():
+            if _RANK.get(lvl, 0) > _RANK.get(merged.get(mod), 0):
+                merged[mod] = lvl
+
+    if is_admin:
+        perms_out = {m: "rw" for m in _ALL_COCKPIT_MODS}
+        modules = _ALL_COCKPIT_MODS[:]
+        read_only = False
+        profile_val = "owner"
+    elif merged:
+        perms_out = merged
+        modules = list(merged.keys())
+        read_only = all(v == "ro" for v in merged.values())
+        try:
+            profile_val = row["profile"]
+        except (IndexError, KeyError):
+            profile_val = None
+        if profile_val is None:
+            profile_val = next(
+                (k for k in merged if merged[k] == "rw"), list(merged.keys())[0]
+            )
+    else:
+        # No team memberships. Fail-open as owner-equivalent ONLY for the legacy
+        # founders (pre-v13 rows: rd/ff, or the v12 'owner' backfill marker) so a
+        # fresh/dev DB can never lock them out. Every other teamless human is
+        # fail-CLOSED — otherwise removing a user's last team would escalate
+        # them to full access instead of revoking it.
+        try:
+            legacy_profile = row["profile"]
+        except (IndexError, KeyError):
+            legacy_profile = None
+        if row["id"] in ("rd", "ff") or legacy_profile == "owner":
+            perms_out = {m: "rw" for m in _ALL_COCKPIT_MODS}
+            modules = _ALL_COCKPIT_MODS[:]
+            read_only = False
+            profile_val = "owner"
+        else:
+            perms_out = {}
+            modules = []
+            read_only = True
+            profile_val = None
+
+    return {
+        "id": row["id"],
+        "name": row["name"],
+        "initials": row["initials"],
+        "role": role,
+        "profile": profile_val,
+        "modules": modules,
+        "perms": perms_out,
+        "is_admin": is_admin,
+        "all_teams": all_teams,
+        "teams": team_ids,
+        "read_only": read_only,
+    }
+
+
 def principal(
     authorization: str | None = Header(default=None),
     x_remote_user: str | None = Header(default=None),
@@ -197,36 +311,29 @@ def principal(
     # through the proxy (login-loop incident 2026-07-05/06).
     if authorization and authorization.startswith("Bearer "):
         x_remote_user = None
-    if x_remote_user and x_remote_user in _CADDY_USER_MAP:
-        pid = _CADDY_USER_MAP[x_remote_user]
-        row = (
-            db.get_conn()
-            .execute(
-                "SELECT u.*, rp.module_access, rp.read_only AS rp_read_only "
-                "FROM users u LEFT JOIN role_profiles rp ON rp.id = u.profile "
-                "WHERE u.id = ?",
-                (pid,),
-            )
-            .fetchone()
-        )
+    conn = db.get_conn()
+    if x_remote_user:
+        # v13: resolve by users.login first (replaces _CADDY_USER_MAP as primary path)
+        row = conn.execute(
+            "SELECT * FROM users WHERE login = ?", (x_remote_user,)
+        ).fetchone()
         if row:
-            return _build_principal(row)
+            return _build_principal_v13(conn, row)
+        # Fallback: legacy _CADDY_USER_MAP (backward compat for unmigrated rows)
+        pid = _CADDY_USER_MAP.get(x_remote_user)
+        if pid:
+            row = conn.execute("SELECT * FROM users WHERE id = ?", (pid,)).fetchone()
+            if row:
+                return _build_principal_v13(conn, row)
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(401, "missing bearer token")
     token_hash = hashlib.sha256(authorization[7:].strip().encode()).hexdigest()
-    row = (
-        db.get_conn()
-        .execute(
-            "SELECT u.*, rp.module_access, rp.read_only AS rp_read_only "
-            "FROM users u LEFT JOIN role_profiles rp ON rp.id = u.profile "
-            "WHERE u.token_hash = ?",
-            (token_hash,),
-        )
-        .fetchone()
-    )
+    row = conn.execute(
+        "SELECT * FROM users WHERE token_hash = ?", (token_hash,)
+    ).fetchone()
     if not row:
         raise HTTPException(401, "unknown token")
-    return _build_principal(row)
+    return _build_principal_v13(conn, row)
 
 
 def human_only(p=Depends(principal)):
@@ -245,6 +352,15 @@ def read_only_guard(p=Depends(principal)):
     if p.get("read_only"):
         raise HTTPException(403, "This account is read-only")
     return p
+
+
+def _check_write(p: dict, module: str) -> None:
+    """Raise 403 if the principal lacks write access to module.
+    is_admin bypasses all module checks."""
+    if p.get("is_admin"):
+        return
+    if (p.get("perms") or {}).get(module) != "rw":
+        raise HTTPException(403, f"'{module}' write access required")
 
 
 # --------------------------------------------------------------------------
@@ -318,15 +434,34 @@ def assemble_state(conn, me=None):
     ws_rows = conn.execute(
         "SELECT * FROM workstreams ORDER BY sort_order, id"
     ).fetchall()
-    # Option A workstream scoping for non-owner, non-agent profiles
-    if me and me.get("role") != "agent" and me.get("profile") not in (None, "owner"):
-        profile = me["profile"]
-        ws_rows = [
-            ws
-            for ws in ws_rows
-            if ws["allowed_profiles"] is not None
-            and profile in json.loads(ws["allowed_profiles"])
-        ]
+    # v13 module gate: no 'workstreams' permission at all → no workstream data in
+    # the state payload (nav hiding alone is not enforcement — an hr-only or
+    # teamless principal must not receive the full task tree). all_teams widens
+    # WHICH workstreams you see, not WHETHER the module is yours — no bypass here.
+    if (
+        me
+        and me.get("role") != "agent"
+        and "workstreams" not in (me.get("perms") or {})
+    ):
+        ws_rows = []
+    # v13 team gate: workstream visible if (a) no team assignment, or (b) user is
+    # in one of the assigned teams, or (c) user has all_teams=1 (god view).
+    # Applies to all non-agent principals. Unassigned ws = visible to all (opt-in).
+    if me and me.get("role") != "agent" and not me.get("all_teams"):
+        principal_teams = set(me.get("teams") or [])
+        if principal_teams:
+            wt_rows = conn.execute(
+                "SELECT workstream_id, team_id FROM workstream_teams"
+            ).fetchall()
+            ws_team_map: dict = {}
+            for wt in wt_rows:
+                ws_team_map.setdefault(wt["workstream_id"], set()).add(wt["team_id"])
+            ws_rows = [
+                ws
+                for ws in ws_rows
+                if not ws_team_map.get(ws["id"])  # no assignment = visible to all
+                or bool(ws_team_map.get(ws["id"]) & principal_teams)
+            ]
     d_rows = conn.execute(
         "SELECT * FROM deliverables ORDER BY sort_order, id"
     ).fetchall()
@@ -782,13 +917,18 @@ async def sse_events(
     if x_remote_user and (os.environ.get("COCKPIT_TRUSTED_PROXY") != "1" or token):
         x_remote_user = None
     p = None
-    if x_remote_user and x_remote_user in _CADDY_USER_MAP:
-        pid = _CADDY_USER_MAP[x_remote_user]
-        row = (
-            db.get_conn()
-            .execute("SELECT id, role FROM users WHERE id = ?", (pid,))
-            .fetchone()
-        )
+    if x_remote_user:
+        _sconn = db.get_conn()
+        # v13: login-based resolution first
+        row = _sconn.execute(
+            "SELECT id, role FROM users WHERE login = ?", (x_remote_user,)
+        ).fetchone()
+        if not row:
+            pid = _CADDY_USER_MAP.get(x_remote_user)
+            if pid:
+                row = _sconn.execute(
+                    "SELECT id, role FROM users WHERE id = ?", (pid,)
+                ).fetchone()
         if row:
             p = {"id": row["id"], "role": row["role"]}
     if p is None:
@@ -861,8 +1001,42 @@ def state(p=Depends(principal)):
     return s
 
 
+@app.get("/api/authz")
+def authz(
+    module: str = Query(...),
+    x_remote_user: str | None = Header(default=None),
+    x_forwarded_method: str | None = Header(default=None),
+):
+    """Caddy forward_auth endpoint. Resolves X-Remote-User, checks module access.
+    Returns 200 (empty) or 403. No Bearer path — agents never hit /deals|/allex."""
+    if not x_remote_user:
+        raise HTTPException(403, "no user identity")
+    conn = db.get_conn()
+    row = conn.execute(
+        "SELECT * FROM users WHERE login = ?", (x_remote_user,)
+    ).fetchone()
+    if not row:
+        pid = _CADDY_USER_MAP.get(x_remote_user)
+        if pid:
+            row = conn.execute("SELECT * FROM users WHERE id = ?", (pid,)).fetchone()
+    if not row:
+        raise HTTPException(403, "unknown user")
+    p = _build_principal_v13(conn, row)
+    if p.get("is_admin"):
+        return Response(status_code=200)
+    perms = p.get("perms") or {}
+    lvl = perms.get(module)
+    if lvl is None:
+        raise HTTPException(403, "no access to module")
+    method = (x_forwarded_method or "GET").upper()
+    if lvl == "ro" and method not in {"GET", "HEAD", "OPTIONS"}:
+        raise HTTPException(403, "read-only access — write method not allowed")
+    return Response(status_code=200)
+
+
 @app.post("/api/task", status_code=201)
-def create_task(payload: dict = Body(...), p=Depends(read_only_guard)):
+def create_task(payload: dict = Body(...), p=Depends(principal)):
+    _check_write(p, "workstreams")
     conn = db.get_conn()
     if not payload.get("text"):
         raise HTTPException(422, "text is required")
@@ -896,7 +1070,8 @@ def assemble_task(conn, num):
 
 
 @app.patch("/api/task/{tid}")
-def patch_task(tid: str, payload: dict = Body(...), p=Depends(read_only_guard)):
+def patch_task(tid: str, payload: dict = Body(...), p=Depends(principal)):
+    _check_write(p, "workstreams")
     conn = db.get_conn()
     num = _tid(tid)
     if "version" not in payload:
@@ -917,7 +1092,8 @@ def patch_task(tid: str, payload: dict = Body(...), p=Depends(read_only_guard)):
 
 
 @app.post("/api/workstream", status_code=201)
-def create_workstream(payload: dict = Body(...), p=Depends(read_only_guard)):
+def create_workstream(payload: dict = Body(...), p=Depends(principal)):
+    _check_write(p, "workstreams")
     conn = db.get_conn()
     if not payload.get("name"):
         raise HTTPException(422, "name is required")
@@ -963,7 +1139,8 @@ def create_workstream(payload: dict = Body(...), p=Depends(read_only_guard)):
 
 
 @app.patch("/api/workstream/{wid}")
-def patch_workstream(wid: str, payload: dict = Body(...), p=Depends(read_only_guard)):
+def patch_workstream(wid: str, payload: dict = Body(...), p=Depends(principal)):
+    _check_write(p, "workstreams")
     conn = db.get_conn()
     if "space_id" in payload:
         prefix, snum = _safe_ref(payload["space_id"])
@@ -992,7 +1169,8 @@ def patch_workstream(wid: str, payload: dict = Body(...), p=Depends(read_only_gu
 
 
 @app.post("/api/deliverable", status_code=201)
-def create_deliverable(payload: dict = Body(...), p=Depends(read_only_guard)):
+def create_deliverable(payload: dict = Body(...), p=Depends(principal)):
+    _check_write(p, "workstreams")
     conn = db.get_conn()
     if not payload.get("name") or not payload.get("workstream_id"):
         raise HTTPException(422, "name and workstream_id are required")
@@ -1037,7 +1215,8 @@ def create_deliverable(payload: dict = Body(...), p=Depends(read_only_guard)):
 
 
 @app.patch("/api/deliverable/{did}")
-def patch_deliverable(did: str, payload: dict = Body(...), p=Depends(read_only_guard)):
+def patch_deliverable(did: str, payload: dict = Body(...), p=Depends(principal)):
+    _check_write(p, "workstreams")
     conn = db.get_conn()
     # workstream_id needs FK validation before the generic patch path
     if "workstream_id" in payload:
@@ -1076,9 +1255,8 @@ def patch_deliverable(did: str, payload: dict = Body(...), p=Depends(read_only_g
 
 
 @app.delete("/api/deliverable/{did}")
-def delete_deliverable(
-    did: str, p=Depends(human_only), _ro: dict = Depends(read_only_guard)
-):
+def delete_deliverable(did: str, p=Depends(human_only)):
+    _check_write(p, "workstreams")
     conn = db.get_conn()
     prefix, num = _safe_ref(did)
     if prefix != "d":
@@ -1455,11 +1633,11 @@ def answer_blocker(
     tid: str,
     payload: dict = Body(...),
     p=Depends(human_only),
-    _ro: dict = Depends(read_only_guard),
 ):
     """Human answers a blocked task's question inline (SPEC §7b): the answer is
     appended to the evidence trail, the question cleared, the task re-opened —
     the next runner pass picks it up with the answer in context."""
+    _check_write(p, "agents")
     conn = db.get_conn()
     num = _tid(tid)
     answer = (payload.get("answer") or "").strip()
@@ -1564,11 +1742,11 @@ def decide_learning(
     lid: int,
     payload: dict = Body(...),
     p=Depends(human_only),
-    _ro: dict = Depends(read_only_guard),
 ):
     """Human curation: promote a candidate into the playbook (optionally edited)
     or dismiss it. Also retires active entries (action=dismiss). The cap is a
     hard gate — a full playbook forces pruning before new promotions."""
+    _check_write(p, "agents")
     action = payload.get("action")
     if action not in ("promote", "dismiss"):
         raise HTTPException(422, "action must be promote or dismiss")
@@ -1625,9 +1803,10 @@ def decide_learning(
 
 
 @app.delete("/api/task/{tid}")
-def delete_task(tid: str, p=Depends(human_only), _ro: dict = Depends(read_only_guard)):
+def delete_task(tid: str, p=Depends(human_only)):
     """Hard delete (undo/cleanup). Strips the ref from other tasks' prereqs so
     dependents don't go red on a dangling gate."""
+    _check_write(p, "workstreams")
     conn = db.get_conn()
     num = _tid(tid)
     with db.WRITE_LOCK:
@@ -1661,10 +1840,10 @@ def delete_task(tid: str, p=Depends(human_only), _ro: dict = Depends(read_only_g
 def reorder_tasks(
     payload: dict = Body(...),
     p=Depends(human_only),
-    _ro: dict = Depends(read_only_guard),
 ):
     """Bulk-update sort_order for a list of task ids (in new display order).
     Payload: {task_ids: ["t-1", "t-3", "t-2", ...]}"""
+    _check_write(p, "workstreams")
     task_ids = payload.get("task_ids")
     if not task_ids or not isinstance(task_ids, list):
         raise HTTPException(422, "task_ids list is required")
@@ -1686,8 +1865,8 @@ def reorder_tasks(
 def reorder_workstreams(
     payload: dict = Body(...),
     p=Depends(human_only),
-    _ro: dict = Depends(read_only_guard),
 ):
+    _check_write(p, "workstreams")
     ws_ids = payload.get("workstream_ids")
     if not ws_ids or not isinstance(ws_ids, list):
         raise HTTPException(422, "workstream_ids list is required")
@@ -1726,8 +1905,8 @@ def reorder_workstreams(
 def reorder_deliverables(
     payload: dict = Body(...),
     p=Depends(human_only),
-    _ro: dict = Depends(read_only_guard),
 ):
+    _check_write(p, "workstreams")
     deliv_ids = payload.get("deliverable_ids")
     if not deliv_ids or not isinstance(deliv_ids, list):
         raise HTTPException(422, "deliverable_ids list is required")
@@ -1754,7 +1933,8 @@ def reorder_deliverables(
 
 
 @app.post("/api/task/{tid}/approve")
-def approve(tid: str, p=Depends(human_only), _ro: dict = Depends(read_only_guard)):
+def approve(tid: str, p=Depends(human_only)):
+    _check_write(p, "agents")
     conn = db.get_conn()
     num = _tid(tid)
     with db.WRITE_LOCK:
@@ -1776,8 +1956,8 @@ def reject(
     tid: str,
     payload: dict = Body(default={}),
     p=Depends(human_only),
-    _ro: dict = Depends(read_only_guard),
 ):
+    _check_write(p, "agents")
     conn = db.get_conn()
     num = _tid(tid)
     comment = payload.get("comment", "")
@@ -1811,11 +1991,11 @@ def request_changes(
     tid: str,
     payload: dict = Body(...),
     p=Depends(human_only),
-    _ro: dict = Depends(read_only_guard),
 ):
     """Send task back to agent with structured feedback. Unlike reject (which
     just re-opens), this increments review_round and stores feedback so the
     next agent run gets it as mandatory context."""
+    _check_write(p, "agents")
     conn = db.get_conn()
     num = _tid(tid)
     feedback = payload.get("feedback", "")
@@ -1905,11 +2085,11 @@ def upload_preview(
     tid: str,
     file: UploadFile = File(...),
     p=Depends(human_only),
-    _ro: dict = Depends(read_only_guard),
 ):
     """Human door for preview files (PDF, PNG, MD). Agents use their own
     claimant-gated door — leaving this open to agent tokens would let any agent
     overwrite any task's preview (codex 2026-07-05 #1)."""
+    _check_write(p, "agents")
     conn = db.get_conn()
     num = _tid(tid)
     _get_task(conn, num)
@@ -2251,11 +2431,11 @@ def patch_deal(
     codename: str,
     payload: dict = Body(...),
     p=Depends(human_only),
-    _ro: dict = Depends(read_only_guard),
 ):
     """Deal stage/note are MASTERED by DEALRoom (dealroom.db) and mirrored
     read-only into cockpit's deal_mirror. Writing them here is silently lost on
     the next sync, so we refuse and point the caller at the source of truth."""
+    _check_write(p, "dealroom")
     conn = db.get_conn()
     row = conn.execute(
         "SELECT * FROM deal_mirror WHERE codename=?", (codename,)
@@ -2271,43 +2451,284 @@ def patch_deal(
 
 
 # --------------------------------------------------------------------------
-# admin: user provisioning + workstream access control
+# admin: user provisioning, team management, workstream assignment
+# Guard: is_admin membership (replaces old profile=='owner' check)
+
+
+def _require_admin(p: dict) -> None:
+    if not p.get("is_admin"):
+        raise HTTPException(403, "admin access required")
 
 
 @app.post("/api/admin/user", status_code=201)
 def admin_create_user(payload: dict = Body(...), p=Depends(human_only)):
-    if p.get("profile") != "owner":
-        raise HTTPException(403, "owner profile required")
+    _require_admin(p)
     uid = (payload.get("id") or "").strip()
     name = (payload.get("name") or "").strip()
+    if not uid or not name:
+        raise HTTPException(422, "id and name are required")
     initials = (payload.get("initials") or "").strip() or None
-    profile_id = (payload.get("profile") or "").strip()
-    if not uid or not name or not profile_id:
-        raise HTTPException(422, "id, name, and profile are required")
+    login_val = (payload.get("login") or "").strip() or None
+    all_teams_val = 1 if payload.get("all_teams") else 0
+    teams = payload.get("teams") or []
     conn = db.get_conn()
-    if not conn.execute(
-        "SELECT 1 FROM role_profiles WHERE id=?", (profile_id,)
-    ).fetchone():
-        raise HTTPException(422, f"unknown profile: {profile_id!r}")
     if conn.execute("SELECT 1 FROM users WHERE id=?", (uid,)).fetchone():
         raise HTTPException(409, f"user {uid!r} already exists")
+    for tid in teams:
+        if not conn.execute("SELECT 1 FROM teams WHERE id=?", (tid,)).fetchone():
+            raise HTTPException(422, f"unknown team: {tid!r}")
     token = secrets.token_urlsafe(32)
     token_hash = hashlib.sha256(token.encode()).hexdigest()
     with db.WRITE_LOCK:
         conn.execute(
-            "INSERT INTO users (id, name, initials, role, token_hash, profile) "
-            "VALUES (?,?,?,?,?,?)",
-            (uid, name, initials, "human", token_hash, profile_id),
+            "INSERT INTO users (id, name, initials, role, token_hash, login, all_teams) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (uid, name, initials, "human", token_hash, login_val, all_teams_val),
         )
-        db.audit(conn, p["id"], "user_create", uid, after={"profile": profile_id})
+        for tid in teams:
+            conn.execute(
+                "INSERT OR IGNORE INTO team_members (team_id, user_id) VALUES (?,?)",
+                (tid, uid),
+            )
+        db.audit(conn, p["id"], "user_create", uid, after={"teams": teams})
         conn.commit()
     return {"id": uid, "token": token}
 
 
+@app.get("/api/admin/overview")
+def admin_overview(p=Depends(human_only)):
+    _require_admin(p)
+    conn = db.get_conn()
+    users_rows = conn.execute(
+        "SELECT id, name, initials, role, login, all_teams, profile FROM users ORDER BY id"
+    ).fetchall()
+    members_rows = conn.execute("SELECT team_id, user_id FROM team_members").fetchall()
+    teams_rows = conn.execute(
+        "SELECT id, name, color, permissions, is_admin, sort_order, status FROM teams ORDER BY sort_order, id"
+    ).fetchall()
+    wt_rows = conn.execute(
+        "SELECT wt.workstream_id, wt.team_id, w.name AS ws_name "
+        "FROM workstream_teams wt JOIN workstreams w ON w.id = wt.workstream_id"
+    ).fetchall()
+    # Build user→teams map
+    user_teams: dict = {}
+    for m in members_rows:
+        user_teams.setdefault(m["user_id"], []).append(m["team_id"])
+    users_out = [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "initials": r["initials"],
+            "role": r["role"],
+            "login": r["login"],
+            "all_teams": bool(r["all_teams"]),
+            "teams": user_teams.get(r["id"], []),
+        }
+        for r in users_rows
+    ]
+    # Build team→members map
+    team_members_map: dict = {}
+    for m in members_rows:
+        team_members_map.setdefault(m["team_id"], []).append(m["user_id"])
+    teams_out = [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "color": r["color"],
+            "permissions": json.loads(r["permissions"] or "{}"),
+            "is_admin": bool(r["is_admin"]),
+            "sort_order": r["sort_order"],
+            "status": r["status"],
+            "members": team_members_map.get(r["id"], []),
+        }
+        for r in teams_rows
+    ]
+    # Workstream assignments
+    ws_assignments: dict = {}
+    for wt in wt_rows:
+        ws_assignments.setdefault(
+            wt["workstream_id"], {"ws_name": wt["ws_name"], "teams": []}
+        )["teams"].append(wt["team_id"])
+    return {
+        "users": users_out,
+        "teams": teams_out,
+        "workstream_assignments": ws_assignments,
+    }
+
+
+@app.post("/api/admin/team", status_code=201)
+def admin_create_team(payload: dict = Body(...), p=Depends(human_only)):
+    _require_admin(p)
+    tid = (payload.get("id") or "").strip()
+    name = (payload.get("name") or "").strip()
+    if not tid or not name:
+        raise HTTPException(422, "id and name are required")
+    color = payload.get("color") or None
+    perms = payload.get("permissions") or {}
+    is_admin_val = 1 if payload.get("is_admin") else 0
+    conn = db.get_conn()
+    if conn.execute("SELECT 1 FROM teams WHERE id=?", (tid,)).fetchone():
+        raise HTTPException(409, f"team {tid!r} already exists")
+    with db.WRITE_LOCK:
+        conn.execute(
+            "INSERT INTO teams (id, name, color, permissions, is_admin) VALUES (?,?,?,?,?)",
+            (tid, name, color, json.dumps(perms), is_admin_val),
+        )
+        db.audit(
+            conn,
+            p["id"],
+            "team_create",
+            tid,
+            after={"name": name, "permissions": perms},
+        )
+        conn.commit()
+    return {"id": tid, "name": name}
+
+
+@app.patch("/api/admin/team/{tid}")
+def admin_patch_team(tid: str, payload: dict = Body(...), p=Depends(human_only)):
+    _require_admin(p)
+    conn = db.get_conn()
+    if not conn.execute("SELECT 1 FROM teams WHERE id=?", (tid,)).fetchone():
+        raise HTTPException(404, f"team {tid!r} not found")
+    updates = {}
+    if "name" in payload:
+        updates["name"] = payload["name"]
+    if "color" in payload:
+        updates["color"] = payload["color"]
+    if "permissions" in payload:
+        updates["permissions"] = json.dumps(payload["permissions"])
+    if "status" in payload:
+        if payload["status"] not in ("active", "archived"):
+            raise HTTPException(422, "status must be active or archived")
+        updates["status"] = payload["status"]
+    if not updates:
+        raise HTTPException(422, "no updatable fields provided")
+    set_clause = ", ".join(f"{k}=?" for k in updates)
+    with db.WRITE_LOCK:
+        conn.execute(
+            f"UPDATE teams SET {set_clause} WHERE id=?",
+            (*updates.values(), tid),
+        )
+        db.audit(conn, p["id"], "team_update", tid, after=updates)
+        conn.commit()
+    _broadcast(p["id"])
+    return {"id": tid, **{k: v for k, v in updates.items()}}
+
+
+@app.post("/api/admin/team/{tid}/members", status_code=201)
+def admin_add_member(tid: str, payload: dict = Body(...), p=Depends(human_only)):
+    _require_admin(p)
+    uid = (payload.get("user_id") or "").strip()
+    if not uid:
+        raise HTTPException(422, "user_id is required")
+    conn = db.get_conn()
+    if not conn.execute("SELECT 1 FROM teams WHERE id=?", (tid,)).fetchone():
+        raise HTTPException(404, f"team {tid!r} not found")
+    if not conn.execute("SELECT 1 FROM users WHERE id=?", (uid,)).fetchone():
+        raise HTTPException(404, f"user {uid!r} not found")
+    with db.WRITE_LOCK:
+        conn.execute(
+            "INSERT OR IGNORE INTO team_members (team_id, user_id) VALUES (?,?)",
+            (tid, uid),
+        )
+        db.audit(conn, p["id"], "team_member_add", f"{tid}/{uid}")
+        conn.commit()
+    _broadcast(p["id"])
+    return {"team_id": tid, "user_id": uid}
+
+
+@app.delete("/api/admin/team/{tid}/members/{uid}", status_code=200)
+def admin_remove_member(tid: str, uid: str, p=Depends(human_only)):
+    _require_admin(p)
+    conn = db.get_conn()
+    with db.WRITE_LOCK:
+        conn.execute(
+            "DELETE FROM team_members WHERE team_id=? AND user_id=?", (tid, uid)
+        )
+        db.audit(conn, p["id"], "team_member_remove", f"{tid}/{uid}")
+        conn.commit()
+    _broadcast(p["id"])
+    return {"team_id": tid, "user_id": uid, "removed": True}
+
+
+@app.patch("/api/admin/user/{uid}")
+def admin_patch_user(uid: str, payload: dict = Body(...), p=Depends(human_only)):
+    _require_admin(p)
+    conn = db.get_conn()
+    if not conn.execute("SELECT 1 FROM users WHERE id=?", (uid,)).fetchone():
+        raise HTTPException(404, f"user {uid!r} not found")
+    with db.WRITE_LOCK:
+        if "login" in payload:
+            conn.execute(
+                "UPDATE users SET login=? WHERE id=?", (payload["login"] or None, uid)
+            )
+        if "all_teams" in payload:
+            conn.execute(
+                "UPDATE users SET all_teams=? WHERE id=?",
+                (1 if payload["all_teams"] else 0, uid),
+            )
+        if "teams" in payload:
+            teams = payload["teams"] or []
+            for tid in teams:
+                if not conn.execute(
+                    "SELECT 1 FROM teams WHERE id=?", (tid,)
+                ).fetchone():
+                    raise HTTPException(422, f"unknown team: {tid!r}")
+            conn.execute("DELETE FROM team_members WHERE user_id=?", (uid,))
+            for tid in teams:
+                conn.execute(
+                    "INSERT OR IGNORE INTO team_members (team_id, user_id) VALUES (?,?)",
+                    (tid, uid),
+                )
+        db.audit(
+            conn,
+            p["id"],
+            "user_update",
+            uid,
+            after={
+                k: payload[k] for k in ("login", "all_teams", "teams") if k in payload
+            },
+        )
+        conn.commit()
+    _broadcast(p["id"])
+    return {"id": uid, "updated": True}
+
+
+@app.patch("/api/workstream/{wid}/teams")
+def patch_workstream_teams(wid: str, payload: dict = Body(...), p=Depends(human_only)):
+    """Replace workstream team assignment. team_ids=[] clears assignment (visible to all)."""
+    _require_admin(p)
+    conn = db.get_conn()
+    prefix, num = _safe_ref(wid)
+    if prefix != "w":
+        raise HTTPException(422, "expected w-<n>")
+    row = conn.execute("SELECT id FROM workstreams WHERE id=?", (num,)).fetchone()
+    if not row:
+        raise HTTPException(404, f"{wid} not found")
+    team_ids = payload.get("team_ids") or []
+    for tid in team_ids:
+        if not conn.execute("SELECT 1 FROM teams WHERE id=?", (tid,)).fetchone():
+            raise HTTPException(422, f"unknown team: {tid!r}")
+    with db.WRITE_LOCK:
+        conn.execute("DELETE FROM workstream_teams WHERE workstream_id=?", (num,))
+        for tid in team_ids:
+            conn.execute(
+                "INSERT OR IGNORE INTO workstream_teams (workstream_id, team_id) VALUES (?,?)",
+                (num, tid),
+            )
+        db.audit(
+            conn, p["id"], "workstream_teams_update", wid, after={"team_ids": team_ids}
+        )
+        conn.commit()
+    _broadcast(p["id"])
+    return {"id": wid, "team_ids": team_ids}
+
+
 @app.patch("/api/workstream/{wid}/access")
 def patch_workstream_access(wid: str, payload: dict = Body(...), p=Depends(human_only)):
-    if p.get("profile") != "owner":
-        raise HTTPException(403, "owner profile required")
+    """Deprecated v12 workstream scoping endpoint. Kept for backward compat."""
+    _require_admin(p)
     conn = db.get_conn()
     prefix, num = _safe_ref(wid)
     if prefix != "w":
@@ -2317,11 +2738,11 @@ def patch_workstream_access(wid: str, payload: dict = Body(...), p=Depends(human
         raise HTTPException(404, f"{wid} not found")
     allowed_profiles = payload.get("allowed_profiles")
     if allowed_profiles is not None:
-        for pid in allowed_profiles:
+        for ap in allowed_profiles:
             if not conn.execute(
-                "SELECT 1 FROM role_profiles WHERE id=?", (pid,)
+                "SELECT 1 FROM role_profiles WHERE id=?", (ap,)
             ).fetchone():
-                raise HTTPException(422, f"unknown profile: {pid!r}")
+                raise HTTPException(422, f"unknown profile: {ap!r}")
         allowed_profiles_json = json.dumps(allowed_profiles)
     else:
         allowed_profiles_json = None

@@ -1,11 +1,13 @@
 """
-Multi-user access control tests (SPEC-multi-user-access).
+Multi-user access control tests — v13 teams-as-permission-carriers.
 
 Coverage:
-- Owner (rd, NULL profile → owner fallback): full access
-- Advisor profile: read-only, module-filtered, workstream-scoped
-- POST /api/admin/user: owner-only user provisioning
-- PATCH /api/workstream/{wid}/access: owner-only workstream scoping
+- Owner (rd, md team = is_admin=True): full access + admin operations
+- Advisor (hj, advisor team = ro on workstreams+timeline): read-only, scoped
+- Team gate: workstream_teams drives visibility (opt-in assignment)
+- PATCH /api/workstream/{wid}/teams: new v13 team assignment endpoint
+- POST /api/admin/user: admin-only provisioning, no profile validation
+- /api/authz: Caddy forward_auth module gate
 """
 
 import hashlib
@@ -23,10 +25,10 @@ def _advisor_auth():
 
 @pytest.fixture()
 def advisor_client(cockpit_db, client):
-    """Extend the base client fixture with a seeded advisor user."""
+    """Extend the base client fixture with a seeded advisor user in the advisor team."""
     cockpit_db.execute(
-        "INSERT INTO users (id, name, initials, role, token_hash, profile) "
-        "VALUES (?,?,?,?,?,?)",
+        "INSERT INTO users (id, name, initials, role, token_hash, profile, login) "
+        "VALUES (?,?,?,?,?,?,?)",
         (
             "hj",
             "Heiko Jander",
@@ -34,7 +36,12 @@ def advisor_client(cockpit_db, client):
             "human",
             hashlib.sha256(ADVISOR_TOKEN.encode()).hexdigest(),
             "advisor",
+            "heiko",
         ),
+    )
+    cockpit_db.execute(
+        "INSERT OR IGNORE INTO team_members (team_id, user_id) VALUES (?,?)",
+        ("advisor", "hj"),
     )
     cockpit_db.commit()
     return client
@@ -56,6 +63,11 @@ def _make_task(client, **kw):
     return r.json()
 
 
+def _ws_ids_from_state(state):
+    """Flatten workstream ids from nested spaces[].workstreams structure."""
+    return {w["id"] for s in state.get("spaces", []) for w in s.get("workstreams", [])}
+
+
 # ---------------------------------------------------------------------------
 # Owner (rd) — regression: existing behavior unchanged
 # ---------------------------------------------------------------------------
@@ -75,6 +87,7 @@ def test_owner_state_all_modules_not_read_only(client):
         "relations",
     }
     assert p["profile"] == "owner"
+    assert p["is_admin"] is True
 
 
 def test_owner_can_create_task(client):
@@ -103,6 +116,7 @@ def test_advisor_state_read_only_and_restricted_modules(advisor_client):
     assert p["read_only"] is True
     assert set(p["modules"]) == {"workstreams", "timeline"}
     assert p["profile"] == "advisor"
+    assert p["is_admin"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -163,46 +177,51 @@ def test_advisor_deliverable_create_blocked(advisor_client):
 
 
 # ---------------------------------------------------------------------------
-# Workstream scoping (Option A): null = hidden from advisor
+# Workstream team gate — workstream_teams drives visibility (v13)
+# Semantics: no assignment = visible to all (opt-in); assignment = team-gated.
 # ---------------------------------------------------------------------------
 
 
-def _ws_ids_from_state(state):
-    """Flatten workstream ids from nested spaces[].workstreams structure."""
-    return {w["id"] for s in state.get("spaces", []) for w in s.get("workstreams", [])}
-
-
-def test_workstream_null_allowed_profiles_hidden_from_advisor(advisor_client):
-    """allowed_profiles=NULL → advisor cannot see the workstream."""
-    wid = _make_ws(advisor_client, name="Private WS")
-    # Confirm workstream exists (owner can see it)
-    owner_state = advisor_client.get("/api/state", headers=auth()).json()
-    assert wid in _ws_ids_from_state(owner_state)
-
-    # Advisor state should NOT include it (allowed_profiles is NULL)
+def test_workstream_no_team_assignment_visible_to_advisor(advisor_client):
+    """workstream_teams empty for a WS → visible to everyone."""
+    wid = _make_ws(advisor_client, name="Open WS")
     advisor_state = advisor_client.get("/api/state", headers=_advisor_auth()).json()
-    assert wid not in _ws_ids_from_state(advisor_state)
+    assert wid in _ws_ids_from_state(advisor_state)
 
 
-def test_workstream_whitelisted_visible_to_advisor(advisor_client):
-    """allowed_profiles=["owner","advisor"] → advisor can see the workstream."""
-    wid = _make_ws(advisor_client, name="Shared WS")
-
-    # Owner grants access
+def test_workstream_assigned_to_other_team_hidden_from_advisor(advisor_client):
+    """WS assigned to md team only → advisor (not in md) cannot see it."""
+    wid = _make_ws(advisor_client, name="Admin-only WS")
     r = advisor_client.patch(
-        f"/api/workstream/{wid}/access",
-        json={"allowed_profiles": ["owner", "advisor"]},
+        f"/api/workstream/{wid}/teams",
+        json={"team_ids": ["md"]},
         headers=auth(),
     )
     assert r.status_code == 200
 
-    # Advisor state now includes the workstream
+    advisor_state = advisor_client.get("/api/state", headers=_advisor_auth()).json()
+    assert wid not in _ws_ids_from_state(advisor_state)
+
+    owner_state = advisor_client.get("/api/state", headers=auth()).json()
+    assert wid in _ws_ids_from_state(owner_state)
+
+
+def test_workstream_assigned_to_advisor_team_visible(advisor_client):
+    """WS assigned to advisor team → advisor can see it."""
+    wid = _make_ws(advisor_client, name="Shared WS")
+    r = advisor_client.patch(
+        f"/api/workstream/{wid}/teams",
+        json={"team_ids": ["advisor"]},
+        headers=auth(),
+    )
+    assert r.status_code == 200
+
     advisor_state = advisor_client.get("/api/state", headers=_advisor_auth()).json()
     assert wid in _ws_ids_from_state(advisor_state)
 
 
 # ---------------------------------------------------------------------------
-# PATCH /api/workstream/{wid}/access — owner-only
+# PATCH /api/workstream/{wid}/access — admin-only (deprecated v12 endpoint)
 # ---------------------------------------------------------------------------
 
 
@@ -238,7 +257,50 @@ def test_patch_workstream_access_unknown_profile_rejected(advisor_client):
 
 
 # ---------------------------------------------------------------------------
-# POST /api/admin/user — owner-only provisioning
+# PATCH /api/workstream/{wid}/teams — admin-only, v13 primary assignment path
+# ---------------------------------------------------------------------------
+
+
+def test_patch_workstream_teams_clears_on_empty(advisor_client):
+    """team_ids=[] clears all assignments → WS becomes visible to all."""
+    wid = _make_ws(advisor_client, name="WS to clear")
+    advisor_client.patch(
+        f"/api/workstream/{wid}/teams",
+        json={"team_ids": ["md"]},
+        headers=auth(),
+    )
+    r = advisor_client.patch(
+        f"/api/workstream/{wid}/teams",
+        json={"team_ids": []},
+        headers=auth(),
+    )
+    assert r.status_code == 200
+    advisor_state = advisor_client.get("/api/state", headers=_advisor_auth()).json()
+    assert wid in _ws_ids_from_state(advisor_state)
+
+
+def test_patch_workstream_teams_unknown_team_rejected(advisor_client):
+    wid = _make_ws(advisor_client, name="WS for bad team")
+    r = advisor_client.patch(
+        f"/api/workstream/{wid}/teams",
+        json={"team_ids": ["nonexistent"]},
+        headers=auth(),
+    )
+    assert r.status_code == 422
+
+
+def test_advisor_cannot_update_workstream_teams(advisor_client):
+    wid = _make_ws(advisor_client, name="WS teams blocked")
+    r = advisor_client.patch(
+        f"/api/workstream/{wid}/teams",
+        json={"team_ids": ["advisor"]},
+        headers=_advisor_auth(),
+    )
+    assert r.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/user — admin-only, v13: no profile validation
 # ---------------------------------------------------------------------------
 
 
@@ -249,7 +311,6 @@ def test_owner_can_create_user(advisor_client):
             "id": "newuser",
             "name": "New User",
             "initials": "NU",
-            "profile": "advisor",
         },
         headers=auth(),
     )
@@ -263,7 +324,7 @@ def test_admin_create_user_returns_token_once(advisor_client):
     """Token is returned in response; subsequent state calls with that token work."""
     r = advisor_client.post(
         "/api/admin/user",
-        json={"id": "fresh", "name": "Fresh User", "profile": "viewer"},
+        json={"id": "fresh", "name": "Fresh User"},
         headers=auth(),
     )
     assert r.status_code == 201
@@ -278,26 +339,17 @@ def test_admin_create_user_returns_token_once(advisor_client):
 def test_advisor_cannot_create_user(advisor_client):
     r = advisor_client.post(
         "/api/admin/user",
-        json={"id": "blocked", "name": "Blocked User", "profile": "viewer"},
+        json={"id": "blocked", "name": "Blocked User"},
         headers=_advisor_auth(),
     )
     assert r.status_code == 403
 
 
 def test_admin_create_user_duplicate_rejected(advisor_client):
-    payload = {"id": "dup", "name": "Dup User", "profile": "advisor"}
+    payload = {"id": "dup", "name": "Dup User"}
     advisor_client.post("/api/admin/user", json=payload, headers=auth())
     r = advisor_client.post("/api/admin/user", json=payload, headers=auth())
     assert r.status_code == 409
-
-
-def test_admin_create_user_unknown_profile_rejected(advisor_client):
-    r = advisor_client.post(
-        "/api/admin/user",
-        json={"id": "badprof", "name": "Bad Profile", "profile": "superadmin"},
-        headers=auth(),
-    )
-    assert r.status_code == 422
 
 
 def test_admin_create_user_missing_required_fields(advisor_client):
@@ -307,3 +359,158 @@ def test_admin_create_user_missing_required_fields(advisor_client):
         headers=auth(),
     )
     assert r.status_code == 422
+
+
+def test_admin_create_user_with_teams(advisor_client):
+    """User created with teams list gets correct team membership."""
+    r = advisor_client.post(
+        "/api/admin/user",
+        json={"id": "newadv", "name": "New Advisor", "teams": ["advisor"]},
+        headers=auth(),
+    )
+    assert r.status_code == 201
+    token = r.json()["token"]
+    state = advisor_client.get(
+        "/api/state", headers={"Authorization": f"Bearer {token}"}
+    )
+    p = state.json()["principal"]
+    assert "workstreams" in p["modules"]
+    assert p["read_only"] is True
+
+
+# ---------------------------------------------------------------------------
+# /api/authz — Caddy forward_auth gate (v13)
+# Uses X-Remote-User: "roman" → _CADDY_USER_MAP → rd (admin)
+#       X-Remote-User: "heiko" → users.login=heiko → hj (advisor)
+# ---------------------------------------------------------------------------
+
+
+def test_authz_admin_always_allowed_get(client):
+    """is_admin → 200 for any module regardless of method."""
+    r = client.get(
+        "/api/authz",
+        params={"module": "dealroom"},
+        headers={"X-Remote-User": "roman", "X-Forwarded-Method": "GET"},
+    )
+    assert r.status_code == 200
+
+
+def test_authz_admin_always_allowed_post(client):
+    """is_admin → 200 even for write methods."""
+    r = client.get(
+        "/api/authz",
+        params={"module": "allex"},
+        headers={"X-Remote-User": "roman", "X-Forwarded-Method": "POST"},
+    )
+    assert r.status_code == 200
+
+
+def test_authz_ro_read_allowed(advisor_client):
+    """advisor has workstreams=ro; GET → 200."""
+    r = advisor_client.get(
+        "/api/authz",
+        params={"module": "workstreams"},
+        headers={"X-Remote-User": "heiko", "X-Forwarded-Method": "GET"},
+    )
+    assert r.status_code == 200
+
+
+def test_authz_ro_write_blocked(advisor_client):
+    """advisor has workstreams=ro; POST → 403."""
+    r = advisor_client.get(
+        "/api/authz",
+        params={"module": "workstreams"},
+        headers={"X-Remote-User": "heiko", "X-Forwarded-Method": "POST"},
+    )
+    assert r.status_code == 403
+
+
+def test_authz_no_module_access_blocked(advisor_client):
+    """advisor has no agents perm → 403 regardless of method."""
+    r = advisor_client.get(
+        "/api/authz",
+        params={"module": "agents"},
+        headers={"X-Remote-User": "heiko", "X-Forwarded-Method": "GET"},
+    )
+    assert r.status_code == 403
+
+
+def test_authz_no_user_identity_blocked(client):
+    """Missing X-Remote-User → 403."""
+    r = client.get("/api/authz", params={"module": "dealroom"})
+    assert r.status_code == 403
+
+
+def test_authz_unknown_user_blocked(client):
+    """X-Remote-User not in login or CADDY_USER_MAP → 403."""
+    r = client.get(
+        "/api/authz",
+        params={"module": "dealroom"},
+        headers={"X-Remote-User": "nobody"},
+    )
+    assert r.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Fail-closed hardening (review fixes on top of the v13 build)
+# ---------------------------------------------------------------------------
+
+TEAMLESS_TOKEN = "test-token-teamless"
+HRONLY_TOKEN = "test-token-hronly"
+
+
+def _seed_user(cockpit_db, uid, token, profile=None, login=None, teams=()):
+    cockpit_db.execute(
+        "INSERT INTO users (id, name, initials, role, token_hash, profile, login) "
+        "VALUES (?,?,?,?,?,?,?)",
+        (uid, uid.upper(), uid[:2].upper(), "human",
+         hashlib.sha256(token.encode()).hexdigest(), profile, login),
+    )
+    for tid in teams:
+        cockpit_db.execute(
+            "INSERT OR IGNORE INTO team_members (team_id, user_id) VALUES (?,?)",
+            (tid, uid),
+        )
+    cockpit_db.commit()
+
+
+def test_teamless_new_user_fail_closed(cockpit_db, client):
+    """A non-legacy user with zero teams gets NOTHING — removing someone's
+    last team must revoke access, not escalate to owner-equivalent."""
+    _seed_user(cockpit_db, "ext1", TEAMLESS_TOKEN)
+    _make_ws(client, name="Visible WS")
+    hdrs = {"Authorization": f"Bearer {TEAMLESS_TOKEN}"}
+    state = client.get("/api/state", headers=hdrs).json()
+    assert state["principal"]["modules"] == []
+    assert state["principal"]["perms"] == {}
+    assert state["principal"]["read_only"] is True
+    assert _ws_ids_from_state(state) == set()
+    r = client.post("/api/task", json={"text": "nope"}, headers=hdrs)
+    assert r.status_code == 403
+
+
+def test_teamless_legacy_owner_still_fail_open(cockpit_db, client):
+    """Legacy marker (profile='owner' from the v12 backfill) keeps full access
+    even with zero team rows — rd/ff can never be locked out."""
+    _seed_user(cockpit_db, "legacy1", "test-token-legacy", profile="owner")
+    hdrs = {"Authorization": "Bearer test-token-legacy"}
+    state = client.get("/api/state", headers=hdrs).json()
+    assert state["principal"]["read_only"] is False
+    assert "workstreams" in state["principal"]["perms"]
+
+
+def test_module_gate_bounds_state_payload(cockpit_db, client):
+    """A team WITHOUT the workstreams module must not receive workstream/task
+    data in /api/state, even for unassigned (visible-to-all) workstreams."""
+    cockpit_db.execute(
+        "INSERT INTO teams (id, name, permissions) VALUES ('hr','HR','{\"relations\":\"rw\"}')"
+    )
+    cockpit_db.commit()
+    _seed_user(cockpit_db, "hruser", HRONLY_TOKEN, teams=("hr",))
+    _make_ws(client, name="Unassigned WS")
+    hdrs = {"Authorization": f"Bearer {HRONLY_TOKEN}"}
+    state = client.get("/api/state", headers=hdrs).json()
+    assert state["principal"]["perms"] == {"relations": "rw"}
+    assert _ws_ids_from_state(state) == set()
+    r = client.post("/api/task", json={"text": "nope"}, headers=hdrs)
+    assert r.status_code == 403

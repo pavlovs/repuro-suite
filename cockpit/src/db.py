@@ -9,7 +9,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -168,7 +168,9 @@ CREATE TABLE users (
   token_hash TEXT,
   role TEXT NOT NULL CHECK(role IN ('human','agent')),
   represents TEXT,
-  profile TEXT REFERENCES role_profiles(id)
+  profile TEXT REFERENCES role_profiles(id),
+  all_teams INTEGER NOT NULL DEFAULT 0,
+  login TEXT
 );
 CREATE TABLE deal_mirror (
   codename TEXT PRIMARY KEY,
@@ -297,6 +299,31 @@ CREATE TABLE learnings (
 );
 CREATE INDEX idx_tasks_deliverable ON tasks(deliverable_id);
 CREATE INDEX idx_tasks_status ON tasks(status);
+CREATE TABLE IF NOT EXISTS teams (
+  id          TEXT PRIMARY KEY,
+  name        TEXT NOT NULL,
+  color       TEXT,
+  permissions TEXT NOT NULL DEFAULT '{}',
+  is_admin    INTEGER NOT NULL DEFAULT 0,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  status      TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','archived'))
+);
+CREATE TABLE IF NOT EXISTS team_members (
+  team_id TEXT NOT NULL REFERENCES teams(id),
+  user_id TEXT NOT NULL REFERENCES users(id),
+  PRIMARY KEY (team_id, user_id)
+);
+CREATE TABLE IF NOT EXISTS workstream_teams (
+  workstream_id INTEGER NOT NULL REFERENCES workstreams(id),
+  team_id       TEXT    NOT NULL REFERENCES teams(id),
+  PRIMARY KEY (workstream_id, team_id)
+);
+INSERT OR IGNORE INTO teams (id, name, color, permissions, is_admin, sort_order)
+  VALUES ('md', 'Managing Directors', '#0891B2', '{}', 1, 1);
+INSERT OR IGNORE INTO teams (id, name, color, permissions, is_admin, sort_order)
+  VALUES ('advisor', 'Advisor', '#7C3AED', '{"workstreams":"ro","timeline":"ro"}', 0, 2);
+INSERT OR IGNORE INTO teams (id, name, color, permissions, is_admin, sort_order)
+  VALUES ('viewer', 'Viewer', '#475569', '{"workstreams":"ro"}', 0, 3);
 """
 
 
@@ -406,6 +433,48 @@ MIGRATIONS = {
         ),
         "UPDATE users SET profile = 'owner' WHERE role = 'human'",
         lambda c: _add_column_if_missing(c, "workstreams", "allowed_profiles", "TEXT"),
+    ],
+    13: [
+        # Teams-as-permission-carriers (SPEC-teams v2): replaces role-profile based
+        # per-user module access. MD team = implicit admin everywhere.
+        """CREATE TABLE IF NOT EXISTS teams (
+            id          TEXT PRIMARY KEY,
+            name        TEXT NOT NULL,
+            color       TEXT,
+            permissions TEXT NOT NULL DEFAULT '{}',
+            is_admin    INTEGER NOT NULL DEFAULT 0,
+            sort_order  INTEGER NOT NULL DEFAULT 0,
+            status      TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','archived'))
+        )""",
+        """CREATE TABLE IF NOT EXISTS team_members (
+            team_id TEXT NOT NULL REFERENCES teams(id),
+            user_id TEXT NOT NULL REFERENCES users(id),
+            PRIMARY KEY (team_id, user_id)
+        )""",
+        """CREATE TABLE IF NOT EXISTS workstream_teams (
+            workstream_id INTEGER NOT NULL REFERENCES workstreams(id),
+            team_id       TEXT    NOT NULL REFERENCES teams(id),
+            PRIMARY KEY (workstream_id, team_id)
+        )""",
+        lambda c: _add_column_if_missing(
+            c, "users", "all_teams", "INTEGER NOT NULL DEFAULT 0"
+        ),
+        lambda c: _add_column_if_missing(c, "users", "login", "TEXT"),
+        # Preset teams: md (admin), advisor (ro workstreams+timeline), viewer (ro workstreams)
+        """INSERT OR IGNORE INTO teams (id, name, color, permissions, is_admin, sort_order)
+           VALUES ('md', 'Managing Directors', '#0891B2', '{}', 1, 1)""",
+        """INSERT OR IGNORE INTO teams (id, name, color, permissions, is_admin, sort_order)
+           VALUES ('advisor', 'Advisor', '#7C3AED', '{"workstreams":"ro","timeline":"ro"}', 0, 2)""",
+        """INSERT OR IGNORE INTO teams (id, name, color, permissions, is_admin, sort_order)
+           VALUES ('viewer', 'Viewer', '#475569', '{"workstreams":"ro"}', 0, 3)""",
+        # Backfill: add rd and ff to md team (behavior-preserving)
+        "INSERT OR IGNORE INTO team_members (team_id, user_id) "
+        "SELECT 'md', id FROM users WHERE id IN ('rd', 'ff') AND role = 'human'",
+        # Set login values for Caddy basic-auth username resolution
+        "UPDATE users SET login = 'roman' WHERE id = 'rd'",
+        "UPDATE users SET login = 'florian' WHERE id = 'ff'",
+        # rd gets all_teams=1 (god view over workstream assignments)
+        "UPDATE users SET all_teams = 1 WHERE id = 'rd'",
     ],
 }
 

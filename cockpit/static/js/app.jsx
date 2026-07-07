@@ -97,8 +97,8 @@ function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setF
 }
 
 /* Hash-based routing: tab id ↔ URL hash */
-const TAB_TO_HASH = { overview: "#cockpit", week: "#week", table: "#workstreams", timeline: "#timeline", agents: "#agents" };
-const HASH_TO_TAB = { "#cockpit": "overview", "#week": "week", "#workstreams": "table", "#timeline": "timeline", "#agents": "agents" };
+const TAB_TO_HASH = { overview: "#cockpit", week: "#week", table: "#workstreams", timeline: "#timeline", agents: "#agents", admin: "#admin" };
+const HASH_TO_TAB = { "#cockpit": "overview", "#week": "week", "#workstreams": "table", "#timeline": "timeline", "#agents": "agents", "#admin": "admin" };
 const VALID_TABS = new Set(Object.keys(TAB_TO_HASH));
 function tabFromHash() {
   const tab = HASH_TO_TAB[window.location.hash];
@@ -168,6 +168,8 @@ function App() {
   const cur = NAV.find((n) => n.id === tab) || NAV[0];
   const showPerson = tab === "overview";
 
+  const canWriteWorkstreams = window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw"));
+
   const NavList = ({ inTop }) => (
     <>
       {!inTop && <div className="nav-lbl">Navigate</div>}
@@ -178,6 +180,12 @@ function App() {
           {badge[n.id] ? <span className="nav-badge">{badge[n.id]}</span> : null}
         </button>
       ))}
+      {window.COCKPIT && window.COCKPIT.isAdmin && (
+        <button className={"nav-item" + (tab === "admin" ? " active" : "")} onClick={() => setTab("admin")}>
+          <Icon name="settings" size={18} />
+          <span>Admin</span>
+        </button>
+      )}
     </>
   );
 
@@ -234,7 +242,7 @@ function App() {
           <button className="tb-undo" onClick={() => setActivityOpen(true)} title="Activity log">Activity</button>
           <button className="tb-undo" disabled={!api.undoDepth()} onClick={() => api.undo()}
             title={api.undoDepth() ? "undo last change (" + api.undoDepth() + ")" : "nothing to undo"}>↶ Undo</button>
-          {(!window.COCKPIT || !window.COCKPIT.readOnly) && (
+          {canWriteWorkstreams && (
             <button className="btn primary" onClick={() => setQuickAdd(true)} title="Ctrl/⌘ Enter"><Icon name="plus" size={15} />New</button>
           )}
         </header>
@@ -246,6 +254,7 @@ function App() {
             {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} openDeliv={openDeliv} person={person} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}
             {tab === "timeline" && <TimelineView openTask={openTask} openDeliv={openDeliv} mutate={mutate} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}
             {tab === "agents" && <AgentsView openTask={openTask} person={person} />}
+            {tab === "admin" && <AdminView />}
           </div>
         </main>
       </div>

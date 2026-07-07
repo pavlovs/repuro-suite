@@ -89,7 +89,7 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
   const [showAllDeals, setShowAllDeals] = React.useState(false);
   const [delivDragId, setDelivDragId] = React.useState(null);
   const [delivOverId, setDelivOverId] = React.useState(null);
-  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
+  const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
   const toggle = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
   const toggleWs = (id) => setWsOpen((o) => ({ ...o, [id]: !o[id] }));
   const allExpanded = Object.values(wsOpen).every(Boolean);
@@ -279,7 +279,7 @@ window.TableView = TableView;
 function DeliverableView({ mutate, openTask, openDeliv }) {
   const [expanded, setExpanded] = React.useState({});
   const toggle = (id) => setExpanded((o) => ({ ...o, [id]: !o[id] }));
-  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
+  const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
 
   function personGroups(person) {
     const out = [];

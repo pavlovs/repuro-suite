@@ -6,7 +6,7 @@ function TimelineView({ openTask, openDeliv, mutate, filtersOpen, setFiltersOpen
   const [filter, setFilter] = React.useState("dated"); // all | dated | undated
   const [showAllDeals, setShowAllDeals] = React.useState(false);
   const toggle = (id) => setOpen((o) => ({ ...o, [id]: !o[id] }));
-  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
+  const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
 
   const activeFilterCount = filter !== "all" ? 1 : 0;
   // Issue 29: report active-filter count to the topbar Filter button

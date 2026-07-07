@@ -142,6 +142,7 @@ function AgentReviewCard(props) {
   var fbState = React.useState("");
   var fbVal = fbState[0], setFbVal = fbState[1];
 
+  var canWriteAgents = !!(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.agents === "rw")));
   var evidence = t.evidence && t.evidence.trim() ? t.evidence : null;
   var hasPreview = !!t.previewUrl;
   var roundLabel = t.reviewRound > 0 ? "Round " + (t.reviewRound + 1) : null;
@@ -216,6 +217,7 @@ function AgentReviewCard(props) {
           value={fbVal}
           onChange={function(e) { setFbVal(e.target.value); }}
         />
+        {canWriteAgents && (
         <div className="ag-rev-fb-actions">
           <button className="btn approve" onClick={function() {
             var initials = HANDOVER_INITIALS[person] || person;
@@ -242,6 +244,7 @@ function AgentReviewCard(props) {
             setFbVal("");
           }}>Escalate</button>
         </div>
+        )}
       </div>
     </div>
   );
@@ -325,6 +328,7 @@ function AgentBlockedCard(props) {
   var ansVal = ansState[0], setAns = ansState[1];
   var busyState = React.useState(false);
   var busyVal = busyState[0], setBusy = busyState[1];
+  var canWriteAgents = !!(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.agents === "rw")));
 
   var submit = function() {
     if (!ansVal.trim()) { showToast("Type an answer first", "err"); return; }
@@ -357,9 +361,11 @@ function AgentBlockedCard(props) {
                 onChange={function(e) { setAns(e.target.value); }}
                 onKeyDown={function(e) { if (e.key === "Enter") submit(); }}
               />
+              {canWriteAgents && (
               <button className="btn approve" disabled={busyVal} onClick={submit}>
                 <Icon name="check" size={13} /> {busyVal ? "Sending…" : "Answer & requeue"}
               </button>
+              )}
             </div>
           </React.Fragment>
         )
@@ -375,6 +381,7 @@ function LessonRow(props) {
   var l = props.l;
   var editState = React.useState(l.text);
   var editVal = editState[0], setEdit = editState[1];
+  var canWriteAgents = !!(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.agents === "rw")));
   /* resync the draft when the server text changes (SSE refresh mutates the
      lesson object in place) — otherwise a stale draft can be adopted */
   React.useEffect(function() { setEdit(l.text); }, [l.id, l.text]);
@@ -384,10 +391,14 @@ function LessonRow(props) {
       <input className="ag-lesson-text" value={editVal}
         onChange={function(e) { setEdit(e.target.value); }} />
       {l.source_task && <span className="ag-lesson-src">{l.source_task}</span>}
+      {canWriteAgents && (
       <button className="btn approve" onClick={function() {
         api.decideLearning(l, "promote", editVal.trim() || l.text);
       }}><Icon name="check" size={12} /> Adopt</button>
+      )}
+      {canWriteAgents && (
       <button className="btn" onClick={function() { api.decideLearning(l, "dismiss"); }}>Dismiss</button>
+      )}
     </div>
   );
 }
@@ -422,6 +433,7 @@ function AgentsView({ openTask, person }) {
   /* blocking = items an agent is parked on (reviews + questions). Lessons are
      curation, not blockers — they never share the amber badge (Opus MUST). */
   var blocking = review.length + waiting.length;
+  var canWriteWorkstreams = !!(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
 
   /* sticky tabs: land on Inbox only if something blocks, else Queue; after
      that the user navigates — an action emptying the Inbox NEVER yanks the
@@ -548,7 +560,7 @@ function AgentsView({ openTask, person }) {
           <section className="ag-sec">
             <h2 className="ag-sec-h">
               Queue <span className="ag-sec-count">{queued.length}</span>
-              <button className="btn ag-qadd" onClick={newAgentTask}><Icon name="plus" size={13} /> New agent task</button>
+              {canWriteWorkstreams && <button className="btn ag-qadd" onClick={newAgentTask}><Icon name="plus" size={13} /> New agent task</button>}
             </h2>
             {queuedSorted.length > 0
               ? <div className="ag-qrows">

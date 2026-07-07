@@ -3,7 +3,7 @@
 /* --- Weekly Meeting prep view — agenda-structured, both people, decision-first --- */
 function MeetingView({ mutate, openTask }) {
   const [mode, setMode] = React.useState("daily");
-  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
+  const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
   const live = TASKS.filter((t) => t.status !== "done");
 
   // Deadlines — next upcoming milestone per active deal
@@ -463,7 +463,7 @@ function AgentQueue({ openTask }) {
 }
 
 function WeekView({ person, mutate, openTask, embedded }) {
-  const readOnly = !!(window.COCKPIT && window.COCKPIT.readOnly);
+  const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
   const live = TASKS.filter((t) => t.status !== "done");
   const mine = live.filter((t) => (t.owners || []).includes(person));
 

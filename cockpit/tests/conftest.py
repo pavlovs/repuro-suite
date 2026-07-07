@@ -63,6 +63,11 @@ def cockpit_db(tmp_path, monkeypatch):
                 represents,
             ),
         )
+    # v13: add rd to the 'md' team (is_admin=True) — mirrors migration backfill
+    conn.execute(
+        "INSERT OR IGNORE INTO team_members (team_id, user_id) VALUES (?,?)",
+        ("md", "rd"),
+    )
     conn.commit()
     yield conn
     db.close_conn()

@@ -4,6 +4,28 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.23 — 2026-07-07
+
+### Cockpit + Suite — Teams with per-module read/write permissions (SPEC-teams v2)
+- **Teams carry permissions** (supersedes v2.1.22 profiles as the carrier):
+  per-module rw/ro map per team, strongest membership wins; MD = admin team
+  with implicit full rights on all modules; user can be in many teams.
+- **Suite-wide enforcement**: Caddy `forward_auth` gates `/allex/` and
+  `/deals/` against cockpit team permissions, method-aware (read-only teams
+  can GET, not POST). `/investor/` deliberately excluded (Strada shared cred
+  stays Caddy-confined).
+- **Workstream-team assignment**: workstream visible only to its assigned
+  teams' members (unassigned = visible to all — opt-in scoping);
+  `all_teams` god-view override (RD).
+- **Admin view** (new, admin-only): manage users (create → token shown once),
+  teams (module permission matrix), memberships, workstream assignments.
+- Fail-closed hardening: teamless non-legacy users get nothing; state payload
+  bounded by module perms (no workstreams perm = no task tree).
+- Migration v13 (behavior-preserving: rd/ff seeded into MD, no workstream
+  assignments). 143 pytest green (35 access tests), JSX bundle compile-checked.
+
+---
+
 ## v2.1.22 — 2026-07-07
 
 ### Cockpit — Multi-user access control (t-403)

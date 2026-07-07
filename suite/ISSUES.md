@@ -13,11 +13,14 @@ Claude reads this when `/suite-fix` is invoked.
 
 - [ ] Dealroom onepager MOUSE: add the content — still not in (content/data sync, Roman handling separately)
 - [ ] Update the local MOUSE onepager into the online Dealroom (content/data sync)
-- [ ] +1D still does not work correctly
+- [ ] +1D still does not work correctly - i click it nothing happens
 - [ ] Agent tasks should only be in COCKPIT if they require feedback
+- [ ] AGENT Tasks should NOT show in the daily meeting
+- [ ] There is still some done, old deliverablres, e. g. "DD Kick-off" for Mantis - i cant find it so it looks weird
+- [ ] Agent Queue on the bototm of Cockpit does not make sense and needs respec
+- [ ] In Meeting things that have earlier dates should be higher on top!
+- [ ] Soritng of Tasks does not work properly in Cockpit
 
-
-- [ ] AGents: How to setup & run is hidden beneath, same as recently updated. if there is a long queue, those section are difficult to see. Maybe separate Agents into Agents Workflow and Agents Review and have its own section? Something like this? *(flagged 2026-07-06: UX restructure — Claude recommends splitting the Agents view into "Queue & Review" [default] and "Setup & Playbook" [collapsed second section]; needs Roman's go before building)*
 
 
 ---

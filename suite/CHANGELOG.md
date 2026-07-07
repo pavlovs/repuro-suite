@@ -4,6 +4,16 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.24 — 2026-07-07
+
+### Cockpit — Admin tab fix + frontend contract tests
+- Admin nav click bounced back to Cockpit: hash validator rejected tabs not
+  in NAV; `_isValidTab()` now accepts `admin` for admins. Missing `settings`
+  icon glyph → `ops` gear; breadcrumb fixed.
+- New `tests/test_frontend_contracts.py` (runs in pytest): routable-tab vs
+  validator consistency (fails on the pre-fix code), tab/hash map symmetry,
+  Icon-glyph existence, bundle registration order, full Babel bundle compile.
+
 ## v2.1.23 — 2026-07-07
 
 ### Cockpit + Suite — Teams with per-module read/write permissions (SPEC-teams v2)

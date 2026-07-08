@@ -605,3 +605,22 @@ def test_legacy_week_query_still_works(client):
     # yymmdd form also accepted in ?week=
     r2 = client.get(f"/?week={pub['url']}", headers=_investor())
     assert r2.status_code == 200
+
+
+def test_malformed_ref_fails_closed_not_500(client):
+    """A bad ref in the DB (manual write) must 404/render-degrade, never 500."""
+    from src import db as db_mod
+
+    conn = db_mod.get_conn()
+    conn.execute(
+        "INSERT INTO publications (kind, ref, title, status, body, created_at, published_at, version) "
+        "VALUES ('investor_view', '2026-13-40', 'Investor View', 'published', ?, "
+        "'2026-07-08T00:00:00Z', '2026-07-08T00:00:00Z', 1)",
+        (json.dumps({"html": "<html><head></head><body>x</body></html>", "inline_edits": {}}),),
+    )
+    conn.commit()
+    # dated URL for the impossible date: calendar validation → 404, not 500
+    assert client.get("/261340", headers=_investor()).status_code == 404
+    # published view + draft toolbar render with the raw-ref fallback label
+    assert client.get("/", headers=_investor()).status_code == 200
+    assert client.get("/", headers=_admin()).status_code == 200

@@ -9,6 +9,7 @@ import logging
 import os
 import re
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
@@ -799,12 +800,20 @@ _MONTHS = (
 
 
 def _iso_from_ref(ref: str) -> str | None:
-    """Accept '260702' (URL form) or '2026-07-02' (DB form) → ISO, else None."""
+    """Accept '260702' (URL form) or '2026-07-02' (DB form) → ISO, else None.
+    Calendar-validated so a malformed ref fails closed (404) instead of
+    crashing label rendering downstream."""
     if re.fullmatch(r"\d{6}", ref):
-        return "20%s-%s-%s" % (ref[:2], ref[2:4], ref[4:6])
-    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", ref):
-        return ref
-    return None
+        iso = "20%s-%s-%s" % (ref[:2], ref[2:4], ref[4:6])
+    elif re.fullmatch(r"\d{4}-\d{2}-\d{2}", ref):
+        iso = ref
+    else:
+        return None
+    try:
+        datetime.strptime(iso, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return iso
 
 
 def _yymmdd(iso: str) -> str:
@@ -812,9 +821,14 @@ def _yymmdd(iso: str) -> str:
 
 
 def _ref_label(iso: str) -> str:
-    """Investor-facing label: '2026-07-02' → '02 Jul 2026'."""
-    y, m, d = iso.split("-")
-    return "%s %s %s" % (d, _MONTHS[int(m) - 1], y)
+    """Investor-facing label: '2026-07-02' → '02 Jul 2026'. Falls back to the
+    raw ref if a stored value is not a valid date (manual DB writes) — a bad
+    row must never 500 the page."""
+    try:
+        y, m, d = iso.split("-")
+        return "%s %s %s" % (d, _MONTHS[int(m) - 1], y)
+    except (ValueError, IndexError):
+        return iso
 
 
 def _week_options_html(current_iso: str | None, home_label: str) -> str:

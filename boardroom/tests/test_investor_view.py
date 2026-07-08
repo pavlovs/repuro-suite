@@ -71,16 +71,16 @@ def test_admin_sees_draft_with_toolbar(client):
     r = client.get("/", headers=_admin())
     assert r.status_code == 200
     html = r.text
-    assert "draft-toolbar" in html
+    assert "iv-draft" in html
     assert "DRAFT" in html
-    assert "Investors see:" in html  # live indicator of what Strada gets
+    assert "investors see" in html  # live indicator of what Strada gets
 
 
 def test_investor_sees_holding_page_when_nothing_published(client):
     r = client.get("/", headers=_investor())
     assert r.status_code == 200
     assert "No published content" in r.text
-    assert "draft-toolbar" not in r.text
+    assert "iv-draft" not in r.text
 
 
 def test_investor_sees_published_snapshot(client):
@@ -90,7 +90,7 @@ def test_investor_sees_published_snapshot(client):
     html = r.text
     assert "__INVESTOR_VIEW_PUBLISHED" in html
     assert "__FROZEN_EDITS" in html
-    assert "draft-toolbar" not in html
+    assert "iv-draft" not in html
     assert "Investor View" in html
 
 
@@ -98,7 +98,7 @@ def test_no_header_gets_draft(client):
     """Local dev (no X-Remote-User header) sees the draft."""
     r = client.get("/")
     assert r.status_code == 200
-    assert "draft-toolbar" in r.text
+    assert "iv-draft" in r.text
 
 
 # ---------------------------------------------------------------------------
@@ -558,8 +558,8 @@ def test_dated_url_serves_snapshot_for_both_roles(client):
         r = client.get(url, headers=headers)
         assert r.status_code == 200
         assert "__INVESTOR_VIEW_PUBLISHED" in r.text
-        assert "week-nav" in r.text
-        assert "draft-toolbar" not in r.text
+        assert "wk-archive" in r.text
+        assert "iv-draft" not in r.text
 
 
 def test_dated_url_unknown_week_404(client):
@@ -571,7 +571,7 @@ def test_published_view_has_week_nav_no_publish_controls(client):
     _publish(client)
     r = client.get("/", headers=_investor())
     html = r.text
-    assert "week-nav" in html
+    assert "wk-archive" in html
     assert "_pubIV" not in html and "Unpublish" not in html
     # relative navigation only — root-absolute '/?week=' would leave /investor/
     assert "location='/?week='" not in html
@@ -583,18 +583,18 @@ def test_holding_page_offers_archive_switcher(client):
     client.post("/api/investor-view/unpublish", headers=_admin())
     r = client.get("/", headers=_investor())
     assert "No published content" in r.text
-    assert "week-nav" in r.text  # archive remains reachable
+    assert "wk-archive" in r.text  # archive remains reachable
     # the archived week is listed as a dated option
     assert pub["url"] in r.text
 
 
 def test_draft_toolbar_shows_what_investors_see(client):
     r = client.get("/", headers=_admin())
-    assert "Investors see:" in r.text
-    assert "NOTHING (holding page)" in r.text
+    assert "investors see" in r.text
+    assert "investors see nothing" in r.text
     _publish(client)
     r = client.get("/", headers=_admin())
-    assert "NOTHING (holding page)" not in r.text
+    assert "investors see nothing" not in r.text
 
 
 def test_legacy_week_query_still_works(client):

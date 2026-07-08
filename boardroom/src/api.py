@@ -831,10 +831,24 @@ def _ref_label(iso: str) -> str:
         return iso
 
 
-def _week_options_html(current_iso: str | None, home_label: str) -> str:
-    """Shared <option> list for every week switcher: one entry per week ref,
-    newest first, '(live)' marking the published one. Values are the dated
-    URL segments (yymmdd); relative navigation keeps the /investor prefix."""
+# Relative targets: './260702' resolves under /investor/ behind Caddy; a
+# root-absolute '/?week=' would land on the suite landing page.
+_ARCHIVE_JS = (
+    "if(!this.value)return;"
+    "if(this.value==='__home'){location='./'}else{location='./'+this.value}"
+)
+
+
+def _archive_select_html(is_investor: bool, light_bg: bool = False) -> str:
+    """Compact 'Archive' dropdown that lives INSIDE the existing blue topline —
+    NEVER an additional bar (Roman 08-07: the page already has a topline; the
+    current week is labelled by the topline date itself, so no duplication).
+    Same control for both roles; only the home option differs."""
+    home = "Latest published" if is_investor else "Current draft"
+    opts = [
+        '<option value="" disabled selected hidden>Archive</option>',
+        '<option value="__home" style="color:#111">%s</option>' % home,
+    ]
     rows = (
         db.get_conn()
         .execute(
@@ -845,65 +859,33 @@ def _week_options_html(current_iso: str | None, home_label: str) -> str:
         .fetchall()
     )
     seen = set()
-    opts = ['<option value="">%s</option>' % home_label]
     for r in rows:
         if r["ref"] in seen:
             continue
         seen.add(r["ref"])
-        sel = " selected" if r["ref"] == current_iso else ""
         live = " (live)" if r["status"] == "published" else ""
         opts.append(
-            '<option value="%s"%s>%s%s</option>'
-            % (_yymmdd(r["ref"]), sel, _ref_label(r["ref"]), live)
+            '<option value="%s" style="color:#111">%s%s</option>'
+            % (_yymmdd(r["ref"]), _ref_label(r["ref"]), live)
         )
-    return "".join(opts)
-
-
-# Relative targets: './260702' resolves under /investor/ behind Caddy; a
-# root-absolute '/?week=' would land on the suite landing page.
-_WEEK_SWITCH_JS = "if(this.value)location='./'+this.value;else location='./'"
-
-
-def _week_nav_html(current_iso: str | None, is_investor: bool) -> str:
-    home = "Latest" if is_investor else "Current draft"
+    style = (
+        "color:#0f172a;background:#f8fafc;border:1px solid #cbd5e1;"
+        if light_bg
+        else "color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);"
+    )
     return (
-        '<div id="week-nav" style="position:fixed;top:0;left:0;right:0;z-index:10000;'
-        "background:#0f172a;padding:6px 20px;display:flex;align-items:center;gap:12px;"
-        'font-family:system-ui;font-size:13px">'
-        '<span style="color:#94a3b8;font-weight:600">Weekly update'
-        + (" — " + _ref_label(current_iso) if current_iso else "")
-        + "</span>"
-        '<select onchange="' + _WEEK_SWITCH_JS + '" '
-        'style="margin-left:auto;padding:4px 8px;border:1px solid #334155;'
-        'border-radius:4px;font-size:13px;background:#1e293b;color:#e2e8f0">'
-        + _week_options_html(current_iso, home)
-        + "</select></div>"
-        "<style>body{padding-top:38px}</style>"
+        '<select id="wk-archive" onchange="' + _ARCHIVE_JS + '" '
+        'style="' + style + "border-radius:6px;padding:4px 10px;"
+        'font-size:12px;cursor:pointer;font-family:inherit">'
+        + "".join(opts)
+        + "</select>"
     )
 
 
-def _inject_week_nav(html: str, current_iso: str | None, is_investor: bool) -> str:
-    """Add the week switcher after <body> on published/archived/holding views."""
-    nav = _week_nav_html(current_iso, is_investor)
-    out, n = re.subn(r"(<body[^>]*>)", lambda m: m.group(1) + "\n" + nav, html, count=1)
-    return out if n else nav + html
-
-
-def _holding_page(is_investor: bool) -> str:
-    """No published week: still offer the archive via the standard switcher."""
-    return _inject_week_nav(
-        "<!DOCTYPE html><html><head><title>Investor View</title></head>"
-        '<body style="font-family:system-ui;display:flex;align-items:center;'
-        'justify-content:center;height:100vh;margin:0;color:#64748b">'
-        "<h2>No published content available</h2></body></html>",
-        None,
-        is_investor,
-    )
-
-
-def _draft_toolbar_html() -> str:
-    """Admin DRAFT toolbar: publish/unpublish + the shared week switcher +
-    what investors currently see (prevents silent holding-page states)."""
+def _draft_controls_html() -> str:
+    """Admin-only cluster for the draft view, styled like the topbar's own
+    room-tag chips: DRAFT status (incl. what investors currently see) +
+    Publish / Unpublish. Lives in the topline next to the Archive select."""
     pub = (
         db.get_conn()
         .execute(
@@ -912,26 +894,18 @@ def _draft_toolbar_html() -> str:
         )
         .fetchone()
     )
-    investors_see = '<span style="color:#78350f">Investors see: <b>%s</b></span>' % (
-        _ref_label(pub["ref"]) if pub else "NOTHING (holding page)"
-    )
+    see = _ref_label(pub["ref"]) if pub else "nothing"
     return (
-        '<div id="draft-toolbar" style="position:fixed;top:0;left:0;right:0;z-index:10000;'
-        "background:#fef3c7;border-bottom:2px solid #f59e0b;padding:8px 20px;"
-        'display:flex;align-items:center;gap:16px;font-family:system-ui;font-size:13px">'
-        '<span style="font-weight:700;color:#92400e">DRAFT</span>'
-        + investors_see
-        + '<button onclick="_pubIV()" style="margin-left:auto;background:#0891B2;'
-        "color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;"
-        'font-size:13px">Publish</button>'
-        '<button onclick="_unpubIV()" style="background:#e11d48;color:#fff;'
-        "border:none;padding:6px 16px;border-radius:4px;cursor:pointer;"
-        'font-size:13px">Unpublish</button>'
-        '<select id="wk-sel" onchange="' + _WEEK_SWITCH_JS + '" '
-        'style="padding:4px 8px;'
-        'border:1px solid #d1d5db;border-radius:4px;font-size:13px">'
-        + _week_options_html(None, "Current draft")
-        + "</select></div>"
+        '<div id="iv-draft" style="display:flex;align-items:center;gap:8px">'
+        '<span style="font-size:11px;font-weight:700;letter-spacing:.06em;'
+        'background:rgba(255,255,255,.18);padding:3px 10px;border-radius:20px;white-space:nowrap">'
+        "DRAFT · investors see " + see + "</span>"
+        '<button onclick="_pubIV()" style="background:#fff;color:#0891B2;border:none;'
+        'padding:5px 14px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">Publish</button>'
+        '<button onclick="_unpubIV()" style="background:transparent;color:#fff;'
+        "border:1px solid rgba(255,255,255,.4);padding:4px 10px;border-radius:6px;"
+        'font-size:11px;cursor:pointer">Unpublish</button>'
+        "</div>"
         "<script>"
         "function _pubIV(){if(!confirm('Publish to investors? Inline edits are frozen into this week and cleared for the next.'))return;"
         "fetch('api/investor-view/publish',{method:'POST',credentials:'include'})"
@@ -939,14 +913,40 @@ def _draft_toolbar_html() -> str:
         "if(d.status==='published'){alert('Published');location.reload()}"
         "else alert('Error: '+(d.detail||JSON.stringify(d)))"
         "}).catch(function(e){alert('Error: '+e)})}"
-        "function _unpubIV(){if(!confirm('Unpublish? Investors fall back to the archive list.'))return;"
+        "function _unpubIV(){if(!confirm('Unpublish? Investors fall back to the archive.'))return;"
         "fetch('api/investor-view/unpublish',{method:'POST',credentials:'include'})"
         ".then(function(r){return r.json()}).then(function(d){"
         "if(d.ok){alert('Unpublished');location.reload()}"
         "else alert('Error: '+(d.detail||JSON.stringify(d)))"
         "}).catch(function(e){alert('Error: '+e)})}"
         "</script>"
-        "<style>#draft-toolbar~*{margin-top:0}body{padding-top:42px}</style>"
+    )
+
+
+def _inject_topline(html: str, controls: str) -> str:
+    """Insert controls into the existing blue topline as flex siblings right
+    after the .meta block. No injected bars, no body-padding hacks."""
+    out, n = re.subn(
+        r'(<div class="meta">.*?</div>)',
+        lambda m: m.group(1) + controls,
+        html,
+        count=1,
+        flags=re.S,
+    )
+    return out if n else html
+
+
+def _holding_page(is_investor: bool) -> str:
+    """No published week: message + the standard Archive control (no topline
+    exists on this minimal page, so the select sits under the message)."""
+    return (
+        "<!DOCTYPE html><html><head><title>Investor View</title></head>"
+        '<body style="font-family:system-ui;display:flex;flex-direction:column;'
+        'align-items:center;justify-content:center;height:100vh;margin:0;color:#64748b">'
+        "<h2>No published content available</h2>"
+        '<div style="margin-top:12px">'
+        + _archive_select_html(is_investor, light_bg=True)
+        + "</div></body></html>"
     )
 
 
@@ -965,7 +965,7 @@ def _serve_published_view(is_investor: bool = True):
         return HTMLResponse(_holding_page(is_investor))
     body = json.loads(row["body"])
     html = _inject_published_script(body["html"], body.get("inline_edits", {}))
-    return HTMLResponse(_inject_week_nav(html, row["ref"], is_investor))
+    return HTMLResponse(_inject_topline(html, _archive_select_html(is_investor)))
 
 
 def _serve_archived_week(week_iso: str, is_investor: bool = True):
@@ -985,7 +985,7 @@ def _serve_archived_week(week_iso: str, is_investor: bool = True):
         raise HTTPException(404, "no investor view for that week")
     body = json.loads(row["body"])
     html = _inject_published_script(body["html"], body.get("inline_edits", {}))
-    return HTMLResponse(_inject_week_nav(html, week_iso, is_investor))
+    return HTMLResponse(_inject_topline(html, _archive_select_html(is_investor)))
 
 
 def _inject_published_script(html: str, edits: dict) -> str:
@@ -1000,8 +1000,6 @@ def _inject_published_script(html: str, edits: dict) -> str:
 
 
 def _inject_draft_toolbar(html: str) -> str:
-    """Add the admin draft toolbar after <body>."""
-    toolbar = _draft_toolbar_html()
-    return re.sub(
-        r"(<body[^>]*>)", lambda m: m.group(1) + "\n" + toolbar, html, count=1
-    )
+    """Admin draft chrome: DRAFT chip + Publish/Unpublish + Archive select,
+    all INSIDE the existing blue topline (no injected bars)."""
+    return _inject_topline(html, _draft_controls_html() + _archive_select_html(False))

@@ -235,6 +235,17 @@ def validate_body(kind: str, body) -> list[str]:
         schema = WEEKLY_SCHEMA
     elif kind == "board_pack":
         schema = BOARD_SCHEMA
+    elif kind == "investor_view":
+        if not isinstance(body.get("html"), str):
+            return ["html: must be a string"]
+        if body.get("inline_edits") is not None and not isinstance(
+            body.get("inline_edits"), dict
+        ):
+            return ["inline_edits: must be an object or null"]
+        extra = set(body.keys()) - {"html", "inline_edits"}
+        if extra:
+            return [f"{k}: key not permitted in investor_view body" for k in sorted(extra)]
+        return []
     else:
         return [f"unknown kind: {kind}"]
     out = []

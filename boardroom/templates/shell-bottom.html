@@ -139,6 +139,16 @@ document.querySelectorAll('.dec-link').forEach(function(a){
 
 // ---- inline edit (admin-only, persisted to investor.db) ----
 (function(){
+  // Published snapshot: apply frozen edits, skip fetch + contenteditable
+  if(window.__INVESTOR_VIEW_PUBLISHED){
+    var fe=window.__FROZEN_EDITS||{};
+    document.querySelectorAll('[data-edit-id]').forEach(function(el){
+      var eid=el.getAttribute('data-edit-id');
+      if(fe[eid]!==undefined){el.innerHTML=fe[eid];}
+    });
+    return;
+  }
+
   var toast=document.createElement('div');
   toast.className='edit-toast';
   document.body.appendChild(toast);

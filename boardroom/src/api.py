@@ -548,8 +548,103 @@ def _assemble_page() -> str:
 
 
 @app.get("/")
-def index():
-    return HTMLResponse(_assemble_page())
+def index(
+    week: str | None = Query(default=None),
+    x_remote_user: str | None = Header(default=None),
+):
+    is_investor = x_remote_user == "investor"
+
+    if week:
+        return _serve_archived_week(week)
+
+    if is_investor:
+        return _serve_published_view()
+
+    return HTMLResponse(_inject_draft_toolbar(_assemble_page()))
+
+
+@app.post("/api/investor-view/publish")
+def publish_investor_view(p=Depends(admin_only)):
+    """Snapshot templates + inline edits → published investor_view.
+    Archives any existing published investor_view. Runs denylist scan."""
+    html = _assemble_page()
+
+    rows = db.get_conn().execute("SELECT edit_id, content FROM inline_edits").fetchall()
+    inline_edits = {r["edit_id"]: r["content"] for r in rows}
+
+    body = {"html": html, "inline_edits": inline_edits}
+
+    hard = gates.scan_other_investors(body)
+    if hard:
+        raise HTTPException(409, {"hard_violations": hard})
+
+    now = db.now_iso()
+    ref = now[:10]
+
+    with db.WRITE_LOCK:
+        conn = db.get_conn()
+        conn.execute(
+            "UPDATE publications SET status='archived' "
+            "WHERE kind='investor_view' AND status='published'"
+        )
+        cur = conn.execute(
+            "INSERT INTO publications "
+            "(kind, ref, title, status, body, created_at, published_at, version) "
+            "VALUES ('investor_view', ?, 'Investor View', 'published', ?, ?, ?, 1)",
+            (ref, json.dumps(body), now, now),
+        )
+        conn.commit()
+        pub_id = cur.lastrowid
+
+    _audit(
+        p["id"],
+        "publish_investor_view",
+        f"pub:{pub_id}",
+        None,
+        {"ref": ref, "status": "published"},
+    )
+    return {"id": pub_id, "status": "published", "ref": ref, "published_at": now}
+
+
+@app.post("/api/investor-view/unpublish")
+def unpublish_investor_view(p=Depends(admin_only)):
+    """Archive the published investor_view. Investor sees holding page."""
+    with db.WRITE_LOCK:
+        conn = db.get_conn()
+        row = conn.execute(
+            "SELECT id FROM publications "
+            "WHERE kind='investor_view' AND status='published'"
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "no published investor view")
+        conn.execute(
+            "UPDATE publications SET status='archived' WHERE id=?",
+            (row["id"],),
+        )
+        conn.commit()
+    _audit(
+        p["id"],
+        "unpublish_investor_view",
+        f"pub:{row['id']}",
+        {"status": "published"},
+        {"status": "archived"},
+    )
+    return {"ok": True, "id": row["id"], "status": "archived"}
+
+
+@app.get("/api/investor-view/weeks")
+def investor_view_weeks(p=Depends(principal)):
+    """Published/archived investor_view history for week switching."""
+    rows = (
+        db.get_conn()
+        .execute(
+            "SELECT id, ref, status, published_at FROM publications "
+            "WHERE kind='investor_view' AND status IN ('published','archived') "
+            "ORDER BY published_at DESC"
+        )
+        .fetchall()
+    )
+    return {"weeks": [dict(r) for r in rows]}
 
 
 # ---------------------------------------------------------------------------
@@ -653,3 +748,110 @@ def _investor_pub(row):
     out = {k: row[k] for k in _INVESTOR_FIELDS}
     out["body"] = _parse_body(row)
     return out
+
+
+# ---------------------------------------------------------------------------
+# Investor-view draft/publish helpers
+
+_HOLDING_PAGE = (
+    "<!DOCTYPE html><html><head><title>Investor View</title></head>"
+    '<body style="font-family:system-ui;display:flex;align-items:center;'
+    'justify-content:center;height:100vh;margin:0;color:#64748b">'
+    "<h2>No published content available</h2></body></html>"
+)
+
+_DRAFT_TOOLBAR = (
+    '<div id="draft-toolbar" style="position:fixed;top:0;left:0;right:0;z-index:10000;'
+    "background:#fef3c7;border-bottom:2px solid #f59e0b;padding:8px 20px;"
+    'display:flex;align-items:center;gap:16px;font-family:system-ui;font-size:13px">'
+    '<span style="font-weight:700;color:#92400e">DRAFT</span>'
+    '<span style="color:#78350f">Not visible to investors</span>'
+    '<button onclick="_pubIV()" style="margin-left:auto;background:#0891B2;'
+    "color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;"
+    'font-size:13px">Publish</button>'
+    '<button onclick="_unpubIV()" style="background:#e11d48;color:#fff;'
+    "border:none;padding:6px 16px;border-radius:4px;cursor:pointer;"
+    'font-size:13px">Unpublish</button>'
+    '<select id="wk-sel" onchange="_swWk(this.value)" style="padding:4px 8px;'
+    'border:1px solid #d1d5db;border-radius:4px;font-size:13px">'
+    '<option value="">Current draft</option></select></div>'
+    "<script>"
+    "function _pubIV(){if(!confirm('Publish to investors?'))return;"
+    "fetch('api/investor-view/publish',{method:'POST',credentials:'include'})"
+    ".then(function(r){return r.json()}).then(function(d){"
+    "if(d.status==='published'){alert('Published');location.reload()}"
+    "else alert('Error: '+(d.detail||JSON.stringify(d)))"
+    "}).catch(function(e){alert('Error: '+e)})}"
+    "function _unpubIV(){if(!confirm('Unpublish? Investors see no content.'))return;"
+    "fetch('api/investor-view/unpublish',{method:'POST',credentials:'include'})"
+    ".then(function(r){return r.json()}).then(function(d){"
+    "if(d.ok){alert('Unpublished');location.reload()}"
+    "else alert('Error: '+(d.detail||JSON.stringify(d)))"
+    "}).catch(function(e){alert('Error: '+e)})}"
+    "function _swWk(v){if(v)location='/?week='+v;else location='/'};"
+    "(function(){fetch('api/investor-view/weeks',{credentials:'include'})"
+    ".then(function(r){return r.json()}).then(function(d){"
+    "var s=document.getElementById('wk-sel');"
+    "(d.weeks||[]).forEach(function(w){var o=document.createElement('option');"
+    "o.value=w.ref;o.textContent=w.ref+(w.status==='published'?' (live)':'');"
+    "s.appendChild(o)})})"
+    ".catch(function(){})})();"
+    "</script>"
+    "<style>#draft-toolbar~*{margin-top:0}body{padding-top:42px}</style>"
+)
+
+
+def _serve_published_view():
+    """Serve the published investor_view snapshot, or a holding page."""
+    row = (
+        db.get_conn()
+        .execute(
+            "SELECT body FROM publications "
+            "WHERE kind='investor_view' AND status='published' "
+            "ORDER BY published_at DESC LIMIT 1"
+        )
+        .fetchone()
+    )
+    if not row:
+        return HTMLResponse(_HOLDING_PAGE)
+    body = json.loads(row["body"])
+    return HTMLResponse(
+        _inject_published_script(body["html"], body.get("inline_edits", {}))
+    )
+
+
+def _serve_archived_week(week: str):
+    """Serve a specific archived/published investor_view by ref date."""
+    row = (
+        db.get_conn()
+        .execute(
+            "SELECT body FROM publications "
+            "WHERE kind='investor_view' AND ref=? "
+            "AND status IN ('published','archived') "
+            "ORDER BY published_at DESC LIMIT 1",
+            (week,),
+        )
+        .fetchone()
+    )
+    if not row:
+        raise HTTPException(404, "no investor view for that week")
+    body = json.loads(row["body"])
+    return HTMLResponse(
+        _inject_published_script(body["html"], body.get("inline_edits", {}))
+    )
+
+
+def _inject_published_script(html: str, edits: dict) -> str:
+    """Inject frozen-edit globals before </head> so shell-bottom.html JS uses them."""
+    script = (
+        "<script>window.__INVESTOR_VIEW_PUBLISHED=true;"
+        "window.__FROZEN_EDITS="
+        + json.dumps(edits, ensure_ascii=False)
+        + ";</script>\n"
+    )
+    return html.replace("</head>", script + "</head>", 1)
+
+
+def _inject_draft_toolbar(html: str) -> str:
+    """Add the admin draft toolbar after <body>."""
+    return re.sub(r"(<body[^>]*>)", r"\1\n" + _DRAFT_TOOLBAR, html, count=1)

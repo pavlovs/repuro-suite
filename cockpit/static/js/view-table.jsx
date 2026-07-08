@@ -143,7 +143,8 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
     );
   };
 
-  const standalone = TASKS.filter((t) => !t.d && visible(t));
+  const standalone = TASKS.filter((t) => !t.d && visible(t))
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
   return (
     <div className="tbl">
@@ -200,19 +201,25 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
                   </div>
                   {wsOpen[w.id] && (flat
                     ? (delivs[0] ? (() => {
-                        const flatTasks = TASKS.filter((t) => t.d === delivs[0].id && visible(t));
+                        const flatTasks = TASKS.filter((t) => t.d === delivs[0].id && visible(t))
+                          .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
                         return (
                           <DragList items={flatTasks} onReorder={(items) => api.reorder(items.map((t) => t.id))}
                             renderItem={(t, h) => <TRow key={t.id} t={t} dragHandlers={h} />} />
                         );
                       })() : null)
                     : delivs.map((d) => {
-                      const tasks = TASKS.filter((t) => t.d === d.id && visible(t));
                       const allDelivTasks = TASKS.filter((t) => t.d === d.id);
-                      if (allDelivTasks.length > 0 && (filters.person || filters.readiness || !filters.showDone)) { if (!tasks.length) return null; }
+                      const delivDone = d.status === "done" || d.status === "dropped" ||
+                        (allDelivTasks.length > 0 && allDelivTasks.every((t) => t.status === "done"));
+                      const tasks = TASKS.filter((t) => t.d === d.id && visible(t))
+                        .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+                      // Hide non-done deliverables whose tasks all filter out; keep done ones
+                      // visible (greyed) so Roman can find and archive them.
+                      if (!delivDone && allDelivTasks.length > 0 && (filters.person || filters.readiness || !filters.showDone)) { if (!tasks.length) return null; }
                       const du = daysUntil(d.target);
                       return (
-                        <div key={d.id} className="deliv"
+                        <div key={d.id} className={"deliv" + (delivDone ? " done" : "")}
                           data-deliv-dragging={delivDragId === d.id ? "true" : undefined}
                           data-deliv-over={delivOverId === d.id && delivDragId !== d.id ? "true" : undefined}
                           onDragOver={(e) => { if (!isDelivDrag(e)) return; e.preventDefault(); e.dataTransfer.dropEffect = "move"; if (delivOverId !== d.id) setDelivOverId(d.id); }}

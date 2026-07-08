@@ -261,6 +261,8 @@
 .ws-stage[data-active="true"] { color: var(--brand-700); background: var(--cyan-50); border: 1px solid var(--cyan-light); }
 .ws-stage[data-active="false"] { color: var(--muted); background: var(--surface); border: 1px solid var(--line); }
 .deliv { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--ws); border-radius: var(--radius); margin-bottom: 8px; margin-left: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); overflow: hidden; }
+.deliv.done { opacity: .55; border-left-color: var(--line); }
+.deliv.done:hover { opacity: .9; }
 .deliv-h { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; background: transparent; }
 .deliv-h:hover { background: var(--surface-2); }
 .caret { color: var(--faint); display: grid; place-items: center; transition: transform .15s; }

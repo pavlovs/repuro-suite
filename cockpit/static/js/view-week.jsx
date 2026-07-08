@@ -4,11 +4,11 @@
 function MeetingView({ mutate, openTask }) {
   const [mode, setMode] = React.useState("daily");
   const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
-  const live = TASKS.filter((t) => t.status !== "done");
+  const live = TASKS.filter((t) => t.status !== "done" && t.execution !== "agent");
 
   // Deadlines — next upcoming milestone per active deal
   const activeStages = new Set(["loi_signed", "dd", "indicative_offer", "valuation_rfi"]);
-  const hasOpenWork = (d) => TASKS.some((t) => t.d === d.id && t.status !== "done");
+  const hasOpenWork = (d) => TASKS.some((t) => t.d === d.id && t.status !== "done" && t.execution !== "agent");
   const nextByDeal = {};
   DELIVERABLES
     .filter((d) => d.deal && d.target && daysUntil(d.target) >= 0 && activeStages.has(d.deal.stage) && hasOpenWork(d))
@@ -32,8 +32,8 @@ function MeetingView({ mutate, openTask }) {
   const dow = lastMon.getDay();
   lastMon.setDate(lastMon.getDate() - (dow === 0 ? 6 : dow - 1));
   if (dow === 1) lastMon.setDate(lastMon.getDate() - 7);
-  const lastMonISO = lastMon.toISOString().slice(0, 10);
-  const recentDone = TASKS.filter((t) => t.status === "done" && t.doneAt && t.doneAt >= lastMonISO)
+  const lastMonISO = localISO(lastMon); // NOT toISOString — UTC shift breaks local dates east of UTC
+  const recentDone = TASKS.filter((t) => t.status === "done" && t.execution !== "agent" && t.doneAt && t.doneAt >= lastMonISO)
     .sort((a, b) => (b.doneAt || "").localeCompare(a.doneAt || ""));
   const rdDone = recentDone.filter((t) => (t.owners || []).includes("RD"));
   const ffDone = recentDone.filter((t) => (t.owners || []).includes("FF"));
@@ -45,9 +45,9 @@ function MeetingView({ mutate, openTask }) {
   const claim = (list) => { const out = list.filter((t) => !seen.has(t.id)); out.forEach((t) => seen.add(t.id)); return out; };
   // Decisions needed: ONLY a real decision (approval gate) or a task explicitly requesting someone's input.
   // NOT execution==="together" — that's just collaborative work and dumped the whole todo list here.
-  const decisions = claim(live.filter((t) => t.inputFrom || t.kind === "approval"));
+  const decisions = claim(live.filter((t) => t.inputFrom || t.kind === "approval").sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; }));
   // Waiting on external: the ball is with a counterparty / advisor / investor
-  const waiting = claim(live.filter((t) => t.status === "waiting"));
+  const waiting = claim(live.filter((t) => t.status === "waiting").sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; }));
   const attentionN = decisions.length + waiting.length;
 
   // ---- Section 3: This week per person (by deliverable) ----
@@ -62,14 +62,14 @@ function MeetingView({ mutate, openTask }) {
     for (const dId of delivIds) {
       const d = byDeliv[dId];
       if (!d) continue;
-      const myTasks = myActive.filter((t) => t.d === dId);
+      const myTasks = myActive.filter((t) => t.d === dId).sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; });
       // Issue 27: in the weekly view only surface deliverables that have a subtask due within the coming 7 days
       if (!myTasks.some((t) => t.due && daysUntil(t.due) <= 7)) continue;
       const allTasks = TASKS.filter((t) => t.d === dId);
       const doneCount = allTasks.filter((t) => t.status === "done").length;
       delivs.push({ ...d, total: allTasks.length, done: doneCount, myTasks, wsObj: byWs[d.ws] });
     }
-    const standalone = myActive.filter((t) => !t.d);
+    const standalone = myActive.filter((t) => !t.d).sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; });
     return { delivs, standalone };
   }
 
@@ -85,10 +85,10 @@ function MeetingView({ mutate, openTask }) {
   const rd = personFocus("RD"), ff = personFocus("FF");
 
   // Daily mode data
-  const dueTodayRD = live.filter((t) => (t.owners || []).includes("RD") && t.due && daysUntil(t.due) <= 0 && t.status !== "waiting");
-  const dueTodayFF = live.filter((t) => (t.owners || []).includes("FF") && t.due && daysUntil(t.due) <= 0 && t.status !== "waiting");
+  const dueTodayRD = live.filter((t) => (t.owners || []).includes("RD") && t.due && daysUntil(t.due) <= 0 && t.status !== "waiting").sort((a, b) => a.due.localeCompare(b.due));
+  const dueTodayFF = live.filter((t) => (t.owners || []).includes("FF") && t.due && daysUntil(t.due) <= 0 && t.status !== "waiting").sort((a, b) => a.due.localeCompare(b.due));
   const delivsDueToday = DELIVERABLES
-    .filter((d) => d.target && daysUntil(d.target) <= 0 && TASKS.some((t) => t.d === d.id && t.status !== "done"))
+    .filter((d) => d.target && daysUntil(d.target) <= 0 && TASKS.some((t) => t.d === d.id && t.status !== "done" && t.execution !== "agent"))
     .map((d) => ({ ...d, s: delivStats(d), wsObj: byWs[d.ws] }))
     .sort((a, b) => a.target.localeCompare(b.target));
 
@@ -417,44 +417,31 @@ function WeekRow({ t, mutate, openTask, showWs = true, showDate = true, dragHand
   );
 }
 
-/* ---- AgentQueue: 1-2 suggested agent tasks for My Week ---- */
+/* ---- AgentQueue: agent tasks waiting on Roman — in_review or blocked with a question ---- */
 function AgentQueue({ openTask }) {
-  const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
-  const candidates = TASKS
+  const needsMe = TASKS
     .filter((t) =>
       t.execution === "agent" &&
-      t.status !== "done" &&
-      readiness(t) !== "red"
+      (t.status === "in_review" || t.statusRaw === "blocked")
     )
-    .sort((a, b) => {
-      const pa = PRIORITY_ORDER[a.priority] ?? 1;
-      const pb = PRIORITY_ORDER[b.priority] ?? 1;
-      if (pa !== pb) return pa - pb;
-      if (a.due && b.due) return a.due.localeCompare(b.due);
-      if (a.due) return -1;
-      if (b.due) return 1;
-      return 0;
-    })
-    .slice(0, 2);
+    .slice(0, 5);
 
-  if (!candidates.length) return null;
+  if (!needsMe.length) return null;
 
   return (
     <div className="card" style={{marginTop:12}}>
       <div className="wk-h">
-        <Icon name="bolt" size={14} /> Agent Queue<span className="wk-n">{candidates.length}</span>
+        <Icon name="bolt" size={14} /> Agents — waiting on you<span className="wk-n">{needsMe.length}</span>
       </div>
-      {candidates.map((t) => {
-        const ws = wsOf(t);
-        const du = t.due ? daysUntil(t.due) : null;
+      {needsMe.map((t) => {
+        const isBlocked = t.statusRaw === "blocked";
         return (
           <div key={t.id} className="wkrow tc-click" onClick={() => openTask && openTask(t.id)}>
-            <span className="rdot" data-level={readiness(t)} style={{width:8,height:8}} />
+            <span className="rdot" data-level={isBlocked ? "amber" : "red"} style={{width:8,height:8}} />
             <div className="wkrow-txt">
               <span className="wkrow-main">{t.text}</span>
-              {ws && <span className="wkrow-sub">{ws.name}</span>}
+              <span className="wkrow-sub">{isBlocked ? "Waiting on your answer" : "Needs review"}</span>
             </div>
-            {t.due && <DueChip t={t} />}
           </div>
         );
       })}
@@ -464,14 +451,14 @@ function AgentQueue({ openTask }) {
 
 function WeekView({ person, mutate, openTask, embedded }) {
   const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
-  const live = TASKS.filter((t) => t.status !== "done");
+  const live = TASKS.filter((t) => t.status !== "done" && t.execution !== "agent");
   const mine = live.filter((t) => (t.owners || []).includes(person));
 
   const [pinnedLocal, setPinnedLocal] = React.useState(null);
   const [dueTodayLocal, setDueTodayLocal] = React.useState(null);
   const [upNextLocal, setUpNextLocal] = React.useState(null);
 
-  const pinnedBase = mine.filter((t) => t.pinned && t.status !== "waiting");
+  const pinnedBase = mine.filter((t) => t.pinned && t.status !== "waiting").sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; });
   // Bug 3 fix: no separate Overdue section — overdue tasks roll into Due Today (red badge signals them)
   const dueTodayBase = mine.filter((t) => t.status !== "waiting" && !t.pinned && t.due && daysUntil(t.due) <= 0)
     .sort((a, b) => a.due.localeCompare(b.due));
@@ -494,15 +481,15 @@ function WeekView({ person, mutate, openTask, embedded }) {
   const dayLabel = todayDate.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 
   const weekDelivs = DELIVERABLES
-    .filter((d) => d.target && daysUntil(d.target) <= 10 && TASKS.some((t) => t.d === d.id && t.status !== "done"))
+    .filter((d) => d.target && daysUntil(d.target) <= 10 && TASKS.some((t) => t.d === d.id && t.status !== "done" && t.execution !== "agent"))
     .map((d) => ({ ...d, s: delivStats(d), ws: byWs[d.ws] }))
     .sort((a, b) => a.target.localeCompare(b.target));
 
   // Decisions & waiting (issue 30): decisions needed + items waiting on someone external.
   // NOT tasks blocked by the other person / a prerequisite — that's just sequencing.
   // ONLY a real decision (approval gate) or a task explicitly requesting input — NOT execution==="together".
-  const decisions = live.filter((t) => t.inputFrom || t.kind === "approval");
-  const waitingShared = live.filter((t) => t.status === "waiting" && !decisions.includes(t)); // dedup: a task shows under one group only
+  const decisions = live.filter((t) => t.inputFrom || t.kind === "approval").sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; });
+  const waitingShared = live.filter((t) => t.status === "waiting" && !decisions.includes(t)).sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; }); // dedup: a task shows under one group only
   const sharedN = decisions.length + waitingShared.length;
   // Switchable right column (Roman's request): only ever 2 boxes side by side — Due Today | one of Tomorrow/Personal/Blocked
   const personalOpen = (typeof PERSONAL !== "undefined" ? PERSONAL : []).filter((t) => t.status !== "done");
@@ -581,7 +568,7 @@ function WeekView({ person, mutate, openTask, embedded }) {
           {weekDelivs.map((d) => {
             const du = daysUntil(d.target);
             const isOpen = !!delivOpen[d.id];
-            const openTasks = TASKS.filter((t) => t.d === d.id && t.status !== "done");
+            const openTasks = TASKS.filter((t) => t.d === d.id && t.status !== "done" && t.execution !== "agent");
             return (
               <div key={d.id} className="wk-deliv-block">
                 <div className="wk-deliv-head" style={{cursor:"pointer"}} onClick={() => setDelivOpen((o) => ({...o, [d.id]: !isOpen}))}>

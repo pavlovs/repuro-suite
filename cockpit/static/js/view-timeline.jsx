@@ -21,7 +21,16 @@ function TimelineView({ openTask, openDeliv, mutate, filtersOpen, setFiltersOpen
     return () => ro.disconnect();
   }, []);
 
-  const allDelivs = DELIVERABLES.filter((d) => d.target || TASKS.some((t) => t.d === d.id));
+  // Exclude done/dropped deliverables (and effectively-done ones whose every task is done)
+  // — they render as empty gantt rows with no bars/diamonds, cluttering the chart.
+  const isDelivDone = (d) => {
+    if (d.status === "done" || d.status === "dropped") return true;
+    const dTasks = TASKS.filter((t) => t.d === d.id);
+    return dTasks.length > 0 && dTasks.every((t) => t.status === "done");
+  };
+  const allDelivs = DELIVERABLES.filter((d) =>
+    !isDelivDone(d) && (d.target || TASKS.some((t) => t.d === d.id))
+  );
   const hasDates = (d) => d.target || TASKS.some((t) => t.d === d.id && t.due);
   const filtered = filter === "dated" ? allDelivs.filter(hasDates) : filter === "undated" ? allDelivs.filter((d) => !hasDates(d)) : allDelivs;
 

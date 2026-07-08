@@ -545,6 +545,7 @@ function renderSidebar() {
 
   // ── BLOCK C — Process Artifacts ───────────────────────────────────────────
   h+='<div class="sidebar-block-header">Process Artifacts</div>';
+  h+=sidebarItem('next_deliverables','Next (Cockpit)',null);
   h+=sidebarItem('rfi','RFI',qOpen>0?qOpen:null);
   h+=sidebarItem('dd','Due Diligence',DATA.cdd?null:'stub');
   h+=sidebarItem('documents','Documents',docCount);
@@ -600,6 +601,7 @@ function showSection(id) {
     case 'market': area.innerHTML=bc+renderMarket(); break;
 
     // ── Block C — existing ─────────────────────────────────────────────────
+    case 'next_deliverables': area.innerHTML=bc+renderNextDeliverables(); break;
     case 'rfi': area.innerHTML=bc+renderRFI(); break;
     case 'dd': area.innerHTML=bc+renderDDSection(); break;
     case 'documents': area.innerHTML=bc+renderDocuments(); break;

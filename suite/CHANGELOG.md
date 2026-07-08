@@ -4,6 +4,48 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.25 — 2026-07-08
+
+### Cockpit — meeting/overview content rules + interaction bug fixes (suite-fix batch)
+- **Meeting/Week views exclude agent tasks** (`execution === "agent"`): agent
+  work lives in the Agents view; Meeting daily/weekly and My Week person lists
+  show human tasks only.
+- **Agent Queue respec** → "Agents — waiting on you": shows only agent tasks
+  in review or blocked with a question (up to 5), instead of suggested queue
+  candidates. Blocked = amber "Waiting on your answer", in review = red
+  "Needs review".
+- **Date-ascending sort** in Meeting + My Week lists (decisions, waiting,
+  due-today, per-deliverable and standalone tasks): earlier dates on top,
+  undated last.
+- **+1d silent failure fixed — two root causes**: (1) `addDays()` formatted
+  via `toISOString()` (UTC): east of UTC the +1 day collapsed back to the
+  same date — a deterministic no-op in Berlin; now formats local
+  (`localISO`, also applied to the last-Monday cutoff in Meeting).
+  (2) Stale-version 409 after reorders (reorder bumps every task's version
+  server-side) reverted the bump silently; quick actions (due bump,
+  checkmark, waiting chips) now retry once with the server's current version
+  read from the 409 body (`detail.current.version` — wire shape verified
+  live). Rich editor saves deliberately do NOT auto-retry: that would
+  silently clobber a concurrent edit (Flo/agent) — they keep the conflict
+  toast + reload.
+- **Task reorder sticks**: optimistic `sortOrder` stamping + immediate
+  rerender (no snap-back), rollback to server truth if the reorder PATCH
+  fails, and Table view + deliverable drawer sort all task lists by
+  `sortOrder`. New pytest: reorder persists through `/api/state`.
+- **Agents badge** counts blocked ("waiting on you") agent tasks, not just
+  in_review — matches the new AgentQueue card.
+- **Agent exclusion completed across Meeting/Week internals**: deal deadline
+  bars, "completed since Monday", due-today/next-10-days deliverable pickers
+  no longer count agent-only work (Codex sweep findings).
+- **Done/old deliverables no longer linger**: Timeline hides done/dropped
+  (and all-tasks-done) deliverables; Table view greys them out but keeps them
+  findable for archiving (fixes "DD Kick-off looks weird" class).
+
+### Dealroom — Next (Cockpit) sidebar section
+- New "Next (Cockpit)" section under Process Artifacts surfacing upcoming
+  cockpit deliverables per deal (`sections/next-deliverables.js`); degrades
+  to a quiet note when no same-origin Cockpit API exists (static export).
+
 ## v2.1.24 — 2026-07-07
 
 ### Cockpit — Admin tab fix + frontend contract tests

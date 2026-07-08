@@ -1186,3 +1186,36 @@ def test_migration_v3_to_v4(tmp_path):
     deal_col = conn.execute("SELECT deal FROM deliverables WHERE name='LDD'").fetchone()
     assert deal_col["deal"] == "Fox"
     conn.close()
+
+
+# ---- drag-reorder persists ---------------------------------------------------
+def test_task_reorder_reflects_state_order(client):
+    """PATCH /api/tasks/reorder persists new sort_order; /api/state returns tasks
+    in the requested order (sort_order is the primary sort key in assemble_state)."""
+    ws = make_ws(client)
+    d = make_deliv(client, ws, name="My Deliv")
+    t1 = make_task(client, text="first", deliverable_id=d)
+    t2 = make_task(client, text="second", deliverable_id=d)
+    t3 = make_task(client, text="third", deliverable_id=d)
+
+    # baseline: creation order is t1, t2, t3
+    state = client.get("/api/state", headers=auth()).json()
+    holding = next(s for s in state["spaces"] if s["name"] == "Holding")
+    ws_obj = next(w for w in holding["workstreams"] if w["id"] == ws)
+    d_obj = next(x for x in ws_obj["deliverables"] if x["id"] == d)
+    assert [t["id"] for t in d_obj["tasks"]] == [t1["id"], t2["id"], t3["id"]]
+
+    # reorder to [t3, t1, t2]
+    r = client.patch(
+        "/api/tasks/reorder",
+        json={"task_ids": [t3["id"], t1["id"], t2["id"]]},
+        headers=auth(),
+    )
+    assert r.status_code == 200 and r.json()["reordered"] == 3
+
+    # state must reflect the new order
+    state2 = client.get("/api/state", headers=auth()).json()
+    holding2 = next(s for s in state2["spaces"] if s["name"] == "Holding")
+    ws_obj2 = next(w for w in holding2["workstreams"] if w["id"] == ws)
+    d_obj2 = next(x for x in ws_obj2["deliverables"] if x["id"] == d)
+    assert [t["id"] for t in d_obj2["tasks"]] == [t3["id"], t1["id"], t2["id"]]

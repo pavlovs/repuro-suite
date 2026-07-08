@@ -20,9 +20,16 @@ function daysUntil(iso) {
   if (!iso) return null;
   return Math.round((new Date(iso + "T00:00:00") - todayDate) / 86400000);
 }
+// Format a Date as local YYYY-MM-DD. NEVER toISOString().slice(0,10) on a
+// local-midnight Date: it converts to UTC first, so east of UTC (Berlin) it
+// returns the PREVIOUS day — made +1d a silent no-op.
+function localISO(d) {
+  const p = (x) => String(x).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
 function addDays(iso, n) {
   const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return localISO(d);
 }
 function fdate(iso) {
   if (!iso) return "";

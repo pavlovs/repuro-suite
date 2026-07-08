@@ -265,7 +265,8 @@ function DelivDrawer({ deliv, onClose, mutate, openTask }) {
 
   const ws = byWs[deliv.ws];
   const deal = deliv.deal || null;
-  const tasks = TASKS.filter((t) => t.d === deliv.id);
+  const tasks = TASKS.filter((t) => t.d === deliv.id)
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)); // match table view after optimistic reorders
   const openTasks = tasks.filter((t) => t.status !== "done");
   const doneTasks = tasks.filter((t) => t.status === "done");
   const s = delivStats(deliv);

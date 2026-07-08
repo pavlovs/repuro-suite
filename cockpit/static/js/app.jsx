@@ -170,7 +170,7 @@ function App() {
 
   const live = TASKS.filter((x) => x.status !== "done");
   const chaseN = live.filter((x) => chaseDue(x)).length;
-  const verdictN = TASKS.filter((x) => x.execution === "agent" && x.status === "in_review").length;
+  const verdictN = TASKS.filter((x) => x.execution === "agent" && (x.status === "in_review" || x.statusRaw === "blocked")).length;
   const badge = { week: chaseN, agents: verdictN };
 
   const cur = NAV.find((n) => n.id === tab) || (tab === "admin" ? NAV_ADMIN : NAV[0]);

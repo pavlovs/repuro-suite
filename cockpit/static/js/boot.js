@@ -455,6 +455,23 @@
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ version: t.version, deadline: newDue }),
       });
+      // 409 on a due-date bump is almost always version staleness from a recent
+      // reorder (reorder bumps every task's version server-side). Read the current
+      // version from the 409 body and retry once — last-write-wins on this single
+      // explicitly-clicked field is safe.
+      if (r.status === 409) {
+        var conflict = null;
+        try { conflict = await r.json(); } catch (_) {}
+        // wire shape: {"detail": {"error": "version conflict", "current": {...task}}}
+        var cur = conflict && ((conflict.detail && conflict.detail.current) || conflict.current);
+        var freshVer = cur && cur.version;
+        if (freshVer != null) {
+          r = await authedFetch("/api/task/" + t.id, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ version: freshVer, deadline: newDue }),
+          });
+        }
+      }
       conflictReload(r);
       if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return false; }
       var updated = await r.json();
@@ -476,6 +493,28 @@
       var r = await authedFetch("/api/task/" + t.id, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
+      // 409 retry ONLY for quick single-purpose actions (checkmark, waiting
+      // chips, due bumps) where the version is usually stale from a recent
+      // reorder and last-write-wins on the clicked field is what the user
+      // meant. Rich editor saves must NOT auto-retry: blindly resubmitting
+      // would silently clobber a concurrent edit by Flo or an agent —
+      // those keep the conflict toast + reload via conflictReload below.
+      var QUICK_RETRY_FIELDS = { deadline: 1, status: 1, pinned_today: 1,
+        waiting_on_party: 1, waiting_on_type: 1, next_chase_date: 1, expected_back_by: 1 };
+      var quickOnly = Object.keys(body).every(function (k) { return k === "version" || QUICK_RETRY_FIELDS[k]; });
+      if (r.status === 409 && quickOnly) {
+        var conflict = null;
+        try { conflict = await r.json(); } catch (_) {}
+        // wire shape: {"detail": {"error": "version conflict", "current": {...task}}}
+        var cur2 = conflict && ((conflict.detail && conflict.detail.current) || conflict.current);
+        var freshVer = cur2 && cur2.version;
+        if (freshVer != null) {
+          body.version = freshVer;
+          r = await authedFetch("/api/task/" + t.id, {
+            method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+          });
+        }
+      }
       conflictReload(r);
       if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return false; }
       await refreshFromServer(); // dependents' computed fields move too
@@ -612,12 +651,24 @@
       await refreshFromServer();
     },
     async reorder(taskIds) {
-      // taskIds: array of "t-N" strings in new display order
+      // taskIds: array of "t-N" strings in new display order.
+      // Optimistic: stamp sortOrder on each task object immediately so
+      // views re-sort without waiting for the server round-trip — eliminates
+      // the drop snap-back visible between setDragIdx(null) and refreshFromServer.
+      taskIds.forEach(function(id, idx) {
+        var t = window.byTask && window.byTask[id];
+        if (t) t.sortOrder = idx;
+      });
+      if (window.rerender) window.rerender();
       var r = await authedFetch("/api/tasks/reorder", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ task_ids: taskIds }),
       });
-      if (!r.ok) { showToast("Reorder failed: " + (await r.text()).slice(0, 200), "err"); return; }
+      if (!r.ok) {
+        showToast("Reorder failed: " + (await r.text()).slice(0, 200), "err");
+        await refreshFromServer(); // roll back the optimistic sortOrder stamps to server truth
+        return;
+      }
       await refreshFromServer();
     },
     reload: function () { location.reload(); },

@@ -119,11 +119,13 @@
   .card.allex .card-icon { background: var(--orange-light); }
   .card.deals .card-icon { background: var(--blue-light); }
   .card.investor .card-icon { background: #ede9fe; }
+  .card.research .card-icon { background: #ecfdf5; }
 
   .card.cockpit .card-icon svg { width: 34px; height: 34px; }
   .card.allex .card-icon img { width: 38px; height: 38px; object-fit: contain; }
   .card.deals .card-icon svg { width: 30px; height: 30px; stroke: var(--blue); stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
   .card.investor .card-icon svg { width: 30px; height: 30px; stroke: #7c3aed; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .card.research .card-icon svg { width: 30px; height: 30px; stroke: #059669; stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round; }
 
   .card-name {
     font-size: 19px; font-weight: 650; color: var(--ink); margin-bottom: 4px; letter-spacing: -0.01em;
@@ -148,6 +150,7 @@
   .card.allex:hover .card-arrow svg { stroke: var(--orange); }
   .card.deals:hover .card-arrow svg { stroke: var(--blue); }
   .card.investor:hover .card-arrow svg { stroke: #7c3aed; }
+  .card.research:hover .card-arrow svg { stroke: #059669; }
 
   /* --- Status bar --- */
   .statusbar {
@@ -178,6 +181,8 @@
     .card:nth-child(1) { animation-delay: 40ms; }
     .card:nth-child(2) { animation-delay: 90ms; }
     .card:nth-child(3) { animation-delay: 140ms; }
+    .card:nth-child(4) { animation-delay: 190ms; }
+    .card:nth-child(5) { animation-delay: 240ms; }
     @keyframes slideIn {
       from { opacity: 0; transform: translateX(8px); }
       to   { opacity: 1; transform: translateX(0); }
@@ -238,6 +243,17 @@
         <div class="card-body">
           <div class="card-name">Dealroom</div>
           <div class="card-desc">Deal summary and pipeline</div>
+        </div>
+        <div class="card-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></div>
+      </a>
+
+      <a class="card research" href="/research/">
+        <div class="card-icon">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6"/><path d="M8 11h6"/></svg>
+        </div>
+        <div class="card-body">
+          <div class="card-name">Research</div>
+          <div class="card-desc">Market research, ownership maps, and deal intelligence</div>
         </div>
         <div class="card-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></div>
       </a>

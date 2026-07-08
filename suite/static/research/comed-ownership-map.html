@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Co-Med Einkaufsverbund — Ownership Map</title>
+<style>
+  :root {
+    --bg: #F1FAFC;
+    --surface: #FFFFFF;
+    --surface-raised: #E8F6F9;
+    --border: #D0E8ED;
+    --border-light: #B8DAE2;
+    --text: #000000;
+    --text-body: rgba(0,0,0,.74);
+    --text-muted: rgba(0,0,0,.54);
+    --text-dim: rgba(0,0,0,.38);
+    --teal: #0891B2;
+    --teal-light: #22D3EE;
+    --teal-bg: #E0F7FA;
+    --cyan-band: #8DE8F6;
+    --red: #E11D48;
+    --amber: #EAB308;
+    --green: #16A34A;
+    --purple: #A855F7;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text-body);
+    font-family: Arial, 'Segoe UI', system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  .page-header {
+    background: var(--teal);
+    color: #fff;
+    padding: 1.5rem 2rem;
+  }
+  .page-header-inner {
+    max-width: 1500px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; color: #fff; }
+  .subtitle { color: rgba(255,255,255,.8); font-size: 0.82rem; margin-top: 0.15rem; }
+  .tab-bar {
+    display: flex; gap: 0; border-bottom: 2px solid var(--border);
+    padding: 0 2rem; max-width: 1500px; margin: 0 auto;
+    background: var(--surface); overflow-x: auto;
+  }
+  .tab-btn {
+    background: none; border: none; color: var(--text-muted);
+    font-family: inherit; font-size: 0.82rem; font-weight: 600;
+    padding: 0.7rem 1.25rem; cursor: pointer;
+    border-bottom: 3px solid transparent; margin-bottom: -2px;
+    white-space: nowrap; transition: color 0.15s, border-color 0.15s;
+  }
+  .tab-btn:hover { color: var(--text); }
+  .tab-btn.active { color: var(--teal); border-bottom-color: var(--teal); }
+  .tab-content { display: none; padding: 1.75rem 2rem 2rem; max-width: 1500px; margin: 0 auto; }
+  .tab-content.active { display: block; }
+  .metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 2rem; }
+  .metric {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.85rem 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .metric-value { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.2; color: var(--text); }
+  .metric-label { font-size: 0.66rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 0.15rem; }
+  .mv-teal { color: var(--teal); } .mv-red { color: var(--red); }
+  .mv-amber { color: #B45309; } .mv-green { color: var(--green); } .mv-purple { color: var(--purple); }
+  .section { margin-bottom: 2rem; }
+  .section-title {
+    font-size: 1rem; font-weight: 700; margin-bottom: 0.75rem;
+    padding-bottom: 0.4rem; border-bottom: 2px solid var(--teal); color: var(--text);
+  }
+  .finding {
+    background: var(--surface); border: 1px solid var(--border);
+    border-left: 4px solid var(--red); border-radius: 0 6px 6px 0;
+    padding: 0.85rem 1rem; margin-bottom: 0.6rem; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .finding--teal { border-left-color: var(--teal); }
+  .finding--amber { border-left-color: var(--amber); }
+  .finding--green { border-left-color: var(--green); }
+  .finding--purple { border-left-color: var(--purple); }
+  .finding-head { display: flex; align-items: baseline; gap: 0.6rem; margin-bottom: 0.3rem; }
+  .finding-tag {
+    font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.08em;
+    padding: 0.12rem 0.45rem; border-radius: 3px; font-weight: 700; white-space: nowrap;
+  }
+  .tag-consolidation { background: rgba(225,29,72,0.1); color: var(--red); }
+  .tag-pe { background: rgba(8,145,178,0.1); color: var(--teal); }
+  .tag-succession { background: rgba(180,83,9,0.12); color: #B45309; }
+  .tag-new { background: rgba(22,163,74,0.1); color: var(--green); }
+  .tag-terminated { background: rgba(168,85,247,0.1); color: var(--purple); }
+  .tag-pipeline { background: rgba(8,145,178,0.15); color: var(--teal); border: 1px solid var(--teal); }
+  .finding-title { font-weight: 700; font-size: 0.9rem; color: var(--text); }
+  .finding-body { color: var(--text-body); font-size: 0.82rem; line-height: 1.55; }
+  .finding-body strong { color: var(--text); font-weight: 600; }
+  .chain {
+    font-family: 'Cascadia Code', Consolas, monospace; font-size: 0.75rem;
+    color: var(--text-muted); background: var(--bg); padding: 0.4rem 0.6rem;
+    border-radius: 4px; margin-top: 0.4rem; overflow-x: auto; white-space: nowrap;
+  }
+  .chain .arrow { color: var(--teal); font-weight: 700; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 0.85rem 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  .card-title { font-weight: 700; font-size: 0.85rem; margin-bottom: 0.4rem; color: var(--text); }
+  .card-body { font-size: 0.8rem; color: var(--text-body); line-height: 1.5; }
+  .card-body strong { color: var(--text); font-weight: 600; }
+  .table-wrap {
+    overflow-x: auto; border: 1px solid var(--border);
+    border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  }
+  table {
+    width: 100%; border-collapse: collapse;
+    font-variant-numeric: tabular-nums; font-size: 0.78rem; background: var(--surface);
+  }
+  thead { background: var(--teal); color: #fff; position: sticky; top: 0; z-index: 1; }
+  th {
+    text-align: left; padding: 0.55rem 0.65rem; font-weight: 600;
+    font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em;
+    color: #fff; border-bottom: none; white-space: nowrap; cursor: default;
+  }
+  th.sortable { cursor: pointer; user-select: none; }
+  th.sortable:hover { color: var(--cyan-band); }
+  th .sort-arrow { font-size: 0.6rem; margin-left: 0.25rem; opacity: 0.6; }
+  th.sorted .sort-arrow { opacity: 1; color: #fff; }
+  td { padding: 0.45rem 0.65rem; border-bottom: 1px solid var(--border); vertical-align: top; color: var(--text-body); }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--surface-raised); }
+  tbody tr.row-pipeline { background: rgba(8,145,178,0.06); }
+  tbody tr.row-pipeline:hover { background: rgba(8,145,178,0.1); }
+  .text-right { text-align: right; } .text-center { text-align: center; } .text-left { text-align: left; }
+  .badge {
+    display: inline-block; font-size: 0.6rem; padding: 0.1rem 0.38rem;
+    border-radius: 3px; text-transform: uppercase; letter-spacing: 0.04em;
+    font-weight: 700; white-space: nowrap;
+  }
+  .b-corp { background: rgba(8,145,178,0.1); color: var(--teal); }
+  .b-family { background: rgba(22,163,74,0.08); color: var(--green); }
+  .b-sole { background: rgba(0,0,0,0.05); color: var(--text-muted); }
+  .b-mixed { background: rgba(180,83,9,0.08); color: #B45309; }
+  .b-foreign { background: rgba(168,85,247,0.08); color: var(--purple); }
+  .b-person { background: rgba(0,0,0,0.04); color: var(--text-dim); }
+  .b-pipeline { background: var(--teal); color: #fff; font-weight: 700; padding: 0.1rem 0.45rem; }
+  .b-meeting { background: rgba(22,163,74,0.15); color: var(--green); }
+  .b-followup { background: rgba(8,145,178,0.1); color: var(--teal); }
+  .b-declined { background: rgba(225,29,72,0.1); color: var(--red); }
+  .b-sent { background: rgba(180,83,9,0.1); color: #B45309; }
+  .b-not-approached { background: rgba(0,0,0,0.04); color: var(--text-dim); }
+  .timeline { position: relative; padding-left: 1.5rem; }
+  .timeline::before {
+    content: ''; position: absolute; left: 0.35rem; top: 0.3rem; bottom: 0.3rem;
+    width: 2px; background: var(--border);
+  }
+  .tl-item { position: relative; margin-bottom: 1rem; padding-left: 0.75rem; }
+  .tl-item::before {
+    content: ''; position: absolute; left: -1.15rem; top: 0.45rem;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--teal); border: 2px solid var(--bg);
+  }
+  .tl-item.tl-red::before { background: var(--red); }
+  .tl-item.tl-green::before { background: var(--green); }
+  .tl-item.tl-amber::before { background: #B45309; }
+  .tl-item.tl-purple::before { background: var(--purple); }
+  .tl-date { font-size: 0.72rem; font-weight: 700; color: var(--text-muted); }
+  .tl-title { font-weight: 700; font-size: 0.85rem; margin-top: 0.1rem; color: var(--text); }
+  .tl-body { font-size: 0.8rem; color: var(--text-body); line-height: 1.5; }
+  .tl-body strong { color: var(--text); font-weight: 600; }
+  .filter-row { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+  .filter-btn {
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-muted); padding: 0.3rem 0.65rem; border-radius: 4px;
+    font-size: 0.72rem; cursor: pointer; font-family: inherit; transition: all 0.15s;
+  }
+  .filter-btn:hover, .filter-btn.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .highlight-red { color: var(--red); font-weight: 600; }
+  .highlight-green { color: var(--green); font-weight: 600; }
+  .highlight-amber { color: #B45309; font-weight: 600; }
+  .highlight-teal { color: var(--teal); font-weight: 600; }
+  .dim { color: var(--text-dim); }
+  .owner-detail { color: var(--text-muted); font-size: 0.72rem; }
+  .pipeline-badge-inline {
+    display: inline-block; background: var(--teal); color: #fff;
+    font-size: 0.58rem; font-weight: 700; padding: 0.06rem 0.35rem;
+    border-radius: 2px; text-transform: uppercase; letter-spacing: 0.06em;
+    vertical-align: middle; margin-left: 0.3rem;
+  }
+  .note {
+    font-size: 0.72rem; color: var(--text-dim); margin-top: 1.25rem;
+    padding-top: 0.75rem; border-top: 1px solid var(--border);
+  }
+  @media (max-width: 900px) {
+    .grid-2 { grid-template-columns: 1fr; }
+    body { font-size: 13px; }
+    .tab-content { padding-left: 1rem; padding-right: 1rem; }
+    .tab-bar { padding: 0 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-header-inner">
+    <h1>Co-Med Einkaufsverbund</h1>
+    <p class="subtitle">Ownership Map &amp; Shareholder Movement &mdash; OpenRegister + Pipeline-Daten, 08. Jul 2026</p>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('overview')">&#220;bersicht</button>
+  <button class="tab-btn" onclick="showTab('partners')">Partner-Details</button>
+  <button class="tab-btn" onclick="showTab('comed-shares')">Co-Med Anteils&#228;nderungen</button>
+  <button class="tab-btn" onclick="showTab('partner-changes')">Gesellschafter&#228;nderungen</button>
+</div>
+
+<!-- ==================== TAB 1: ÜBERSICHT ==================== -->
+<div id="tab-overview" class="tab-content active">
+
+  <div class="metrics">
+    <div class="metric"><div class="metric-value">39</div><div class="metric-label">LP-Gesellschafter</div></div>
+    <div class="metric"><div class="metric-value mv-teal">2</div><div class="metric-label">Aktive Deals</div></div>
+    <div class="metric"><div class="metric-value mv-teal">21</div><div class="metric-label">Bereits angesprochen</div></div>
+    <div class="metric"><div class="metric-value mv-red">6</div><div class="metric-label">Abgelehnt</div></div>
+    <div class="metric"><div class="metric-value mv-green">1</div><div class="metric-label">Meeting erreicht</div></div>
+    <div class="metric"><div class="metric-value mv-amber">12</div><div class="metric-label">Nachfolgerisiko (65+)</div></div>
+    <div class="metric"><div class="metric-value mv-purple">18</div><div class="metric-label">Nicht angesprochen</div></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Repuro Pipeline &amp; Outreach</div>
+
+    <div class="finding finding--teal">
+      <div class="finding-head">
+        <span class="finding-tag tag-pipeline">Pipeline</span>
+        <span class="finding-title">21 von 39 Co-Med-Partnern bereits kontaktiert</span>
+      </div>
+      <div class="finding-body">
+        <strong>2 aktive Deals:</strong><br>
+        &#8226; <strong>Fox (Com&#178;Med)</strong> &#8212; Hannover, 2 Anteile, LOI unterschrieben 26.05.2026, in DD. EV: 1,6 M&#8364; + 0,3 M&#8364; EO.<br>
+        &#8226; <strong>Wolf (KVG Vertriebs-GmbH)</strong> &#8212; Seeshaupt, 1 Anteil, in Angebotsverhandlung.<br><br>
+        <strong>1 Meeting:</strong> Heine &amp; B&#246;hm (Dresden, BA3 &#8212; Jun. 2025)<br><br>
+        <strong>6 abgelehnt:</strong> KS Medizintechnik, Medical Plus, Medica Nord, Promed Bubser, Stusche, Zimeda<br><br>
+        <strong>12 im Follow-up</strong> (kein R&#252;cklauf nach 1&#8211;2 Follow-ups):<br>
+        AKM, Arndt, Dammeyer+Selzer, Hubrich, Medical Eins, MTR, Beiner, TROLAB, siramed, K. Egner, Heldt+Wien, KVG &#8594; Wolf<br><br>
+        <strong>18 nicht angesprochen:</strong> Brune, Chr. Frick, DocCheck, Fairmed, F&#252;ldner, Knorre, Krolicki, Ladurner, m-tec, medelo, Med. Steffen, MMT, Medicatechnik, NORDlicht, Retzlaff, St&#228;hle, Wiesanha/S&#246;hngen, Mei&#223;ner
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Wesentliche Erkenntnisse</div>
+
+    <div class="finding">
+      <div class="finding-head">
+        <span class="finding-tag tag-consolidation">Konsolidierung</span>
+        <span class="finding-title">Str&#228;tz / Neund&#246;rfer &#8212; Buy-and-Build innerhalb Co-Med</span>
+      </div>
+      <div class="finding-body">
+        Die <strong>Familie Neund&#246;rfer</strong> (Adrian 70%, Thomas 30%) kontrolliert <strong>zwei Co-Med-Partner</strong> &#252;ber eine geschichtete Holding-Struktur. <strong>Brune Medizintechnik</strong> (Aalen) wurde <strong>Aug. 2024</strong> unter der Str&#228;tz Gruppe UG neu gegr&#252;ndet &#8212; ein klarer Bolt-on. Str&#228;tz FN GmbH (Estenfeld, 43 MA) ist das urspr&#252;ngliche Familienunternehmen. Zusammen 2 Co-Med-Anteile.
+      </div>
+      <div class="chain">
+        Adrian + Thomas Neund&#246;rfer <span class="arrow">&#8594;</span> Neund&#246;rfer Besitzgesellschaft <span class="arrow">&#8594;</span> Kellerhaus Beteiligungs GmbH <span class="arrow">&#8594;</span> Str&#228;tz Med. Gruppe UG <span class="arrow">&#8594;</span> <strong>Brune Medizintechnik GmbH</strong> (neu 08/2024)
+      </div>
+    </div>
+
+    <div class="finding finding--teal">
+      <div class="finding-head">
+        <span class="finding-tag tag-pe">Externe Investoren</span>
+        <span class="finding-title">Krolicki &#8212; Medivest + Medoneo (keine Familie mehr)</span>
+      </div>
+      <div class="finding-body">
+        <strong>Krolicki Medizintechnik</strong> (Krefeld, 25 MA, 2 Anteile) wurde <strong>2020</strong> als neue KG umstrukturiert. Keine Krolicki-Familie mehr sichtbar. Zwei Unternehmens-LPs: <strong>Medivest GmbH</strong> (Winnenden) und <strong>Medoneo GmbH</strong> (Merzig, nahe Co-Med-Zentrale). <strong>Nicht angesprochen</strong> &#8212; Ownership-Review steht aus.
+      </div>
+    </div>
+
+    <div class="finding finding--teal">
+      <div class="finding-head">
+        <span class="finding-tag tag-pe">Holding-&#220;bernahme</span>
+        <span class="finding-title">F&#252;ldner &#8212; 100% HEYNER Holding GmbH</span>
+      </div>
+      <div class="finding-body">
+        <strong>F&#252;ldner Medizintechnik</strong> (Gera, 20 MA, BS 2,4 M&#8364;) ist <strong>100% im Besitz der HEYNER Holding GmbH</strong>. UBO-Abfrage lieferte 404. Keine nat&#252;rlichen Personen sichtbar. <strong>Nicht angesprochen.</strong>
+      </div>
+    </div>
+
+    <div class="finding finding--amber">
+      <div class="finding-head">
+        <span class="finding-tag tag-succession">Nachfolgerisiko</span>
+        <span class="finding-title">12 Partner mit Gr&#252;ndern 65+ &#8212; mehrere ohne Nachfolger</span>
+      </div>
+      <div class="finding-body">
+        H&#246;chstes Risiko (kein Nachfolger sichtbar):<br>
+        <strong>Kurt St&#228;hle</strong> (87, 50%) &#8212; nicht angesprochen<br>
+        <strong>Lutz Behrendt</strong> / AKM (83, 51%) &#8212; angesprochen BA2, Follow-up2<br>
+        <strong>Stephan Beiner</strong> (81) &#8212; angesprochen BA1, Follow-up2<br>
+        <strong>J&#252;rgen Puppe</strong> (77, 90%) &#8212; nicht angesprochen<br><br>
+        Teilweise Nachfolge begonnen:<br>
+        <strong>Hubrich</strong> &#8212; Wolfgang (72) + Sohn Christian (46) &#8212; angesprochen BA7, Follow-up1<br>
+        <strong>siramed</strong> &#8212; Alexander (67) + Sohn Maximilian (38) &#8212; angesprochen BA7, Follow-up1<br>
+        <strong>medica nord</strong> &#8212; Rebecca (46) hat 51% &#8212; angesprochen BA1, <strong>abgelehnt</strong>
+      </div>
+    </div>
+
+    <div class="finding finding--green">
+      <div class="finding-head">
+        <span class="finding-tag tag-new">Umstrukturierungen</span>
+        <span class="finding-title">5 Partner umstrukturiert 2020&#8211;2025</span>
+      </div>
+      <div class="finding-body">
+        <strong>Krolicki</strong> &#8212; neue KG 2020, ext. Investoren, nicht angesprochen<br>
+        <strong>ProBu / Promed Bubser</strong> &#8212; Holding 2020, angesprochen BA1, <strong>abgelehnt</strong><br>
+        <strong>Dammeyer + Selzer</strong> &#8212; neue KG 2021, angesprochen BA1, Follow-up2<br>
+        <strong>Heldt + Wien</strong> &#8212; Neugr&#252;ndung 2021, angesprochen BA8<br>
+        <strong>MTECA Adamosky</strong> &#8212; neues e.K. Apr. 2025
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Co-Med Verbund &#8212; Rechtsstruktur</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Co-med GmbH &amp; Co. KG f&#252;r Logistik, Vertrieb und Service</div>
+        <div class="card-body">
+          HRA 10841, AG Saarbr&#252;cken &middot; Gr&#252;ndung 2010 &middot; Hochstra&#223;e 1, 66265 Heusweiler<br>
+          <strong>Der eigentliche Einkaufsverbund.</strong> 39 LP-Gesellschafter + 1 GP.<br>
+          Standard-Einlage: 35.000 &#8364; pro Anteil. Gesamt: ~1,6 M&#8364;.<br>
+          GF: C. Thomas Maier, Dr. Michael Ebener
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Co-med Verwaltungs- und Beteiligungs-GmbH</div>
+        <div class="card-body">
+          HRB 18421, AG Saarbr&#252;cken &middot; GP der Verbund-KG.<br>
+          <strong>100% im Besitz der KG selbst</strong> (zirkul&#228;re Standardstruktur).<br><br>
+          <em>&#8222;COMED GmbH &amp; Co. KG&#8220; (HRA 11576) und &#8222;COMED II&#8220; (HRA 13129) in St. Wendel sind separate Immobiliengesellschaften.</em>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Anteilsverteilung (Co-Med LP-Einlagen)</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">3 Anteile (105 K&#8364;) &#8212; 2 Partner</div>
+        <div class="card-body">
+          <strong>K. Egner</strong> &#8212; Linden (Follow-up2)<br>
+          <strong>Arndt Medizintechnik</strong> &#8212; Langweid (Follow-up2)
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">2 Anteile (70 K&#8364;) &#8212; 6 Partner</div>
+        <div class="card-body">
+          <strong>Com&#178;Med</strong> &#8212; Hannover <span class="pipeline-badge-inline">Fox &#8212; LOI</span><br>
+          <strong>siramed</strong> &#8212; Ulm (Follow-up1)<br>
+          <strong>medical plus</strong> &#8212; K&#246;ln (abgelehnt)<br>
+          <strong>ProBu</strong> &#8212; Ravensburg (abgelehnt)<br>
+          <strong>Krolicki</strong> &#8212; Krefeld (nicht angesprochen)<br>
+          <strong>Dammeyer + Selzer</strong> &#8212; Mannheim (Follow-up2)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 2: PARTNER-DETAILS ==================== -->
+<div id="tab-partners" class="tab-content">
+
+  <div class="filter-row">
+    <button class="filter-btn active" onclick="filterPartners('all')">Alle (39)</button>
+    <button class="filter-btn" onclick="filterPartners('pipeline')">Deals (2)</button>
+    <button class="filter-btn" onclick="filterPartners('approached')">Angesprochen (19)</button>
+    <button class="filter-btn" onclick="filterPartners('declined')">Abgelehnt (6)</button>
+    <button class="filter-btn" onclick="filterPartners('not-approached')">Nicht angesprochen (18)</button>
+    <button class="filter-btn" onclick="filterPartners('succession')">Nachfolgerisiko (12)</button>
+  </div>
+
+  <div class="table-wrap">
+    <table id="partner-table">
+      <thead>
+        <tr>
+          <th class="sortable" onclick="sortTable(0)">Partner <span class="sort-arrow">&#x25BC;</span></th>
+          <th>Stadt</th>
+          <th class="text-center">Ant.</th>
+          <th>Typ</th>
+          <th class="text-center sortable" onclick="sortTable(4)">MA <span class="sort-arrow">&#x25BC;</span></th>
+          <th class="text-right sortable" onclick="sortTable(5)">Bilanzsumme <span class="sort-arrow">&#x25BC;</span></th>
+          <th class="text-right">EK</th>
+          <th>Outreach</th>
+          <th class="text-left">UBO / Gesellschafter</th>
+          <th>Hinweise</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr data-tags="succession approached">
+          <td><strong>AKM Vertriebs-GmbH</strong></td>
+          <td>Magdeburg</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-family">Familie</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right">1,4 M&#8364;</td>
+          <td class="text-right">1,1 M&#8364;</td>
+          <td><span class="badge b-followup">FU2</span> <span class="owner-detail">BA2, 17.06.25</span></td>
+          <td class="text-left">Lutz Behrendt 51% <span class="owner-detail">(83)</span><br>Katrin Berretz 49%</td>
+          <td class="highlight-red">83 J., kein Wechsel</td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>A. N. Orgmed e.K.</strong></td>
+          <td>Nordhausen</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Hannes Nacke <span class="owner-detail">(seit 2019)</span></td>
+          <td></td>
+        </tr>
+        <tr data-tags="approached">
+          <td><strong>Arndt Medizintechnik GmbH</strong></td>
+          <td>Langweid</td>
+          <td class="text-center highlight-teal">3</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center">25</td>
+          <td class="text-right">5,6 M&#8364;</td>
+          <td class="text-right">5,0 M&#8364;</td>
+          <td><span class="badge b-followup">FU2</span> <span class="owner-detail">BA1, 10.06.25</span></td>
+          <td class="text-left">Philipp Arndt 100% <span class="owner-detail">(49)</span></td>
+          <td>Gr&#246;&#223;ter LP (3 Ant.)</td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>Brune Medizintechnik GmbH</strong></td>
+          <td>Aalen</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-corp">Corp</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">100% Str&#228;tz Gruppe &#8594; Neund&#246;rfer</td>
+          <td class="highlight-red">Neu 08/2024, B&amp;B</td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>Chr. Frick e.K.</strong></td>
+          <td>M&#252;hlheim</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Josef Frick</td>
+          <td></td>
+        </tr>
+        <tr data-tags="pipeline" class="row-pipeline">
+          <td><strong>Com&#178;Med GmbH &amp; Co. KG</strong> <span class="pipeline-badge-inline">Fox</span></td>
+          <td>Hannover</td>
+          <td class="text-center highlight-teal">2</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right">1,0 M&#8364;</td>
+          <td class="text-right">0,1 M&#8364;</td>
+          <td><span class="badge b-pipeline">LOI</span></td>
+          <td class="text-left">J.-U. M&#252;hlan 100% <span class="owner-detail">(62)</span></td>
+          <td class="highlight-teal">In DD, EV 1,6 M&#8364;</td>
+        </tr>
+        <tr data-tags="approached">
+          <td><strong>Dammeyer + Selzer GmbH &amp; Co. KG</strong></td>
+          <td>Mannheim</td>
+          <td class="text-center highlight-teal">2</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right">1,1 M&#8364;</td>
+          <td class="text-right">0,2 M&#8364;</td>
+          <td><span class="badge b-followup">FU2</span> <span class="owner-detail">BA1, 10.06.25</span></td>
+          <td class="text-left">Thomas Bruckmeir 100% <span class="owner-detail">(69)</span></td>
+          <td>Neue KG 2021</td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>DocCheck Shop GmbH</strong></td>
+          <td>K&#246;ln</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-corp">Corp</span></td>
+          <td class="text-center">49</td>
+          <td class="text-right">8,6 M&#8364;</td>
+          <td class="text-right dim">k.A.</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">DocCheck-Konzern</td>
+          <td>Umsatz: 17,0 M&#8364;</td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>Fairmed Medizintechnik KG</strong></td>
+          <td>Vomp (AT)</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-foreign">Ausland</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">&#214;sterreich &#8212; kein DE-Register</td>
+          <td></td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>F&#252;ldner Medizintechnik GmbH</strong></td>
+          <td>Gera</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-corp">Corp</span></td>
+          <td class="text-center">20</td>
+          <td class="text-right">2,4 M&#8364;</td>
+          <td class="text-right">1,3 M&#8364;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">100% HEYNER Holding <span class="owner-detail">(UBO: 404)</span></td>
+          <td class="highlight-red">Holding-&#220;bernahme</td>
+        </tr>
+        <tr data-tags="approached">
+          <td><strong>Heine &amp; B&#246;hm GmbH</strong></td>
+          <td>Dresden</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center">19</td>
+          <td class="text-right">0,7 M&#8364;</td>
+          <td class="text-right">0,4 M&#8364;</td>
+          <td><span class="badge b-meeting">Meeting</span> <span class="owner-detail">BA3, 23.06.25</span></td>
+          <td class="text-left">Ralf Schlechte 100% <span class="owner-detail">(55)</span></td>
+          <td class="highlight-green">Meeting erreicht</td>
+        </tr>
+        <tr data-tags="approached">
+          <td><strong>Heldt + Wien GmbH</strong></td>
+          <td>Gifhorn</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center">14</td>
+          <td class="text-right">0,9 M&#8364;</td>
+          <td class="text-right">0,3 M&#8364;</td>
+          <td><span class="badge b-sent">BA8</span> <span class="owner-detail">20.05.26</span></td>
+          <td class="text-left">Volker Raguse 100% <span class="owner-detail">(33)</span></td>
+          <td class="highlight-green">Neugr&#252;ndung 2021, 33 J.</td>
+        </tr>
+        <tr data-tags="succession approached">
+          <td><strong>hubrich medical GmbH &amp; Co KG</strong></td>
+          <td>Aschaffenburg</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-family">Familie</span></td>
+          <td class="text-center">25</td>
+          <td class="text-right">0,9 M&#8364;</td>
+          <td class="text-right">75 K&#8364;</td>
+          <td><span class="badge b-followup">FU1</span> <span class="owner-detail">BA7, 11.11.25</span></td>
+          <td class="text-left">Wolfgang Hubrich 50% <span class="owner-detail">(72)</span><br>Christian Hubrich 50% <span class="owner-detail">(46)</span></td>
+          <td class="highlight-amber">72 J., Nachfolge begonnen</td>
+        </tr>
+        <tr data-tags="succession not-approached">
+          <td><strong>J&#252;rgen Puppe GmbH</strong></td>
+          <td>Zerbst</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-family">Familie</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right">0,3 M&#8364;</td>
+          <td class="text-right">0,1 M&#8364;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">J&#252;rgen Puppe 90% <span class="owner-detail">(77)</span><br>Steffi Pfeifer 10%</td>
+          <td class="highlight-red">77 J., 90% konzentriert</td>
+        </tr>
+        <tr data-tags="approached">
+          <td><strong>K. Egner GmbH &amp; Co. KG</strong></td>
+          <td>Linden</td>
+          <td class="text-center highlight-teal">3</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center">7</td>
+          <td class="text-right">1,6 M&#8364;</td>
+          <td class="text-right">1,4 M&#8364;</td>
+          <td><span class="badge b-followup">FU2</span> <span class="owner-detail">BA1, 10.06.25</span></td>
+          <td class="text-left">Stefan B&#246;hm 100% <span class="owner-detail">(54)</span></td>
+          <td>Gr&#246;&#223;ter LP (gleichauf)</td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>Knorre &amp; Molder GmbH</strong></td>
+          <td>Erfurt</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-family">Familie</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right">0,8 M&#8364;</td>
+          <td class="text-right">0,6 M&#8364;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Ronald Knorre 50% <span class="owner-detail">(52)</span><br>Sabine Knorre-Schott 50%</td>
+          <td></td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>Krolicki Medizintechnik GmbH &amp; Co. KG</strong></td>
+          <td>Krefeld</td>
+          <td class="text-center highlight-teal">2</td>
+          <td><span class="badge b-corp">Corp</span></td>
+          <td class="text-center">25</td>
+          <td class="text-right">0,9 M&#8364;</td>
+          <td class="text-right">0,2 M&#8364;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Medivest GmbH + Medoneo GmbH</td>
+          <td class="highlight-red">Ext. Investoren 2020</td>
+        </tr>
+        <tr data-tags="succession declined">
+          <td><strong>KS Medizintechnik-Handels GmbH</strong></td>
+          <td>Felsberg</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center">31</td>
+          <td class="text-right">3,2 M&#8364;</td>
+          <td class="text-right">1,5 M&#8364;</td>
+          <td><span class="badge b-declined">Abgelehnt</span> <span class="owner-detail">BA1</span></td>
+          <td class="text-left">Egon Kohzer 97,5%</td>
+          <td class="highlight-amber">97,5% konzentriert</td>
+        </tr>
+        <tr data-tags="pipeline" class="row-pipeline">
+          <td><strong>KVG Vertriebs-GmbH</strong> <span class="pipeline-badge-inline">Wolf</span></td>
+          <td>Seeshaupt</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-family">Familie</span></td>
+          <td class="text-center">22</td>
+          <td class="text-right">2,3 M&#8364;</td>
+          <td class="text-right">1,0 M&#8364;</td>
+          <td><span class="badge b-pipeline">Deal</span> <span class="owner-detail">BA7</span></td>
+          <td class="text-left">Ralf Behrendt 50% <span class="owner-detail">(50)</span><br>Thilo Berendt 50% <span class="owner-detail">(47)</span></td>
+          <td class="highlight-teal">Angebotsverhandlung</td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>Ladurner Hospitalia S.R.L.</strong></td>
+          <td>Meran (IT)</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-foreign">Ausland</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Italien &#8212; kein DE-Register</td>
+          <td></td>
+        </tr>
+        <tr data-tags="succession not-approached">
+          <td><strong>m-tec mbH</strong></td>
+          <td>Cottbus</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center">2</td>
+          <td class="text-right">0,1 M&#8364;</td>
+          <td class="text-right">97 K&#8364;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Andreas Heller 100% <span class="owner-detail">(69)</span></td>
+          <td class="highlight-amber">69 J.</td>
+        </tr>
+        <tr data-tags="approached">
+          <td><strong>Medical Eins GmbH</strong></td>
+          <td>Rendsburg</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center">32</td>
+          <td class="text-right">2,1 M&#8364;</td>
+          <td class="text-right">1,3 M&#8364;</td>
+          <td><span class="badge b-followup">FU2</span> <span class="owner-detail">BA1, 10.06.25</span></td>
+          <td class="text-left">Ralf Timm 100% <span class="owner-detail">(63)</span></td>
+          <td></td>
+        </tr>
+        <tr data-tags="declined">
+          <td><strong>medical plus GmbH</strong></td>
+          <td>K&#246;ln</td>
+          <td class="text-center highlight-teal">2</td>
+          <td><span class="badge b-family">Familie</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right">1,4 M&#8364;</td>
+          <td class="text-right">0,7 M&#8364;</td>
+          <td><span class="badge b-declined">Abgelehnt</span> <span class="owner-detail">BA1</span></td>
+          <td class="text-left">Marcus Eckert 50% <span class="owner-detail">(60)</span><br>Ingo de Hesselle 50%</td>
+          <td></td>
+        </tr>
+        <tr data-tags="succession declined">
+          <td><strong>medica nord Vertriebs GmbH</strong></td>
+          <td>G&#252;strow</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-family">Familie</span></td>
+          <td class="text-center">6</td>
+          <td class="text-right">0,4 M&#8364;</td>
+          <td class="text-right">0,2 M&#8364;</td>
+          <td><span class="badge b-declined">Abgelehnt</span> <span class="owner-detail">BA1</span></td>
+          <td class="text-left">Rebecca Schmidt 51% <span class="owner-detail">(46)</span><br>Birgit Schmidt 49% <span class="owner-detail">(70)</span></td>
+          <td class="highlight-green">Nachfolge erledigt</td>
+        </tr>
+        <tr data-tags="succession not-approached">
+          <td><strong>medelo Michael Longen e.K.</strong></td>
+          <td>Kenn</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Michael Longen <span class="owner-detail">(67)</span></td>
+          <td class="highlight-amber">67 J., Alleininhaber</td>
+        </tr>
+        <tr data-tags="succession not-approached">
+          <td><strong>Med. Steffen und Co. GmbH</strong></td>
+          <td>Saarwellingen</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-mixed">Gemischt</span></td>
+          <td class="text-center">13</td>
+          <td class="text-right">1,1 M&#8364;</td>
+          <td class="text-right">0,4 M&#8364;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Rudolf Steffen 55% <span class="owner-detail">(75)</span><br>Stein 20%, Jung 10%, Ronde 5%</td>
+          <td class="highlight-red">75 J., 55% konzentriert</td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>MMT M&#228;hler Medizintechnik</strong></td>
+          <td>G&#252;strow</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">e.K.</td>
+          <td></td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>Medicatechnik Esens</strong></td>
+          <td>Moorweg</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">e.K.</td>
+          <td></td>
+        </tr>
+        <tr data-tags="approached">
+          <td><strong>MTR GmbH Praxisplanung</strong></td>
+          <td>Reutlingen</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-mixed">Gemischt</span></td>
+          <td class="text-center">17</td>
+          <td class="text-right">4,5 M&#8364;</td>
+          <td class="text-right">3,9 M&#8364;</td>
+          <td><span class="badge b-followup">FU2</span> <span class="owner-detail">BA1, 10.06.25</span></td>
+          <td class="text-left">HRB 352419</td>
+          <td></td>
+        </tr>
+        <tr data-tags="declined">
+          <td><strong>ProBu GmbH (Promed Bubser)</strong></td>
+          <td>Ravensburg</td>
+          <td class="text-center highlight-teal">2</td>
+          <td><span class="badge b-corp">Corp</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right">2,1 M&#8364;</td>
+          <td class="text-right">1,8 M&#8364;</td>
+          <td><span class="badge b-declined">Abgelehnt</span> <span class="owner-detail">BA1</span></td>
+          <td class="text-left">Richard Bubser 100% <span class="owner-detail">(48)</span></td>
+          <td>Holding 2020</td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>Retzlaff GmbH</strong></td>
+          <td>Pritzwalk</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center">15</td>
+          <td class="text-right">0,4 M&#8364;</td>
+          <td class="text-right">28 K&#8364;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Inhaber n.v.</td>
+          <td></td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>Sanit&#228;tshaus NORDlicht GmbH</strong></td>
+          <td>Pritzwalk</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center">26</td>
+          <td class="text-right">4,4 M&#8364;</td>
+          <td class="text-right">1,5 M&#8364;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Inhaber n.v.</td>
+          <td></td>
+        </tr>
+        <tr data-tags="approached">
+          <td><strong>siramed GmbH &amp; Co. KG</strong></td>
+          <td>Ulm</td>
+          <td class="text-center highlight-teal">2</td>
+          <td><span class="badge b-family">Familie</span></td>
+          <td class="text-center">14</td>
+          <td class="text-right">1,2 M&#8364;</td>
+          <td class="text-right">25 K&#8364;</td>
+          <td><span class="badge b-followup">FU1</span> <span class="owner-detail">BA7, 11.11.25</span></td>
+          <td class="text-left">Alexander Schmid <span class="owner-detail">(67)</span><br>Maximilian Schmid <span class="owner-detail">(38, seit 10/24)</span></td>
+          <td class="highlight-green">Sohn eingestiegen 10/24</td>
+        </tr>
+        <tr data-tags="succession not-approached">
+          <td><strong>St&#228;hle &amp; Co. GmbH</strong></td>
+          <td>Pforzheim</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-family">Familie</span></td>
+          <td class="text-center">28</td>
+          <td class="text-right">0,9 M&#8364;</td>
+          <td class="text-right">64 K&#8364;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Kurt St&#228;hle 50% <span class="owner-detail">(87)</span><br>B&#228;rbel St&#228;hle 34% <span class="owner-detail">(85)</span></td>
+          <td class="highlight-red">87+85 J., S&#246;hne 60+</td>
+        </tr>
+        <tr data-tags="succession approached">
+          <td><strong>Stephan Beiner e.K.</strong></td>
+          <td>Landau</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td><span class="badge b-followup">FU2</span> <span class="owner-detail">BA1, 10.06.25</span></td>
+          <td class="text-left">Stephan Beiner <span class="owner-detail">(81)</span></td>
+          <td class="highlight-red">81 J., kein Nachfolger</td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>Storch und Beller &amp; Co GmbH</strong></td>
+          <td>Karlsruhe</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-corp">Corp</span></td>
+          <td class="text-center">271</td>
+          <td class="text-right">17,5 M&#8364;</td>
+          <td class="text-right">7,8 M&#8364;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">100% Schl&#228;fer und Beller NU</td>
+          <td>Familien-Holding, 271 MA</td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>Str&#228;tz FN GmbH</strong></td>
+          <td>Estenfeld</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-family">Familie</span></td>
+          <td class="text-center">43</td>
+          <td class="text-right">2,2 M&#8364;</td>
+          <td class="text-right">1,0 M&#8364;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Adrian Neund&#246;rfer 70% <span class="owner-detail">(33)</span><br>Thomas Neund&#246;rfer 30%</td>
+          <td>Kontrolliert auch Brune</td>
+        </tr>
+        <tr data-tags="declined">
+          <td><strong>Stusche GmbH</strong></td>
+          <td>Teltow</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-mixed">Gemischt</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td><span class="badge b-declined">Abgelehnt</span> <span class="owner-detail">BA4</span></td>
+          <td class="text-left">HRB 40620</td>
+          <td>Rechtsformwechsel</td>
+        </tr>
+        <tr data-tags="approached">
+          <td><strong>TROLAB GmbH &amp; Co. KG</strong></td>
+          <td>Rednitzhembach</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-sole">Einzel</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td class="text-right dim">k.A.</td>
+          <td><span class="badge b-followup">FU2</span> <span class="owner-detail">BA1, 10.06.25</span></td>
+          <td class="text-left">Robert Meyer <span class="owner-detail">(64, seit 2022)</span></td>
+          <td>LP gewechselt 2022</td>
+        </tr>
+        <tr data-tags="succession not-approached">
+          <td><strong>Ursula Mei&#223;ner</strong></td>
+          <td>Wurzen</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-person">Person</span></td>
+          <td class="text-center dim">&#8212;</td>
+          <td class="text-right dim">&#8212;</td>
+          <td class="text-right dim">&#8212;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Nat&#252;rliche Person <span class="owner-detail">(72)</span></td>
+          <td class="highlight-amber">Einzige nat. Person LP</td>
+        </tr>
+        <tr data-tags="not-approached">
+          <td><strong>Wiesanha S&#246;hngen GmbH</strong></td>
+          <td>Wiesbaden</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-family">Familie</span></td>
+          <td class="text-center dim">k.A.</td>
+          <td class="text-right">1,2 M&#8364;</td>
+          <td class="text-right">0,4 M&#8364;</td>
+          <td><span class="badge b-not-approached">&#8212;</span></td>
+          <td class="text-left">Thilo S&#246;hngen 33% <span class="owner-detail">(63)</span><br>Annkatrin 33%, Niels 33%</td>
+          <td class="highlight-green">3-Wege-Generationssplit</td>
+        </tr>
+        <tr data-tags="succession declined">
+          <td><strong>Zimeda GmbH &amp; Co. KG</strong></td>
+          <td>Passau</td>
+          <td class="text-center">1</td>
+          <td><span class="badge b-family">Familie</span></td>
+          <td class="text-center">74</td>
+          <td class="text-right">4,2 M&#8364;</td>
+          <td class="text-right">0,9 M&#8364;</td>
+          <td><span class="badge b-declined">Abgelehnt</span> <span class="owner-detail">BA2</span></td>
+          <td class="text-left">Gerhard Zizlsperger <span class="owner-detail">(76)</span></td>
+          <td class="highlight-amber">76 J., abgelehnt</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="note">
+    Datenquellen: OpenRegister API (Ownership/Finanzen), ALLEX Pipeline-DB (Outreach-Status). Stand: 08. Jul 2026.<br>
+    BA = Briefaktion (Batch-Nr.), FU = Follow-up-Stufe. k.A. = keine Angabe. Ant. = Co-Med-Anteile (&#224; 35 K&#8364;).<br>
+    <span style="color:var(--teal);font-weight:600;">&#9632;</span> Teal = aktiver Deal &nbsp;
+    <span style="color:var(--green);font-weight:600;">&#9632;</span> Meeting &nbsp;
+    <span style="color:var(--red);font-weight:600;">&#9632;</span> Abgelehnt
+  </p>
+</div>
+
+<!-- ==================== TAB 3: CO-MED ANTEILSÄNDERUNGEN ==================== -->
+<div id="tab-comed-shares" class="tab-content">
+  <div class="section">
+    <div class="section-title">Co-Med KG &#8212; Anteils&#228;nderungen der letzten Jahre</div>
+    <div class="card" style="margin-bottom: 1.25rem;">
+      <div class="card-body">
+        <strong>Datenverf&#252;gbarkeit:</strong> OpenRegister liefert aktuellen Gesellschafterstand (HRA 10841), aber keine historischen Eintrittsdaten (Start = null f&#252;r die meisten LPs). Alle ohne Startdatum = Gr&#252;ndungsgesellschafter (15.03.2010). &#196;nderungen aus Gr&#252;ndungsdaten und Registereintr&#228;gen abgeleitet.
+      </div>
+    </div>
+    <div class="timeline">
+      <div class="tl-item tl-green">
+        <div class="tl-date">Apr. 2025</div>
+        <div class="tl-title">MTECA Adamosky &#8212; neues e.K. beigetreten</div>
+        <div class="tl-body">Neues Einzelunternehmen in Aying (Bayern). Einlage: 35 K&#8364;.</div>
+      </div>
+      <div class="tl-item tl-purple">
+        <div class="tl-date">Feb. 2025</div>
+        <div class="tl-title">Stusche &#8212; Rechtsformwechsel e.K. &#8594; GmbH</div>
+        <div class="tl-body">Medizin-Technik Stusche e.K. (Teltow) beendet, ersetzt durch Stusche GmbH (HRB 40620). Gleiche Einlage.</div>
+      </div>
+      <div class="tl-item tl-green">
+        <div class="tl-date">Aug. 2024</div>
+        <div class="tl-title">Brune Medizintechnik &#8212; neuer LP (Neund&#246;rfer Buy-and-Build)</div>
+        <div class="tl-body">Brune Medizintechnik GmbH (Aalen) gegr&#252;ndet 23.08.2024. 100% Str&#228;tz Gruppe UG &#8594; Kellerhaus &#8594; Neund&#246;rfer. Zweiter Co-Med-Anteil der Neund&#246;rfer-Gruppe.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">Okt. 2024</div>
+        <div class="tl-title">siramed &#8212; Maximilian Schmid beitritt LP</div>
+        <div class="tl-body">Sohn (geb. 1988) tritt als LP bei mit Einlage 20 K&#8364; (Vater beh&#228;lt 5 K&#8364;). Co-Med-Anteil bleibt 70 K&#8364;.</div>
+      </div>
+      <div class="tl-item tl-green">
+        <div class="tl-date">Aug. 2021</div>
+        <div class="tl-title">Dammeyer + Selzer &#8212; neue KG beigetreten (2 Anteile)</div>
+        <div class="tl-body">Mannheim, Bruckmeir (geb. 1957) alleiniger LP. Einlage: 70 K&#8364;.</div>
+      </div>
+      <div class="tl-item tl-green">
+        <div class="tl-date">Aug. 2021</div>
+        <div class="tl-title">Heldt + Wien &#8212; Neugr&#252;ndung beigetreten</div>
+        <div class="tl-body">Gifhorn, Volker Raguse (geb. 1993) alleiniger Gesellschafter. Einlage: 35 K&#8364;.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">2020</div>
+        <div class="tl-title">Krolicki &#8212; Umstrukturierung mit externen Investoren</div>
+        <div class="tl-body">Neue KG gegr&#252;ndet 04.03.2020. Medivest + Medoneo als neue LPs. Keine Krolicki-Familie mehr sichtbar.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">2020</div>
+        <div class="tl-title">ProBu GmbH &#8212; Holding-Umstrukturierung (Bubser)</div>
+        <div class="tl-body">Richard Bubser gr&#252;ndete ProBu GmbH am 18.02.2020 als Management-/Finanzholding.</div>
+      </div>
+      <div class="tl-item tl-amber">
+        <div class="tl-date">15.03.2010</div>
+        <div class="tl-title">Gr&#252;ndung der Co-Med KG &#8212; ~30 Gr&#252;ndungsgesellschafter</div>
+        <div class="tl-body">Ursula Mei&#223;ner (Wurzen, geb. 1954) einzige nat&#252;rliche Person unter den LPs.</div>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Einlagen-&#220;bersicht</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Einlage</th><th class="text-center">Anzahl</th><th>Partner</th></tr></thead>
+        <tbody>
+          <tr><td><strong>105 K&#8364;</strong> (3 Ant.)</td><td class="text-center">2</td><td>K. Egner, Arndt</td></tr>
+          <tr><td><strong>70 K&#8364;</strong> (2 Ant.)</td><td class="text-center">6</td><td>Com&#178;Med <span class="pipeline-badge-inline">Fox</span>, siramed, medical plus, ProBu, Krolicki, Dammeyer+Selzer</td></tr>
+          <tr><td><strong>35 K&#8364;</strong> (1 Ant.)</td><td class="text-center">31</td><td>Alle &#252;brigen (inkl. KVG <span class="pipeline-badge-inline">Wolf</span>)</td></tr>
+          <tr style="border-top:2px solid var(--border)"><td><strong>Gesamt</strong></td><td class="text-center"><strong>39</strong></td><td>~1,6 M&#8364; (47 &#215; 35 K&#8364;)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== TAB 4: GESELLSCHAFTERÄNDERUNGEN ==================== -->
+<div id="tab-partner-changes" class="tab-content">
+  <div class="section">
+    <div class="section-title">Gesellschafter&#228;nderungen auf Partner-Ebene (seit 2020)</div>
+    <div class="card" style="margin-bottom: 1.25rem;">
+      <div class="card-body">
+        <strong>Methodik:</strong> Aktueller Gesellschafterstand + &#8222;seit&#8220;-Daten aus OpenRegister. Historische Aus-/Eintritte vor 2020 nur fragmentarisch sichtbar.
+      </div>
+    </div>
+    <div class="timeline">
+      <div class="tl-item tl-green">
+        <div class="tl-date">Okt. 2024</div>
+        <div class="tl-title">siramed &#8212; Generationswechsel</div>
+        <div class="tl-body"><strong>Maximilian Schmid</strong> (38) tritt als LP bei mit Einlage 20 K&#8364; (4&#215; Vater). Alexander Schmid (67) beh&#228;lt 5 K&#8364;.</div>
+      </div>
+      <div class="tl-item tl-green">
+        <div class="tl-date">Aug. 2024</div>
+        <div class="tl-title">Brune Medizintechnik &#8212; Neund&#246;rfer Buy-and-Build</div>
+        <div class="tl-body">Brune GmbH (Aalen) gegr&#252;ndet. UBO-Kette: Adrian + Thomas Neund&#246;rfer &#8594; Neund&#246;rfer Besitz &#8594; Kellerhaus &#8594; Str&#228;tz Gruppe &#8594; Brune.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">Jul. 2023</div>
+        <div class="tl-title">Neund&#246;rfer Besitz &#8212; Adrian erh&#246;ht auf 70%</div>
+        <div class="tl-body">Adrian (33) &#252;bernimmt operative Mehrheit. Thomas (68) reduziert auf 30%.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">2022</div>
+        <div class="tl-title">TROLAB &#8212; LP-Wechsel</div>
+        <div class="tl-body">Robert Meyer (geb. 1962) wird neuer LP. Vorg&#228;nger nicht sichtbar.</div>
+      </div>
+      <div class="tl-item tl-amber">
+        <div class="tl-date">2021</div>
+        <div class="tl-title">Dammeyer + Selzer &#8212; neue KG</div>
+        <div class="tl-body">Thomas Bruckmeir (69) alleiniger LP. Kein Bezug zum Namensgeber erkennbar.</div>
+      </div>
+      <div class="tl-item tl-green">
+        <div class="tl-date">2021</div>
+        <div class="tl-title">Heldt + Wien &#8212; Neugr&#252;ndung durch jungen Inhaber</div>
+        <div class="tl-body">Volker Raguse (33) alleiniger Gesellschafter. M&#246;glicherweise &#220;bernahme eines bestehenden Unternehmens.</div>
+      </div>
+      <div class="tl-item tl-red">
+        <div class="tl-date">2020</div>
+        <div class="tl-title">Krolicki &#8212; externe Investoren&#252;bernahme</div>
+        <div class="tl-body">Neue KG 04.03.2020. Medivest GmbH (Oelfke, Winnenden) + Medoneo GmbH (Beer, Merzig). Keine Krolicki-Familie mehr.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">2020</div>
+        <div class="tl-title">ProBu &#8212; Holding-Umstrukturierung</div>
+        <div class="tl-body">Richard Bubser (48) gr&#252;ndete ProBu GmbH als Management-/Finanzholding.</div>
+      </div>
+      <div class="tl-item tl-purple">
+        <div class="tl-date">Feb. 2025</div>
+        <div class="tl-title">Stusche &#8212; e.K. &#8594; GmbH</div>
+        <div class="tl-body">Rechtsformwechsel, kein Austritt aus Co-Med.</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-date">2012</div>
+        <div class="tl-title">hubrich medical &#8212; Sohn als 50%-Partner</div>
+        <div class="tl-body">Christian Hubrich (46) tritt als LP mit 50% bei. Seit &#252;ber 13 Jahren gleichberechtigter Partner.</div>
+      </div>
+    </div>
+  </div>
+  <div class="section">
+    <div class="section-title">Muster-Zusammenfassung</div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title" style="color:var(--red)">Konsolidierung / Externe Investoren</div>
+        <div class="card-body">
+          <strong>Neund&#246;rfer/Str&#228;tz:</strong> B&amp;B, 2 Anteile, Holding-Kette &#8212; nicht angesprochen<br>
+          <strong>Krolicki:</strong> Ext. Investoren 2020 &#8212; nicht angesprochen<br>
+          <strong>F&#252;ldner:</strong> 100% HEYNER Holding &#8212; nicht angesprochen<br>
+          <strong>Storch und Beller:</strong> Familien-Holding, 271 MA &#8212; nicht angesprochen
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="color:var(--green)">Nachfolge / Generationswechsel</div>
+        <div class="card-body">
+          <strong>Abgeschlossen:</strong> medica nord (abgelehnt), Neund&#246;rfer/Str&#228;tz (n. angespr.)<br>
+          <strong>Eingeleitet:</strong> siramed (FU1), hubrich (FU1), Wiesanha (n. angespr.)<br>
+          <strong>Offen:</strong> St&#228;hle 87 J. (n. angespr.), AKM 83 J. (FU2), Beiner 81 J. (FU2), Puppe 77 J. (n. angespr.)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(id) {
+  document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+function filterPartners(tag) {
+  document.querySelectorAll('#tab-partners .filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  event.target.classList.add('active');
+  document.querySelectorAll('#partner-table tbody tr').forEach(function(row) {
+    if (tag === 'all') { row.style.display = ''; }
+    else { row.style.display = (row.dataset.tags || '').split(' ').indexOf(tag) >= 0 ? '' : 'none'; }
+  });
+}
+function sortTable(col) {
+  var table = document.getElementById('partner-table');
+  var tbody = table.querySelector('tbody');
+  var rows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+  var th = table.querySelectorAll('th')[col];
+  var asc = !th.classList.contains('sorted') || th.dataset.dir === 'desc';
+  table.querySelectorAll('th').forEach(function(h) { h.classList.remove('sorted'); delete h.dataset.dir; });
+  th.classList.add('sorted'); th.dataset.dir = asc ? 'asc' : 'desc';
+  rows.sort(function(a, b) {
+    var va = a.cells[col].textContent.trim(), vb = b.cells[col].textContent.trim();
+    if (col === 4 || col === 5) {
+      var p = function(s) { s = s.replace(/k\.A\.|—/g,'').trim(); if(!s) return -1; return parseFloat(s.replace(/[^\d,.\-]/g,'').replace(/\./g,'').replace(',','.'))||  -1; };
+      return asc ? p(va)-p(vb) : p(vb)-p(va);
+    }
+    return asc ? va.localeCompare(vb,'de') : vb.localeCompare(va,'de');
+  });
+  rows.forEach(function(r) { tbody.appendChild(r); });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Research — Repuro Suite</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='9' fill='%230891B2'/><rect x='7' y='17.5' width='7.5' height='7.5' rx='2' fill='white'/><rect x='12.25' y='12.25' width='7.5' height='7.5' rx='2' fill='white' opacity='.78'/><rect x='17.5' y='7' width='7.5' height='7.5' rx='2' fill='white'/></svg>" />
+<style>
+  :root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --ink: #111827;
+    --secondary: #4b5563;
+    --muted: #9ca3af;
+    --border: rgba(0,0,0,0.07);
+    --border-hover: rgba(0,0,0,0.14);
+    --brand: #0891B2;
+    --brand-light: #ecfeff;
+    --emerald: #059669;
+    --emerald-light: #ecfdf5;
+    --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    color: var(--ink);
+    background: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+  .topbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .topbar-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .topbar-back:hover { color: var(--ink); background: rgba(0,0,0,0.04); }
+  .topbar-back svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .topbar-sep { width: 1px; height: 20px; background: var(--border); }
+  .topbar-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+
+  .content { max-width: 900px; margin: 0 auto; padding: 48px 40px; }
+
+  .page-title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .page-desc { font-size: 15px; color: var(--secondary); line-height: 1.5; margin-bottom: 40px; }
+
+  .section-label {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.16em;
+    color: var(--muted); margin-bottom: 14px;
+  }
+
+  .artifact-list { display: flex; flex-direction: column; gap: 12px; }
+
+  .artifact {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    align-items: center;
+    gap: 20px;
+    padding: 24px 28px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 150ms ease, box-shadow 150ms ease, transform 150ms var(--ease);
+  }
+  .artifact:hover {
+    border-color: var(--border-hover);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.07);
+    transform: translateY(-1px);
+  }
+
+  .artifact-icon {
+    width: 56px; height: 56px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--emerald-light);
+  }
+  .artifact-icon svg {
+    width: 26px; height: 26px; stroke: var(--emerald);
+    stroke-width: 1.6; fill: none; stroke-linecap: round; stroke-linejoin: round;
+  }
+
+  .artifact-name { font-size: 16px; font-weight: 650; margin-bottom: 3px; letter-spacing: -0.01em; }
+  .artifact-desc { font-size: 13px; color: var(--secondary); line-height: 1.45; }
+  .artifact-meta { font-size: 11px; color: var(--muted); margin-top: 5px; }
+
+  .artifact-arrow {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 150ms ease;
+  }
+  .artifact:hover .artifact-arrow { background: rgba(0,0,0,0.04); }
+  .artifact-arrow svg {
+    width: 16px; height: 16px; stroke: var(--muted); stroke-width: 2;
+    fill: none; stroke-linecap: round; stroke-linejoin: round;
+    transition: stroke 150ms ease, transform 150ms var(--ease);
+  }
+  .artifact:hover .artifact-arrow svg { stroke: var(--emerald); transform: translateX(3px); }
+
+  @media (max-width: 640px) {
+    .content { padding: 24px 16px; }
+    .topbar { padding: 0 16px; }
+    .artifact { grid-template-columns: 48px 1fr auto; padding: 18px 20px; gap: 14px; }
+    .artifact-icon { width: 48px; height: 48px; }
+  }
+</style>
+</head>
+<body>
+  <nav class="topbar">
+    <a class="topbar-back" href="/">
+      <svg viewBox="0 0 24 24"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      Suite
+    </a>
+    <div class="topbar-sep"></div>
+    <span class="topbar-title">Research</span>
+  </nav>
+
+  <div class="content">
+    <h1 class="page-title">Research</h1>
+    <p class="page-desc">Market research, ownership maps, and deal intelligence artifacts. Each report is self-contained and interactive.</p>
+
+    <div class="section-label">Ownership &amp; Market Maps</div>
+    <div class="artifact-list">
+
+      <a class="artifact" href="comed-ownership-map.html">
+        <div class="artifact-icon">
+          <svg viewBox="0 0 24 24"><path d="M16 22h2a2 2 0 0 0 2-2V7.5L14.5 2H6a2 2 0 0 0-2 2v3"/><polyline points="14 2 14 8 20 8"/><path d="M3 14h6"/><path d="M6 11v6"/><circle cx="6" cy="19" r="2"/><path d="M6 21v1"/></svg>
+        </div>
+        <div>
+          <div class="artifact-name">Co-Med Einkaufsverbund</div>
+          <div class="artifact-desc">Ownership map aller 39 LP-Gesellschafter. Shareholder-Bewegungen, Nachfolgerisiken, Konsolidierungsmuster, Pipeline-Abgleich (Briefaktion).</div>
+          <div class="artifact-meta">Stand: 08. Jul 2026 &middot; OpenRegister + Pipeline-DB</div>
+        </div>
+        <div class="artifact-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg></div>
+      </a>
+
+    </div>
+  </div>
+</body>
+</html>

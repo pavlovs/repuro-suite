@@ -4,6 +4,26 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.26 — 2026-07-08
+
+### Investor Room — draft/publish workflow + 07-Jul weekly content (aef2c61)
+- Auth-aware `GET /`: admin sees the live draft with a toolbar
+  (publish/unpublish/week selector); the investor user sees the published
+  snapshot or a holding page. Publish snapshots templates + inline edits
+  into a publication row (denylist scan, auto-archive of the previous week);
+  frozen edits injected as `__FROZEN_EDITS` — published pages make no live
+  API calls. Schema v3 migration; 33 new tests.
+- Weekly content 07 Jul 2026 (Fox/Mantis DD status, Mouse LOI, decisions).
+- Volume check before this deploy: `/data/investor.db` live with data
+  (WAL-persisted inline edits), served by prod, litestream-replicated since
+  v2.1.22 — investor mode needed no infra change, code ships with the image.
+
+### Suite — Research module (static)
+- `/research/` static route (Caddy `file_server`, no-cache) serving
+  `suite/static/research/` — first artifact: Com2Med ownership map.
+  Behind suite basic auth; investor user remains confined to `/investor/*`.
+- Landing page card added.
+
 ## v2.1.25 — 2026-07-08
 
 ### Cockpit — meeting/overview content rules + interaction bug fixes (suite-fix batch)

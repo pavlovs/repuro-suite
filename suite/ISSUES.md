@@ -11,8 +11,7 @@ Claude reads this when `/suite-fix` is invoked.
 ---
 ## Bugs // Improvements (open)
 
-- [ ] Dealroom onepager MOUSE: add the content — still not in (content/data sync, Roman handling separately)
-- [ ] Update the local MOUSE onepager into the online Dealroom (content/data sync) *(deferred 2026-07-08: prod dealroom.db data push needs the flyctl SSH pipe, which is currently broken on this laptop ("handle is invalid"); pick up when SSH works or content lands via #1 — no code change involved)*
+*(none — all clear as of 2026-07-08)*
 
 
 
@@ -42,6 +41,8 @@ Claude reads this when `/suite-fix` is invoked.
 ---
 ## Resolved
 Deployed fixes are pruned on each `/suite-fix` run. See git history of this file for the full log.
+
+- [x] MOUSE onepager into online Dealroom — pushed 2026-07-08 via flyctl SSH (onepager fields + 16 commercial + 40 customer rows + 19 missing financials; prod-only rows preserved; prod DB backed up first). Verified rendering live on /deals/?deal=Mouse. NOTE: flyctl SSH was never broken — the trailing "handle is invalid" is a cosmetic Windows console teardown error AFTER successful output.
 
 Cockpit fix batch — fixed + deployed + click-verified live 2026-07-08 (v2.1.25):
 

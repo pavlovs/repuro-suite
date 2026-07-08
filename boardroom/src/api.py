@@ -883,28 +883,14 @@ def _archive_select_html(is_investor: bool, light_bg: bool = False) -> str:
 
 
 def _draft_controls_html() -> str:
-    """Admin-only cluster for the draft view, styled like the topbar's own
-    room-tag chips: DRAFT status (incl. what investors currently see) +
-    Publish / Unpublish. Lives in the topline next to the Archive select."""
-    pub = (
-        db.get_conn()
-        .execute(
-            "SELECT ref FROM publications WHERE kind='investor_view' "
-            "AND status='published' ORDER BY published_at DESC LIMIT 1"
-        )
-        .fetchone()
-    )
-    see = _ref_label(pub["ref"]) if pub else "nothing"
+    """Admin draft chrome = ONE Publish button, nothing else (Roman 08-07:
+    no chips, no extra buttons — EDIT MODE badge already marks the draft and
+    the Archive '(live)' option already shows what investors see). Unpublish
+    stays API-only: POST /api/investor-view/unpublish."""
     return (
-        '<div id="iv-draft" style="display:flex;align-items:center;gap:8px">'
-        '<span style="font-size:11px;font-weight:700;letter-spacing:.06em;'
-        'background:rgba(255,255,255,.18);padding:3px 10px;border-radius:20px;white-space:nowrap">'
-        "DRAFT · investors see " + see + "</span>"
+        '<div id="iv-draft" style="display:flex;align-items:center">'
         '<button onclick="_pubIV()" style="background:#fff;color:#0891B2;border:none;'
         'padding:5px 14px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">Publish</button>'
-        '<button onclick="_unpubIV()" style="background:transparent;color:#fff;'
-        "border:1px solid rgba(255,255,255,.4);padding:4px 10px;border-radius:6px;"
-        'font-size:11px;cursor:pointer">Unpublish</button>'
         "</div>"
         "<script>"
         "function _pubIV(){if(!confirm('Publish to investors? Inline edits are frozen into this week and cleared for the next.'))return;"
@@ -913,25 +899,25 @@ def _draft_controls_html() -> str:
         "if(d.status==='published'){alert('Published');location.reload()}"
         "else alert('Error: '+(d.detail||JSON.stringify(d)))"
         "}).catch(function(e){alert('Error: '+e)})}"
-        "function _unpubIV(){if(!confirm('Unpublish? Investors fall back to the archive.'))return;"
-        "fetch('api/investor-view/unpublish',{method:'POST',credentials:'include'})"
-        ".then(function(r){return r.json()}).then(function(d){"
-        "if(d.ok){alert('Unpublished');location.reload()}"
-        "else alert('Error: '+(d.detail||JSON.stringify(d)))"
-        "}).catch(function(e){alert('Error: '+e)})}"
         "</script>"
     )
 
 
 def _inject_topline(html: str, controls: str) -> str:
-    """Insert controls into the existing blue topline as flex siblings right
-    after the .meta block. No injected bars, no body-padding hacks."""
+    """Insert controls INTO the existing blue topline, LEFT of the .meta block.
+    The meta ('Investor View / Weekly call · date') keeps its far-right anchor
+    (Roman 08-07 review 2: date stays right, Archive sits left of it); the
+    controls wrapper takes over meta's auto left-margin."""
+    wrapper = (
+        '<div id="iv-controls" style="margin-left:auto;display:flex;'
+        'align-items:center;gap:8px">' + controls + "</div>"
+        "<style>.topbar .meta{margin-left:0}</style>"
+    )
     out, n = re.subn(
-        r'(<div class="meta">.*?</div>)',
-        lambda m: m.group(1) + controls,
+        r'<div class="meta">',
+        lambda m: wrapper + m.group(0),
         html,
         count=1,
-        flags=re.S,
     )
     return out if n else html
 

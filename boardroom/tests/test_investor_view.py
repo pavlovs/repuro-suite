@@ -72,8 +72,7 @@ def test_admin_sees_draft_with_toolbar(client):
     assert r.status_code == 200
     html = r.text
     assert "iv-draft" in html
-    assert "DRAFT" in html
-    assert "investors see" in html  # live indicator of what Strada gets
+    assert "Publish" in html  # the single admin control in the topline
 
 
 def test_investor_sees_holding_page_when_nothing_published(client):
@@ -588,13 +587,16 @@ def test_holding_page_offers_archive_switcher(client):
     assert pub["url"] in r.text
 
 
-def test_draft_toolbar_shows_what_investors_see(client):
+def test_draft_minimal_chrome(client):
+    """Admin draft chrome = Publish + Archive only; the published week is
+    marked '(live)' inside the Archive options."""
     r = client.get("/", headers=_admin())
-    assert "investors see" in r.text
-    assert "investors see nothing" in r.text
-    _publish(client)
+    assert "Publish" in r.text and "wk-archive" in r.text
+    assert "Unpublish" not in r.text  # API-only, no bar clutter
+    assert "(live)" not in r.text  # nothing published yet
+    pub = _publish(client)
     r = client.get("/", headers=_admin())
-    assert "investors see nothing" not in r.text
+    assert "(live)" in r.text and pub["url"] in r.text
 
 
 def test_legacy_week_query_still_works(client):

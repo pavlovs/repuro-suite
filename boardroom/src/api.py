@@ -554,19 +554,35 @@ def index(
 ):
     is_investor = x_remote_user == "investor"
 
-    if week:
-        return _serve_archived_week(week)
+    if week:  # legacy ?week= links; dated path URLs are canonical
+        iso = _iso_from_ref(week)
+        if not iso:
+            raise HTTPException(404, "no investor view for that week")
+        return _serve_archived_week(iso, is_investor)
 
     if is_investor:
-        return _serve_published_view()
+        return _serve_published_view(True)
 
     return HTMLResponse(_inject_draft_toolbar(_assemble_page()))
 
 
+@app.get("/{ref_date}")
+def week_page(ref_date: str, x_remote_user: str | None = Header(default=None)):
+    """Dated static snapshot URL: /260702 (external: /investor/260702).
+    Published weeks live here forever; only 6-digit refs match."""
+    if not re.fullmatch(r"\d{6}", ref_date):
+        raise HTTPException(404, "not found")
+    iso = _iso_from_ref(ref_date)
+    return _serve_archived_week(iso, x_remote_user == "investor")
+
+
 @app.post("/api/investor-view/publish")
 def publish_investor_view(p=Depends(admin_only)):
-    """Snapshot templates + inline edits → published investor_view.
-    Archives any existing published investor_view. Runs denylist scan."""
+    """Freeze the current draft as this week's static snapshot: templates +
+    inline edits → published investor_view at its dated URL. Archives the
+    previous published week, runs the denylist scan, then CLEARS inline_edits —
+    edits are week-scoped (frozen into the snapshot; the next draft starts
+    clean from templates, no cross-week bleed)."""
     html = _assemble_page()
 
     rows = db.get_conn().execute("SELECT edit_id, content FROM inline_edits").fetchall()
@@ -593,6 +609,7 @@ def publish_investor_view(p=Depends(admin_only)):
             "VALUES ('investor_view', ?, 'Investor View', 'published', ?, ?, ?, 1)",
             (ref, json.dumps(body), now, now),
         )
+        cleared = conn.execute("DELETE FROM inline_edits").rowcount
         conn.commit()
         pub_id = cur.lastrowid
 
@@ -601,9 +618,16 @@ def publish_investor_view(p=Depends(admin_only)):
         "publish_investor_view",
         f"pub:{pub_id}",
         None,
-        {"ref": ref, "status": "published"},
+        {"ref": ref, "status": "published", "inline_edits_cleared": cleared},
     )
-    return {"id": pub_id, "status": "published", "ref": ref, "published_at": now}
+    return {
+        "id": pub_id,
+        "status": "published",
+        "ref": ref,
+        "url": _yymmdd(ref),
+        "published_at": now,
+        "inline_edits_cleared": cleared,
+    }
 
 
 @app.post("/api/investor-view/unpublish")
@@ -752,76 +776,186 @@ def _investor_pub(row):
 
 # ---------------------------------------------------------------------------
 # Investor-view draft/publish helpers
+#
+# URL model (Roman, 08-07): published weeks are STATIC snapshots at dated URLs
+# (/investor/260702); the draft at / is DYNAMIC (assembled per request) and
+# becomes the next dated snapshot on publish. The week switcher is the SAME
+# for admin and investor — only the "home" option differs (draft vs latest).
 
-_HOLDING_PAGE = (
-    "<!DOCTYPE html><html><head><title>Investor View</title></head>"
-    '<body style="font-family:system-ui;display:flex;align-items:center;'
-    'justify-content:center;height:100vh;margin:0;color:#64748b">'
-    "<h2>No published content available</h2></body></html>"
-)
-
-_DRAFT_TOOLBAR = (
-    '<div id="draft-toolbar" style="position:fixed;top:0;left:0;right:0;z-index:10000;'
-    "background:#fef3c7;border-bottom:2px solid #f59e0b;padding:8px 20px;"
-    'display:flex;align-items:center;gap:16px;font-family:system-ui;font-size:13px">'
-    '<span style="font-weight:700;color:#92400e">DRAFT</span>'
-    '<span style="color:#78350f">Not visible to investors</span>'
-    '<button onclick="_pubIV()" style="margin-left:auto;background:#0891B2;'
-    "color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;"
-    'font-size:13px">Publish</button>'
-    '<button onclick="_unpubIV()" style="background:#e11d48;color:#fff;'
-    "border:none;padding:6px 16px;border-radius:4px;cursor:pointer;"
-    'font-size:13px">Unpublish</button>'
-    '<select id="wk-sel" onchange="_swWk(this.value)" style="padding:4px 8px;'
-    'border:1px solid #d1d5db;border-radius:4px;font-size:13px">'
-    '<option value="">Current draft</option></select></div>'
-    "<script>"
-    "function _pubIV(){if(!confirm('Publish to investors?'))return;"
-    "fetch('api/investor-view/publish',{method:'POST',credentials:'include'})"
-    ".then(function(r){return r.json()}).then(function(d){"
-    "if(d.status==='published'){alert('Published');location.reload()}"
-    "else alert('Error: '+(d.detail||JSON.stringify(d)))"
-    "}).catch(function(e){alert('Error: '+e)})}"
-    "function _unpubIV(){if(!confirm('Unpublish? Investors see no content.'))return;"
-    "fetch('api/investor-view/unpublish',{method:'POST',credentials:'include'})"
-    ".then(function(r){return r.json()}).then(function(d){"
-    "if(d.ok){alert('Unpublished');location.reload()}"
-    "else alert('Error: '+(d.detail||JSON.stringify(d)))"
-    "}).catch(function(e){alert('Error: '+e)})}"
-    "function _swWk(v){if(v)location='/?week='+v;else location='/'};"
-    "(function(){fetch('api/investor-view/weeks',{credentials:'include'})"
-    ".then(function(r){return r.json()}).then(function(d){"
-    "var s=document.getElementById('wk-sel');"
-    "(d.weeks||[]).forEach(function(w){var o=document.createElement('option');"
-    "o.value=w.ref;o.textContent=w.ref+(w.status==='published'?' (live)':'');"
-    "s.appendChild(o)})})"
-    ".catch(function(){})})();"
-    "</script>"
-    "<style>#draft-toolbar~*{margin-top:0}body{padding-top:42px}</style>"
+_MONTHS = (
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
 )
 
 
-def _serve_published_view():
-    """Serve the published investor_view snapshot, or a holding page."""
+def _iso_from_ref(ref: str) -> str | None:
+    """Accept '260702' (URL form) or '2026-07-02' (DB form) → ISO, else None."""
+    if re.fullmatch(r"\d{6}", ref):
+        return "20%s-%s-%s" % (ref[:2], ref[2:4], ref[4:6])
+    if re.fullmatch(r"\d{4}-\d{2}-\d{2}", ref):
+        return ref
+    return None
+
+
+def _yymmdd(iso: str) -> str:
+    return iso[2:4] + iso[5:7] + iso[8:10]
+
+
+def _ref_label(iso: str) -> str:
+    """Investor-facing label: '2026-07-02' → '02 Jul 2026'."""
+    y, m, d = iso.split("-")
+    return "%s %s %s" % (d, _MONTHS[int(m) - 1], y)
+
+
+def _week_options_html(current_iso: str | None, home_label: str) -> str:
+    """Shared <option> list for every week switcher: one entry per week ref,
+    newest first, '(live)' marking the published one. Values are the dated
+    URL segments (yymmdd); relative navigation keeps the /investor prefix."""
+    rows = (
+        db.get_conn()
+        .execute(
+            "SELECT ref, status FROM publications "
+            "WHERE kind='investor_view' AND status IN ('published','archived') "
+            "ORDER BY published_at DESC"
+        )
+        .fetchall()
+    )
+    seen = set()
+    opts = ['<option value="">%s</option>' % home_label]
+    for r in rows:
+        if r["ref"] in seen:
+            continue
+        seen.add(r["ref"])
+        sel = " selected" if r["ref"] == current_iso else ""
+        live = " (live)" if r["status"] == "published" else ""
+        opts.append(
+            '<option value="%s"%s>%s%s</option>'
+            % (_yymmdd(r["ref"]), sel, _ref_label(r["ref"]), live)
+        )
+    return "".join(opts)
+
+
+# Relative targets: './260702' resolves under /investor/ behind Caddy; a
+# root-absolute '/?week=' would land on the suite landing page.
+_WEEK_SWITCH_JS = "if(this.value)location='./'+this.value;else location='./'"
+
+
+def _week_nav_html(current_iso: str | None, is_investor: bool) -> str:
+    home = "Latest" if is_investor else "Current draft"
+    return (
+        '<div id="week-nav" style="position:fixed;top:0;left:0;right:0;z-index:10000;'
+        "background:#0f172a;padding:6px 20px;display:flex;align-items:center;gap:12px;"
+        'font-family:system-ui;font-size:13px">'
+        '<span style="color:#94a3b8;font-weight:600">Weekly update'
+        + (" — " + _ref_label(current_iso) if current_iso else "")
+        + "</span>"
+        '<select onchange="' + _WEEK_SWITCH_JS + '" '
+        'style="margin-left:auto;padding:4px 8px;border:1px solid #334155;'
+        'border-radius:4px;font-size:13px;background:#1e293b;color:#e2e8f0">'
+        + _week_options_html(current_iso, home)
+        + "</select></div>"
+        "<style>body{padding-top:38px}</style>"
+    )
+
+
+def _inject_week_nav(html: str, current_iso: str | None, is_investor: bool) -> str:
+    """Add the week switcher after <body> on published/archived/holding views."""
+    nav = _week_nav_html(current_iso, is_investor)
+    out, n = re.subn(r"(<body[^>]*>)", lambda m: m.group(1) + "\n" + nav, html, count=1)
+    return out if n else nav + html
+
+
+def _holding_page(is_investor: bool) -> str:
+    """No published week: still offer the archive via the standard switcher."""
+    return _inject_week_nav(
+        "<!DOCTYPE html><html><head><title>Investor View</title></head>"
+        '<body style="font-family:system-ui;display:flex;align-items:center;'
+        'justify-content:center;height:100vh;margin:0;color:#64748b">'
+        "<h2>No published content available</h2></body></html>",
+        None,
+        is_investor,
+    )
+
+
+def _draft_toolbar_html() -> str:
+    """Admin DRAFT toolbar: publish/unpublish + the shared week switcher +
+    what investors currently see (prevents silent holding-page states)."""
+    pub = (
+        db.get_conn()
+        .execute(
+            "SELECT ref FROM publications WHERE kind='investor_view' "
+            "AND status='published' ORDER BY published_at DESC LIMIT 1"
+        )
+        .fetchone()
+    )
+    investors_see = '<span style="color:#78350f">Investors see: <b>%s</b></span>' % (
+        _ref_label(pub["ref"]) if pub else "NOTHING (holding page)"
+    )
+    return (
+        '<div id="draft-toolbar" style="position:fixed;top:0;left:0;right:0;z-index:10000;'
+        "background:#fef3c7;border-bottom:2px solid #f59e0b;padding:8px 20px;"
+        'display:flex;align-items:center;gap:16px;font-family:system-ui;font-size:13px">'
+        '<span style="font-weight:700;color:#92400e">DRAFT</span>'
+        + investors_see
+        + '<button onclick="_pubIV()" style="margin-left:auto;background:#0891B2;'
+        "color:#fff;border:none;padding:6px 16px;border-radius:4px;cursor:pointer;"
+        'font-size:13px">Publish</button>'
+        '<button onclick="_unpubIV()" style="background:#e11d48;color:#fff;'
+        "border:none;padding:6px 16px;border-radius:4px;cursor:pointer;"
+        'font-size:13px">Unpublish</button>'
+        '<select id="wk-sel" onchange="' + _WEEK_SWITCH_JS + '" '
+        'style="padding:4px 8px;'
+        'border:1px solid #d1d5db;border-radius:4px;font-size:13px">'
+        + _week_options_html(None, "Current draft")
+        + "</select></div>"
+        "<script>"
+        "function _pubIV(){if(!confirm('Publish to investors? Inline edits are frozen into this week and cleared for the next.'))return;"
+        "fetch('api/investor-view/publish',{method:'POST',credentials:'include'})"
+        ".then(function(r){return r.json()}).then(function(d){"
+        "if(d.status==='published'){alert('Published');location.reload()}"
+        "else alert('Error: '+(d.detail||JSON.stringify(d)))"
+        "}).catch(function(e){alert('Error: '+e)})}"
+        "function _unpubIV(){if(!confirm('Unpublish? Investors fall back to the archive list.'))return;"
+        "fetch('api/investor-view/unpublish',{method:'POST',credentials:'include'})"
+        ".then(function(r){return r.json()}).then(function(d){"
+        "if(d.ok){alert('Unpublished');location.reload()}"
+        "else alert('Error: '+(d.detail||JSON.stringify(d)))"
+        "}).catch(function(e){alert('Error: '+e)})}"
+        "</script>"
+        "<style>#draft-toolbar~*{margin-top:0}body{padding-top:42px}</style>"
+    )
+
+
+def _serve_published_view(is_investor: bool = True):
+    """Serve the latest published week (static snapshot) with the week switcher."""
     row = (
         db.get_conn()
         .execute(
-            "SELECT body FROM publications "
+            "SELECT ref, body FROM publications "
             "WHERE kind='investor_view' AND status='published' "
             "ORDER BY published_at DESC LIMIT 1"
         )
         .fetchone()
     )
     if not row:
-        return HTMLResponse(_HOLDING_PAGE)
+        return HTMLResponse(_holding_page(is_investor))
     body = json.loads(row["body"])
-    return HTMLResponse(
-        _inject_published_script(body["html"], body.get("inline_edits", {}))
-    )
+    html = _inject_published_script(body["html"], body.get("inline_edits", {}))
+    return HTMLResponse(_inject_week_nav(html, row["ref"], is_investor))
 
 
-def _serve_archived_week(week: str):
-    """Serve a specific archived/published investor_view by ref date."""
+def _serve_archived_week(week_iso: str, is_investor: bool = True):
+    """Serve a specific week's static snapshot (published or archived)."""
     row = (
         db.get_conn()
         .execute(
@@ -829,16 +963,15 @@ def _serve_archived_week(week: str):
             "WHERE kind='investor_view' AND ref=? "
             "AND status IN ('published','archived') "
             "ORDER BY published_at DESC LIMIT 1",
-            (week,),
+            (week_iso,),
         )
         .fetchone()
     )
     if not row:
         raise HTTPException(404, "no investor view for that week")
     body = json.loads(row["body"])
-    return HTMLResponse(
-        _inject_published_script(body["html"], body.get("inline_edits", {}))
-    )
+    html = _inject_published_script(body["html"], body.get("inline_edits", {}))
+    return HTMLResponse(_inject_week_nav(html, week_iso, is_investor))
 
 
 def _inject_published_script(html: str, edits: dict) -> str:
@@ -854,4 +987,7 @@ def _inject_published_script(html: str, edits: dict) -> str:
 
 def _inject_draft_toolbar(html: str) -> str:
     """Add the admin draft toolbar after <body>."""
-    return re.sub(r"(<body[^>]*>)", r"\1\n" + _DRAFT_TOOLBAR, html, count=1)
+    toolbar = _draft_toolbar_html()
+    return re.sub(
+        r"(<body[^>]*>)", lambda m: m.group(1) + "\n" + toolbar, html, count=1
+    )

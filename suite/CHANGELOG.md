@@ -4,6 +4,26 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.27 — 2026-07-08
+
+### Investor Room — week lifecycle v2 (Roman's model: static dated weeks + dynamic draft)
+- **Dated snapshot URLs**: published weeks live at `/investor/<YYMMDD>`
+  (`/investor/260702`); `GET /{ref_date}` route, legacy `?week=` still works.
+- **Universal week switcher** — SAME control for investor and admin on all
+  published/archived/holding views (server-rendered, English date labels,
+  `(live)` marker); investors self-serve navigate the archive. Holding page
+  now carries the switcher instead of dead-ending.
+- **Week-scoped inline edits**: publish freezes edits into the snapshot and
+  CLEARS the live table — next week's draft starts clean from templates
+  (kills the 02/07-edits-override-07/07 bug class).
+- **Draft toolbar**: shows "Investors see: <week|NOTHING (holding page)>";
+  switcher options server-rendered; navigation made RELATIVE (`./260702`) —
+  the old `location='/?week='` landed on the suite landing page behind the
+  `/investor` Caddy prefix.
+- Tests: +8 lifecycle tests (40 green in test_investor_view.py).
+- Prod data: cleared the 4 stale 02-Jul inline edits from the live draft
+  (preserved inside the 2026-07-02 publication).
+
 ## v2.1.26 — 2026-07-08
 
 ### Investor Room — draft/publish workflow + 07-Jul weekly content (aef2c61)

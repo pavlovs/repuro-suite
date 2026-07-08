@@ -73,7 +73,7 @@ def test_admin_sees_draft_with_toolbar(client):
     html = r.text
     assert "draft-toolbar" in html
     assert "DRAFT" in html
-    assert "Not visible to investors" in html
+    assert "Investors see:" in html  # live indicator of what Strada gets
 
 
 def test_investor_sees_holding_page_when_nothing_published(client):
@@ -517,3 +517,91 @@ def test_existing_assemble_endpoint_still_works(client):
     r = client.post("/api/assemble?kind=weekly_update", headers=_admin())
     assert r.status_code == 200
     assert r.json()["kind"] == "weekly_update"
+
+
+# ---------------------------------------------------------------------------
+# 13. Week lifecycle v2 (Roman 08-07): dated static URLs, universal switcher,
+#     week-scoped inline edits
+
+
+def _publish(client):
+    r = client.post("/api/investor-view/publish", headers=_admin())
+    assert r.status_code == 200
+    return r.json()
+
+
+def test_publish_clears_inline_edits_and_freezes_them(client):
+    client.post(
+        "/api/inline-edit",
+        json={"edit_id": "tile-1-title", "content": "Edited for this week"},
+        headers=_admin(),
+    )
+    pub = _publish(client)
+    assert pub["inline_edits_cleared"] == 1
+    # frozen into the snapshot
+    from src import db as db_mod
+
+    row = db_mod.get_conn().execute(
+        "SELECT body FROM publications WHERE id=?", (pub["id"],)
+    ).fetchone()
+    body = json.loads(row["body"])
+    assert body["inline_edits"] == {"tile-1-title": "Edited for this week"}
+    # cleared from the live table — next week's draft starts clean
+    left = db_mod.get_conn().execute("SELECT COUNT(*) FROM inline_edits").fetchone()[0]
+    assert left == 0
+
+
+def test_dated_url_serves_snapshot_for_both_roles(client):
+    pub = _publish(client)
+    url = "/" + pub["url"]  # e.g. /260708
+    for headers in (_admin(), _investor()):
+        r = client.get(url, headers=headers)
+        assert r.status_code == 200
+        assert "__INVESTOR_VIEW_PUBLISHED" in r.text
+        assert "week-nav" in r.text
+        assert "draft-toolbar" not in r.text
+
+
+def test_dated_url_unknown_week_404(client):
+    assert client.get("/990101", headers=_investor()).status_code == 404
+    assert client.get("/notaweek", headers=_investor()).status_code == 404
+
+
+def test_published_view_has_week_nav_no_publish_controls(client):
+    _publish(client)
+    r = client.get("/", headers=_investor())
+    html = r.text
+    assert "week-nav" in html
+    assert "_pubIV" not in html and "Unpublish" not in html
+    # relative navigation only — root-absolute '/?week=' would leave /investor/
+    assert "location='/?week='" not in html
+    assert "location='./'" in html
+
+
+def test_holding_page_offers_archive_switcher(client):
+    pub = _publish(client)
+    client.post("/api/investor-view/unpublish", headers=_admin())
+    r = client.get("/", headers=_investor())
+    assert "No published content" in r.text
+    assert "week-nav" in r.text  # archive remains reachable
+    # the archived week is listed as a dated option
+    assert pub["url"] in r.text
+
+
+def test_draft_toolbar_shows_what_investors_see(client):
+    r = client.get("/", headers=_admin())
+    assert "Investors see:" in r.text
+    assert "NOTHING (holding page)" in r.text
+    _publish(client)
+    r = client.get("/", headers=_admin())
+    assert "NOTHING (holding page)" not in r.text
+
+
+def test_legacy_week_query_still_works(client):
+    pub = _publish(client)
+    r = client.get(f"/?week={pub['ref']}", headers=_admin())
+    assert r.status_code == 200
+    assert "__INVESTOR_VIEW_PUBLISHED" in r.text
+    # yymmdd form also accepted in ?week=
+    r2 = client.get(f"/?week={pub['url']}", headers=_investor())
+    assert r2.status_code == 200

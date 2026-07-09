@@ -577,6 +577,52 @@ def week_page(ref_date: str, x_remote_user: str | None = Header(default=None)):
     return _serve_archived_week(iso, x_remote_user == "investor")
 
 
+# ACT1 slot visibility (templates/sections/act1-thisweek.html): edit ids are
+# '<slot>-title' / '<slot>-body' / '<slot>-comment' / '<slot>-rec'; spare slots
+# start hidden and are revealed via the '__slots__' inline edit ({slot: 1|0}).
+_SLOT_EDIT_RE = re.compile(r"^((?:tile|dec)-\d+)-")
+_DEFAULT_HIDDEN_SLOTS = {
+    "tile-5",
+    "tile-6",
+    "tile-7",
+    "tile-8",
+    "dec-3",
+    "dec-4",
+    "dec-5",
+    "dec-6",
+}
+
+
+def _strip_hidden_slot_edits(inline_edits: dict) -> dict:
+    """Publish-time privacy: content typed into a slot that is HIDDEN at publish
+    must not ship to the investor inside the frozen edits (it would be recoverable
+    from page source even though the UI hides the slot). The '__slots__' visibility
+    map itself stays; only content edits of hidden slots are dropped. The draft's
+    inline_edits rows are untouched — undo/re-add before publish keeps content."""
+    try:
+        slots = json.loads(inline_edits.get("__slots__", "{}"))
+        if not isinstance(slots, dict):
+            slots = {}
+    except ValueError:
+        slots = {}
+
+    def _hidden(slot: str) -> bool:
+        v = slots.get(slot)
+        if v is None:
+            return slot in _DEFAULT_HIDDEN_SLOTS
+        # Fail closed: the map is admin-supplied free-form JSON, so anything
+        # other than an explicit 1/true (e.g. "0", "false", garbage) is hidden.
+        return v is not True and v != 1
+
+    out = {}
+    for k, v in inline_edits.items():
+        m = _SLOT_EDIT_RE.match(k)
+        if m and _hidden(m.group(1)):
+            continue
+        out[k] = v
+    return out
+
+
 @app.post("/api/investor-view/publish")
 def publish_investor_view(p=Depends(admin_only)):
     """Freeze the current draft as this week's static snapshot: templates +
@@ -587,7 +633,7 @@ def publish_investor_view(p=Depends(admin_only)):
     html = _assemble_page()
 
     rows = db.get_conn().execute("SELECT edit_id, content FROM inline_edits").fetchall()
-    inline_edits = {r["edit_id"]: r["content"] for r in rows}
+    inline_edits = _strip_hidden_slot_edits({r["edit_id"]: r["content"] for r in rows})
 
     body = {"html": html, "inline_edits": inline_edits}
 

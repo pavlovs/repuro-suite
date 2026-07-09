@@ -24,6 +24,7 @@ function RepuroMark({ size = 30 }) {
 const NAV_ALL = [
   { id: "overview", module: "overview", label: "Cockpit", icon: "cockpit", crumb: "Intelligence overview" },
   { id: "week", module: "week", label: "Meeting", icon: "week", crumb: "Meeting focus" },
+  { id: "calendar", module: "calendar", label: "Calendar", icon: "calendar", crumb: "Your and your team's meetings" },
   { id: "table", module: "workstreams", label: "Workstreams", icon: "table", crumb: "All work — table or board" },
   { id: "timeline", module: "timeline", label: "Timeline", icon: "timeline", crumb: "Milestones & windows" },
   { id: "agents", module: "agents", label: "Agents", icon: "bolt", crumb: "Claude works · you approve" },
@@ -97,8 +98,8 @@ function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setF
 }
 
 /* Hash-based routing: tab id ↔ URL hash */
-const TAB_TO_HASH = { overview: "#cockpit", week: "#week", table: "#workstreams", timeline: "#timeline", agents: "#agents", admin: "#admin" };
-const HASH_TO_TAB = { "#cockpit": "overview", "#week": "week", "#workstreams": "table", "#timeline": "timeline", "#agents": "agents", "#admin": "admin" };
+const TAB_TO_HASH = { overview: "#cockpit", week: "#week", calendar: "#calendar", table: "#workstreams", timeline: "#timeline", agents: "#agents", admin: "#admin" };
+const HASH_TO_TAB = { "#cockpit": "overview", "#week": "week", "#calendar": "calendar", "#workstreams": "table", "#timeline": "timeline", "#agents": "agents", "#admin": "admin" };
 const VALID_TABS = new Set(Object.keys(TAB_TO_HASH));
 /* Admin is not part of NAV (rendered as a separate button), so the hash
    validator must accept it explicitly for admins — otherwise setTab("admin")
@@ -259,6 +260,7 @@ function App() {
           <div className={"view" + (tab === "timeline" || tab === "table" || tab === "week" ? " view-wide" : "")}>
             {tab === "overview" && <OverviewView person={person} onJump={setTab} openTask={openTask} mutate={mutate} />}
             {tab === "week" && <MeetingView mutate={mutate} openTask={openTask} />}
+            {tab === "calendar" && <CalendarView />}
             {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} openDeliv={openDeliv} person={person} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}
             {tab === "timeline" && <TimelineView openTask={openTask} openDeliv={openDeliv} mutate={mutate} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}
             {tab === "agents" && <AgentsView openTask={openTask} person={person} />}

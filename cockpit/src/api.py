@@ -32,7 +32,7 @@ from fastapi.responses import (  # noqa: F401
     StreamingResponse,
 )
 
-from . import compute, db, dealroom_sync, mdio, models
+from . import calendar_graph, compute, db, dealroom_sync, mdio, models
 
 
 # --------------------------------------------------------------------------
@@ -190,6 +190,7 @@ _ALL_COCKPIT_MODS = [
     "timeline",
     "agents",
     "relations",
+    "calendar",
 ]
 
 
@@ -2761,3 +2762,188 @@ def patch_workstream_access(wid: str, payload: dict = Body(...), p=Depends(human
         conn.commit()
     _broadcast(p["id"])
     return {"id": wid, "allowed_profiles": allowed_profiles}
+
+
+# --------------------------------------------------------------------------
+# Calendar
+@app.get("/api/calendar/events")
+def calendar_events(
+    scope: str = Query("me"),
+    start: str = Query(None),
+    days: int = Query(7),
+    p=Depends(principal),
+):
+    if p["role"] == "agent":
+        raise HTTPException(403, "agents cannot access calendar")
+    if "calendar" not in p.get("modules", []):
+        raise HTTPException(403, "calendar module not enabled")
+    conn = db.get_conn()
+    today = _today().isoformat()
+    days = max(1, min(days, 31))
+    try:
+        # date (not datetime) — a datetime string would corrupt start_iso below
+        start_d = date.fromisoformat(start or today)
+    except ValueError:
+        raise HTTPException(422, "invalid start date (expect YYYY-MM-DD)")
+    start_iso = start_d.isoformat() + "T00:00:00"
+    end_iso = (start_d + timedelta(days=days)).isoformat() + "T00:00:00"
+
+    my_id = p["id"]
+    my_row = conn.execute("SELECT * FROM users WHERE id=?", (my_id,)).fetchone()
+    my_upn = my_row["calendar_upn"] if my_row else None
+
+    if scope == "me":
+        upn_map = {my_id: my_upn} if my_upn else {}
+    else:
+        # team scope: self + users sharing >=1 active team
+        my_teams = set(
+            r["team_id"]
+            for r in conn.execute(
+                "SELECT team_id FROM team_members WHERE user_id=?", (my_id,)
+            ).fetchall()
+        )
+        if not my_teams and not p.get("all_teams"):
+            upn_map = {my_id: my_upn} if my_upn else {}
+        else:
+            if p.get("all_teams"):
+                rows = conn.execute(
+                    "SELECT id, name, initials, calendar_upn FROM users WHERE role='human'"
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT DISTINCT u.id, u.name, u.initials, u.calendar_upn "
+                    "FROM users u JOIN team_members tm ON tm.user_id = u.id "
+                    "WHERE tm.team_id IN ({}) AND u.role='human'".format(
+                        ",".join("?" * len(my_teams))
+                    ),
+                    tuple(my_teams),
+                ).fetchall()
+            upn_map = {r["id"]: r["calendar_upn"] for r in rows if r["calendar_upn"]}
+            if my_upn:
+                upn_map[my_id] = my_upn
+
+    # Build users list (all team members, mark connected)
+    if scope == "me":
+        user_rows = [my_row] if my_row else []
+    else:
+        if p.get("all_teams"):
+            user_rows = conn.execute(
+                "SELECT id, name, initials, calendar_upn FROM users WHERE role='human'"
+            ).fetchall()
+        else:
+            if my_teams:
+                user_rows = conn.execute(
+                    "SELECT DISTINCT u.id, u.name, u.initials, u.calendar_upn "
+                    "FROM users u JOIN team_members tm ON tm.user_id = u.id "
+                    "WHERE tm.team_id IN ({}) AND u.role='human'".format(
+                        ",".join("?" * len(my_teams))
+                    ),
+                    tuple(my_teams),
+                ).fetchall()
+            else:
+                user_rows = [my_row] if my_row else []
+
+    users_out = [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "initials": r["initials"],
+            "connected": bool(r["calendar_upn"]),
+        }
+        for r in user_rows
+    ]
+
+    # Fetch events
+    upns_to_fetch = list(upn_map.values())
+    upn_to_uid = {v: k for k, v in upn_map.items()}
+    uid_to_row = {
+        r["id"]: r for r in (user_rows if user_rows else [my_row] if my_row else [])
+    }
+
+    raw_events = (
+        calendar_graph.fetch_events(upns_to_fetch, start_iso, end_iso)
+        if upns_to_fetch
+        else []
+    )
+
+    # Determine status
+    fake = os.environ.get("COCKPIT_CALENDAR_FAKE") == "1"
+    if fake or (
+        os.environ.get("COCKPIT_GRAPH_TENANT")
+        and os.environ.get("COCKPIT_GRAPH_CLIENT_ID")
+    ):
+        status = "ok"
+    else:
+        status = "not_configured"
+
+    # Configured but zero events came back for connected users: distinguish a
+    # genuinely empty week from a silent Graph auth failure (fetch swallows
+    # per-upn errors), so the admin consent card can actually surface.
+    if status == "ok" and not fake and upns_to_fetch and not raw_events:
+        # probe the caller's own upn when connected — per-mailbox access policies
+        # could 403 a teammate while the caller's calendar works fine
+        probe_target = my_upn if my_upn in upns_to_fetch else upns_to_fetch[0]
+        probe_ok, probe_reason = calendar_graph.probe_upn(probe_target)
+        if not probe_ok and probe_reason in ("consent_missing", "not_configured"):
+            status = probe_reason
+
+    events_out = []
+    for ev in raw_events:
+        upn = ev["upn"]
+        uid = upn_to_uid.get(upn)
+        if not uid:
+            continue
+        urow = uid_to_row.get(uid)
+        is_self = uid == my_id
+        private = ev.get("private", False)
+        subject = ev["subject"] if (not private or is_self) else "Private"
+        location = ev.get("location", "") if (not private or is_self) else ""
+        online_url = ev.get("online_url") if (not private or is_self) else None
+        events_out.append(
+            {
+                "user": {
+                    "id": uid,
+                    "name": urow["name"] if urow else uid,
+                    "initials": urow["initials"] if urow else uid[:2].upper(),
+                },
+                "subject": subject,
+                "start": ev["start"],
+                "end": ev["end"],
+                "all_day": ev.get("all_day", False),
+                "location": location,
+                "private": private,
+                "online_url": online_url,
+                "show_as": ev.get("show_as", "busy"),
+            }
+        )
+
+    events_out.sort(key=lambda e: e["start"])
+    return {"status": status, "users": users_out, "events": events_out}
+
+
+@app.post("/api/calendar/connect")
+def calendar_connect(payload: dict = Body(...), p=Depends(human_only)):
+    upn = (payload.get("upn") or "").strip()
+    conn = db.get_conn()
+    if upn:
+        # format gate before any Graph call — a stored upn feeds URL paths
+        if not calendar_graph.UPN_RE.match(upn):
+            raise HTTPException(422, "unknown_upn")
+        ok, reason = calendar_graph.probe_upn(upn)
+        if not ok:
+            if reason == "not_configured":
+                raise HTTPException(503, "Calendar backend not configured")
+            if reason == "consent_missing":
+                raise HTTPException(422, "consent_missing")
+            if reason == "unknown_upn":
+                raise HTTPException(422, "unknown_upn")
+            # don't echo raw Graph status codes to the browser
+            raise HTTPException(422, "probe_failed")
+    with db.WRITE_LOCK:
+        conn.execute(
+            "UPDATE users SET calendar_upn=? WHERE id=?",
+            (upn or None, p["id"]),
+        )
+        db.audit(conn, p["id"], "calendar_connect", p["id"], after={"upn": upn or None})
+        conn.commit()
+    return {"status": "ok", "upn": upn or None}

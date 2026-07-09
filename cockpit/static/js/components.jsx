@@ -184,6 +184,7 @@ function Icon({ name, size = 16 }) {
     ops: "M12 9a3 3 0 1 0 .01 0M19 12l1.5-1-1.5-2.6-1.8.6a6 6 0 0 0-1.7-1l-.3-1.9h-3l-.3 1.9a6 6 0 0 0-1.7 1l-1.8-.6L5 9l1.5 1a6 6 0 0 0 0 2L5 13l1.5 2.6 1.8-.6a6 6 0 0 0 1.7 1l.3 1.9h3l.3-1.9a6 6 0 0 0 1.7-1l1.8.6L19 13l-1.5-1a6 6 0 0 0 0-2z",
     pin: "M9 4h6l-1 6 3 3H7l3-3z M12 16v4",
     link: "M9 15l6-6M10 7l1-1a4 4 0 0 1 6 6l-1 1M14 17l-1 1a4 4 0 0 1-6-6l1-1",
+    calendar: "M4 5h16v16H4zM4 9h16M9 3v4M15 3v4M8 13h3M8 17h3",
   }[name] || "";
   return (
     <svg className="icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">

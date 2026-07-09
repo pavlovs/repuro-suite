@@ -9,7 +9,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -170,7 +170,8 @@ CREATE TABLE users (
   represents TEXT,
   profile TEXT REFERENCES role_profiles(id),
   all_teams INTEGER NOT NULL DEFAULT 0,
-  login TEXT
+  login TEXT,
+  calendar_upn TEXT
 );
 CREATE TABLE deal_mirror (
   codename TEXT PRIMARY KEY,
@@ -475,6 +476,9 @@ MIGRATIONS = {
         "UPDATE users SET login = 'florian' WHERE id = 'ff'",
         # rd gets all_teams=1 (god view over workstream assignments)
         "UPDATE users SET all_teams = 1 WHERE id = 'rd'",
+    ],
+    14: [
+        lambda c: _add_column_if_missing(c, "users", "calendar_upn", "TEXT"),
     ],
 }
 

@@ -27,7 +27,7 @@ FastAPI + SQLite (`data/cockpit.db`, journal DELETE) → JSON/MD API on localhos
 
 Schema version tracked in `PRAGMA user_version`. Migrations in `src/db.py`.
 
-**users** — id, name, initials, token_hash, role (human/agent)
+**users** — id, name, initials, token_hash, role (human/agent), calendar_upn (TEXT, NULL = not connected)
 
 **spaces** — id, name, slug, color, icon, sort_order, sort_mode (manual/deal_stage), status (active/parked/done), version
 - Seeded: Repuro (s-1), M&A (s-2)
@@ -72,6 +72,8 @@ Schema version tracked in `PRAGMA user_version`. Migrations in `src/db.py`.
 | `js/view-table.jsx` | Table view with workstream grouping |
 | `js/view-timeline.jsx` | Timeline / Gantt |
 | `js/view-agents.jsx` | Agent queue view |
+| `js/view-calendar.jsx` | Calendar week-grid view + connect flow |
+| `src/calendar_graph.py` | MS Graph client — token cache, fetch_events, probe_upn, fake mode |
 | `css/cockpit.css` | Main styles |
 | `css/cockpit-views.css` | Per-view styles |
 | `css/cockpit-extras.css` | Drawer, modal, palette styles |
@@ -87,3 +89,4 @@ React via Babel in-browser (no build step). Vendor libs in `static/vendor/`.
 - **Agentic workflow v2: ✅ 2026-07-05, deployed v2.1.15** — spec `ai/SPEC-agentic-workflow.md`. One queue (cockpit prod), one runner (`/repuro:loop`, plugin v0.3.0, scheduled task `RepuroAgentLoop` logon+13:00 → `CLAUDE_COWORK/scripts/run-repuro-loop.ps1`), one review surface (Agents view: Needs your review / Waiting on you / Running / Queue). Closed loop: request-changes re-queues WITH feedback (`review_round`/`review_feedback` in `/api/agent/queue`); agent questions → `POST /api/agent/block` → inline answer (`POST /api/task/{id}/answer`) → re-queue; reject flips `execution→me` (loop-safe); claim enforces prereq readiness server-side; agents enqueue via `POST /api/agent/task` (AC mandatory). TASKS.md [AGENT] queue killed — cockpit is the only agent queue.
 - Server: auto-starts at logon (Startup `RepuroCockpit.cmd` → `start_cockpit.ps1`); manual: run the ps1
 - **Multi-user personal cockpit: ✅ 2026-07-15** — the two-founder hardcode is gone. `/api/state` carries `users` (humans directory) + `lanes` (`users.represents`-derived, e.g. `rd→RC`); every owner picker / person column / meeting column renders from it (me-first). Identity = login: sidebar shows the principal, non-admins are always themselves, the person switch is admin-only. **Server-enforced agent scoping**: non-admin humans receive ONLY agent-execution tasks they created + learnings of their own lane (`_scrub_foreign_agent_tasks`); admins (md) see all. Lane bar in Agents view is admin-only and data-driven. `POST /api/admin/user` accepts `role: agent` + `represents` (new runner lanes = data, no code); `PATCH /api/admin/user/{uid}` supports `name`/`initials`. Onboarding a member: create user (login = Caddy basic-auth user, team with module perms) + optional agent user for their lane. Meeting view (`week` module) renders N person columns from the team-visible scope.
+- **Calendar module v1: ✅ 2026-07-15 (deploying)** — `src/calendar_graph.py` (MS Graph client-credentials), `GET /api/calendar/events`, `POST /api/calendar/connect`, week-grid UI (`view-calendar.jsx`), Calendar tab. Migration 14: `users.calendar_upn`. Azure app (COCKPIT_GRAPH_* secrets) live + admin-consented; verified reads roman@kamukapital.de + roman.dobriakov@repuro.de. Setup: `ai/CALENDAR-SETUP.md`.

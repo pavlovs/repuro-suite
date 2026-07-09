@@ -534,6 +534,32 @@ function WeekView({ person, mutate, openTask, embedded }) {
   const personalOpen = (typeof PERSONAL !== "undefined" ? PERSONAL : []).filter((t) => t.status !== "done");
   const [rightTab, setRightTab] = React.useState("tomorrow");
   const [delivOpen, setDelivOpen] = React.useState({});
+  const [calBadge, setCalBadge] = React.useState(0);
+  const [calAgenda, setCalAgenda] = React.useState(null);
+  const calFetched = React.useRef(false);
+  React.useEffect(() => {
+    if (rightTab !== "calendar" || calFetched.current) return;
+    calFetched.current = true;
+    var today = localISO(todayDate);
+    api.calendarEvents("team", today, 2)
+      .then(function(d) {
+        if (d && d.events) {
+          // keep only the two days the agenda groups render — badge must match the list;
+          // all-day spans count on every covered day (Graph end date is exclusive)
+          var tomorrow = addDays(today, 1);
+          var covers = function(e, day) {
+            var s = (e.start || "").slice(0, 10);
+            if (!e.all_day) return s === day;
+            var en = (e.end || "").slice(0, 10);
+            return en > s ? (day >= s && day < en) : day === s;
+          };
+          var evs = d.events.filter(function(e) { return covers(e, today) || covers(e, tomorrow); });
+          setCalBadge(evs.length);
+          setCalAgenda(evs);
+        }
+      })
+      .catch(function() { calFetched.current = false; }); // retry on next tab visit instead of loading forever
+  }, [rightTab]);
 
   return (
     <div className="wk">
@@ -555,7 +581,7 @@ function WeekView({ person, mutate, openTask, embedded }) {
         <div className="card wk-col">
           <div className="wk-h wk-h--seg">
             <div className="seg wk-rseg">
-              {[["tomorrow", "Tomorrow", upNext.length], ["personal", "Personal", personalOpen.length], ["blocked", "Blocked", sharedN]].map((opt) => (
+              {[["tomorrow", "Tomorrow", upNext.length], ["personal", "Personal", personalOpen.length], ["blocked", "Blocked", sharedN], ["calendar", "Calendar", calBadge]].map((opt) => (
                 <button key={opt[0]} className={rightTab === opt[0] ? "on" : ""} onClick={() => setRightTab(opt[0])}>
                   {opt[1]}{opt[2] > 0 && <span className="wk-n">{opt[2]}</span>}
                 </button>
@@ -596,6 +622,37 @@ function WeekView({ person, mutate, openTask, embedded }) {
                 </div>
               ))}
               {!sharedN && <div className="empty">nothing blocked — no decisions or waits</div>}
+            </React.Fragment>
+          )}
+
+          {rightTab === "calendar" && (
+            <React.Fragment>
+              {!calAgenda && <div className="empty">Loading…</div>}
+              {calAgenda && calAgenda.length === 0 && <div className="empty">No meetings today or tomorrow</div>}
+              {calAgenda && (() => {
+                var today = localISO(todayDate);
+                var tomorrow = addDays(today, 1);
+                var groups = [[today, "Today"], [tomorrow, "Tomorrow"]];
+                return groups.map(function(g) {
+                  var evs = calAgenda.filter(function(e) { return (e.start || "").startsWith(g[0]); });
+                  if (!evs.length) return null;
+                  return (
+                    <React.Fragment key={g[0]}>
+                      <div className="wk-grp">{g[1]}</div>
+                      {evs.map(function(ev, i) {
+                        var time = (ev.start || "").match(/T(\d{2}:\d{2})/);
+                        return (
+                          <div key={i} className="wkrow cal-agenda-row">
+                            <span className="cal-agenda-time">{time ? time[1] : "—"}</span>
+                            <span className="wkrow-main" style={{flex:1}}>{ev.subject}</span>
+                            {ev.user && <span className="avatar" style={{width:18,height:18,fontSize:7.5,background:"#0891B2",flexShrink:0}}>{ev.user.initials}</span>}
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                });
+              })()}
             </React.Fragment>
           )}
         </div>

@@ -85,6 +85,7 @@ def test_owner_state_all_modules_not_read_only(client):
         "timeline",
         "agents",
         "relations",
+        "calendar",
     }
     assert p["profile"] == "owner"
     assert p["is_admin"] is True
@@ -463,8 +464,15 @@ def _seed_user(cockpit_db, uid, token, profile=None, login=None, teams=()):
     cockpit_db.execute(
         "INSERT INTO users (id, name, initials, role, token_hash, profile, login) "
         "VALUES (?,?,?,?,?,?,?)",
-        (uid, uid.upper(), uid[:2].upper(), "human",
-         hashlib.sha256(token.encode()).hexdigest(), profile, login),
+        (
+            uid,
+            uid.upper(),
+            uid[:2].upper(),
+            "human",
+            hashlib.sha256(token.encode()).hexdigest(),
+            profile,
+            login,
+        ),
     )
     for tid in teams:
         cockpit_db.execute(

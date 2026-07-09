@@ -103,7 +103,7 @@
     "tweaks-panel.jsx", "components.jsx", "task-drawer.jsx", "quick-add.jsx",
     "palette.jsx", "view-week.jsx", "view-overview.jsx", "view-board.jsx",
     "view-table.jsx", "view-timeline.jsx",
-    "view-agents.jsx", "activity.jsx", "view-admin.jsx", "app.jsx",
+    "view-agents.jsx", "activity.jsx", "view-admin.jsx", "view-calendar.jsx", "app.jsx",
   ];
 
   var WS_STYLE = [ // palette/icon assignment by order; name overrides below
@@ -610,6 +610,21 @@
       await refreshFromServer();
     },
     /* Deal playbook: one deliverable + the standard arc, prereq-chained. */
+    /* Calendar module — the only sanctioned fetch path for the JSX views
+       (authedFetch is closure-private; referencing it from the bundle throws). */
+    async calendarEvents(scope, startIso, days) {
+      var r = await authedFetch("/api/calendar/events?scope=" + scope + "&start=" + startIso + "&days=" + (days || 7));
+      if (!r.ok) throw new Error("calendar fetch failed: " + r.status);
+      return r.json();
+    },
+    async calendarConnect(upn) {
+      var r = await authedFetch("/api/calendar/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ upn: upn }),
+      });
+      return { ok: r.ok, text: await r.text() };
+    },
     async spinupDeal(wsId, codename, steps, target) {
       var r = await authedFetch("/api/deliverable", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -744,7 +759,7 @@
     }
     window.COCKPIT_DATA = mapState(state);
     window.COCKPIT = {
-      modules: (state.principal && state.principal.modules) || ["overview","week","workstreams","timeline","agents","relations"],
+      modules: (state.principal && state.principal.modules) || ["overview","week","workstreams","timeline","agents","relations","calendar"],
       readOnly: !!(state.principal && state.principal.read_only),
       perms: (state.principal && state.principal.perms) || {},
       isAdmin: !!(state.principal && state.principal.is_admin),

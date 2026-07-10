@@ -95,10 +95,11 @@ def test_slot_state_roundtrip(client):
 
 
 # ---------------------------------------------------------------------------
-# 3. publish freezes slot state into the snapshot and clears the draft
+# 3. publish freezes slot state into the snapshot and KEEPS the draft state
+#    (Roman 10-07: publish must never scrub the draft)
 
 
-def test_publish_freezes_slots_and_clears(client):
+def test_publish_freezes_slots_and_keeps_draft(client):
     client.post(
         "/api/inline-edit",
         json={"edit_id": "__slots__", "content": json.dumps({"tile-5": 1})},
@@ -111,7 +112,7 @@ def test_publish_freezes_slots_and_clears(client):
     )
     pub = client.post("/api/investor-view/publish", headers=_admin()).json()
     assert pub["status"] == "published"
-    assert pub["inline_edits_cleared"] == 2
+    assert pub["inline_edits_kept"] == 2
 
     # investor's snapshot carries the frozen slot state + content
     html = client.get("/" + pub["url"], headers=_investor()).text
@@ -119,9 +120,10 @@ def test_publish_freezes_slots_and_clears(client):
     assert "Fifth update" in html
     assert "__INVESTOR_VIEW_PUBLISHED" in html
 
-    # next draft starts clean — spare slots hidden again
+    # draft keeps the edits — slot stays revealed, content stays edited
     edits = client.get("/api/inline-edits", headers=_admin()).json()["edits"]
-    assert edits == {}
+    assert edits["tile-5-title"] == "Fifth update"
+    assert json.loads(edits["__slots__"]) == {"tile-5": 1}
 
 
 # ---------------------------------------------------------------------------

@@ -627,9 +627,12 @@ def _strip_hidden_slot_edits(inline_edits: dict) -> dict:
 def publish_investor_view(p=Depends(admin_only)):
     """Freeze the current draft as this week's static snapshot: templates +
     inline edits → published investor_view at its dated URL. Archives the
-    previous published week, runs the denylist scan, then CLEARS inline_edits —
-    edits are week-scoped (frozen into the snapshot; the next draft starts
-    clean from templates, no cross-week bleed)."""
+    previous published week and runs the denylist scan. Inline edits are
+    frozen into the snapshot AND KEPT in the live draft (Roman 10-07: publish
+    must never scrub the draft back to bare templates — the 10 Jul publish
+    silently dropped all of the 09 Jul edits). Stale-edit hygiene when a
+    template content refresh ships is the weekly workflow's job, not an
+    automatic scrub."""
     html = _assemble_page()
 
     rows = db.get_conn().execute("SELECT edit_id, content FROM inline_edits").fetchall()
@@ -656,7 +659,6 @@ def publish_investor_view(p=Depends(admin_only)):
             "VALUES ('investor_view', ?, 'Investor View', 'published', ?, ?, ?, 1)",
             (ref, json.dumps(body), now, now),
         )
-        cleared = conn.execute("DELETE FROM inline_edits").rowcount
         conn.commit()
         pub_id = cur.lastrowid
 
@@ -665,7 +667,7 @@ def publish_investor_view(p=Depends(admin_only)):
         "publish_investor_view",
         f"pub:{pub_id}",
         None,
-        {"ref": ref, "status": "published", "inline_edits_cleared": cleared},
+        {"ref": ref, "status": "published", "inline_edits_kept": len(inline_edits)},
     )
     return {
         "id": pub_id,
@@ -673,7 +675,7 @@ def publish_investor_view(p=Depends(admin_only)):
         "ref": ref,
         "url": _yymmdd(ref),
         "published_at": now,
-        "inline_edits_cleared": cleared,
+        "inline_edits_kept": len(inline_edits),
     }
 
 
@@ -939,7 +941,7 @@ def _draft_controls_html() -> str:
         'padding:5px 14px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">Publish</button>'
         "</div>"
         "<script>"
-        "function _pubIV(){if(!confirm('Publish to investors? Inline edits are frozen into this week and cleared for the next.'))return;"
+        "function _pubIV(){if(!confirm('Publish to investors? This freezes the current draft (incl. inline edits) as this week\\'s version. Your edits stay in the draft.'))return;"
         "fetch('api/investor-view/publish',{method:'POST',credentials:'include'})"
         ".then(function(r){return r.json()}).then(function(d){"
         "if(d.status==='published'){alert('Published');location.reload()}"

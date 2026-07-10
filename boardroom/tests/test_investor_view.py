@@ -529,25 +529,28 @@ def _publish(client):
     return r.json()
 
 
-def test_publish_clears_inline_edits_and_freezes_them(client):
+def test_publish_freezes_inline_edits_and_keeps_draft(client):
     client.post(
         "/api/inline-edit",
         json={"edit_id": "tile-1-title", "content": "Edited for this week"},
         headers=_admin(),
     )
     pub = _publish(client)
-    assert pub["inline_edits_cleared"] == 1
+    assert pub["inline_edits_kept"] == 1
     # frozen into the snapshot
     from src import db as db_mod
 
-    row = db_mod.get_conn().execute(
-        "SELECT body FROM publications WHERE id=?", (pub["id"],)
-    ).fetchone()
+    row = (
+        db_mod.get_conn()
+        .execute("SELECT body FROM publications WHERE id=?", (pub["id"],))
+        .fetchone()
+    )
     body = json.loads(row["body"])
     assert body["inline_edits"] == {"tile-1-title": "Edited for this week"}
-    # cleared from the live table — next week's draft starts clean
+    # KEPT in the live table — the draft never reverts to bare templates
+    # (Roman 10-07: publish scrubbed 14 edits, draft showed the un-edited state)
     left = db_mod.get_conn().execute("SELECT COUNT(*) FROM inline_edits").fetchone()[0]
-    assert left == 0
+    assert left == 1
 
 
 def test_dated_url_serves_snapshot_for_both_roles(client):
@@ -618,7 +621,11 @@ def test_malformed_ref_fails_closed_not_500(client):
         "INSERT INTO publications (kind, ref, title, status, body, created_at, published_at, version) "
         "VALUES ('investor_view', '2026-13-40', 'Investor View', 'published', ?, "
         "'2026-07-08T00:00:00Z', '2026-07-08T00:00:00Z', 1)",
-        (json.dumps({"html": "<html><head></head><body>x</body></html>", "inline_edits": {}}),),
+        (
+            json.dumps(
+                {"html": "<html><head></head><body>x</body></html>", "inline_edits": {}}
+            ),
+        ),
     )
     conn.commit()
     # dated URL for the impossible date: calendar validation → 404, not 500

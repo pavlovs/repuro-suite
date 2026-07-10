@@ -333,6 +333,39 @@ def test_valid_date_strict():
             pass
 
 
+def test_migrate_widens_status_check():
+    # live finding 2026-07-10: original table CHECKed status IN
+    # (active|superseded|closed) — 'executing' INSERTs failed
+    with tempfile.TemporaryDirectory() as tmp:
+        db = str(Path(tmp) / "deal.db")
+        con = sqlite3.connect(db)
+        con.executescript(
+            BASE_DDL.replace(
+                "status TEXT DEFAULT 'active'",
+                "status TEXT DEFAULT 'active' "
+                "CHECK(status IN ('active','superseded','closed'))",
+            )
+        )
+        con.execute("INSERT INTO stakeholders VALUES (1,'T',NULL)")
+        con.execute(
+            "INSERT INTO negotiation_strategies (id, stakeholder_id, context_ref, status) "
+            "VALUES (1,1,'X','closed')"
+        )
+        con.commit()
+        con.close()
+        negotiate_ops.cmd_migrate(Args(db))
+        con = sqlite3.connect(db)
+        con.execute(
+            "INSERT INTO negotiation_strategies (id, stakeholder_id, context_ref, status) "
+            "VALUES (2,1,'Y','executing')"
+        )
+        kept = con.execute(
+            "SELECT status FROM negotiation_strategies WHERE id=1"
+        ).fetchone()[0]
+        con.close()
+        assert kept == "closed", "rebuild must preserve existing rows"
+
+
 def test_migrate_detects_malformed_preexisting_table():
     # codex loop-2 #4: right table name, wrong shape -> INCOMPLETE, not ok
     with tempfile.TemporaryDirectory() as tmp:

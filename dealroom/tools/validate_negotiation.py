@@ -272,11 +272,20 @@ def validate(strategy_id, db_path=None, hubspot_path=None):
                     f"(needs Schätzung/n=/Basis on the line)"
                 )
 
-    # 5. Rounds coverage back to first contact
-    n_rounds, first_round = con.execute(
-        "SELECT COUNT(*), MIN(date) FROM negotiation_rounds WHERE strategy_id=?",
-        (strategy_id,),
-    ).fetchone()
+    # 5. Rounds coverage back to first contact — per COUNTERPARTY, not per
+    # strategy row: a successor strategy (e.g. executing phase after agreement)
+    # inherits the stakeholder's history (live finding, CAT S3 2026-07-10)
+    try:
+        n_rounds, first_round = con.execute(
+            "SELECT COUNT(*), MIN(date) FROM negotiation_rounds "
+            "WHERE strategy_id=? OR stakeholder_id=?",
+            (strategy_id, sid),
+        ).fetchone()
+    except sqlite3.OperationalError:  # legacy schema without stakeholder_id
+        n_rounds, first_round = con.execute(
+            "SELECT COUNT(*), MIN(date) FROM negotiation_rounds WHERE strategy_id=?",
+            (strategy_id,),
+        ).fetchone()
     if n_rounds < 3:
         findings.append(f"only {n_rounds} rounds logged — history incomplete")
     hs = con.execute(

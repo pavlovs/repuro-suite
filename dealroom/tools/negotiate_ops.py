@@ -201,12 +201,55 @@ def _backup_db(db):
     return target
 
 
+def _widen_status_check(con):
+    """The pre-§12 strategies table CHECKs status IN (active|superseded|closed);
+    the phase model adds 'executing'. SQLite cannot ALTER a CHECK — rebuild the
+    table (create patched copy, move rows, swap) inside one transaction.
+    Found live 2026-07-10: additive column migration alone left the CHECK behind."""
+    row = con.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='negotiation_strategies'"
+    ).fetchone()
+    if not row or "'executing'" in row[0] or "CHECK" not in row[0].upper():
+        return False
+    patched = re.sub(
+        r"CHECK\s*\(\s*status\s+IN\s*\([^)]*\)\s*\)",
+        "CHECK(status IN ('active','executing','superseded','closed'))",
+        row[0],
+        flags=re.IGNORECASE,
+    )
+    if patched == row[0]:
+        sys.exit(
+            "cannot widen status CHECK automatically — negotiation_strategies DDL "
+            "has an unexpected shape; widen it manually"
+        )
+    patched = patched.replace(
+        "CREATE TABLE negotiation_strategies",
+        "CREATE TABLE negotiation_strategies_new",
+        1,
+    )
+    cols = [r[1] for r in con.execute("PRAGMA table_info(negotiation_strategies)")]
+    collist = ", ".join(cols)
+    con.execute("BEGIN")
+    con.execute(patched)
+    con.execute(
+        f"INSERT INTO negotiation_strategies_new ({collist}) "
+        f"SELECT {collist} FROM negotiation_strategies"
+    )
+    con.execute("DROP TABLE negotiation_strategies")
+    con.execute(
+        "ALTER TABLE negotiation_strategies_new RENAME TO negotiation_strategies"
+    )
+    con.execute("COMMIT")
+    return True
+
+
 def cmd_migrate(args):
     db = Path(args.db)
     if not db.exists():
         sys.exit(f"DB not found: {db}")
     backup = _backup_db(db)
     con = _connect(db)
+    widened = _widen_status_check(con)
     con.executescript(MIGRATE_DDL)
     added_cols = []
     for table, col, typ in MIGRATE_COLUMNS:
@@ -235,7 +278,12 @@ def cmd_migrate(args):
         sys.exit(f"migration INCOMPLETE, re-run: missing {missing} (backup: {backup})")
     print(
         json.dumps(
-            {"ok": True, "backup": str(backup), "columns_added": added_cols},
+            {
+                "ok": True,
+                "backup": str(backup),
+                "columns_added": added_cols,
+                "status_check_widened": widened,
+            },
             ensure_ascii=False,
         )
     )

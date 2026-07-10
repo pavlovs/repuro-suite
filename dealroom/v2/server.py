@@ -309,7 +309,7 @@ def push_artifacts(payload: dict = Body(...), p=Depends(principal)):
 
 
 def _recompute_chains(c, code, atype):
-    from v2.migrate_v1 import artifact_stem
+    from v2.naming import artifact_stem
 
     rows = c.execute(
         "SELECT id, file_name, file_date, version, registered_at, status "

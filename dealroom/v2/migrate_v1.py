@@ -8,13 +8,13 @@ Run:  python -m v2.migrate_v1        (from dealroom/)
 """
 
 import json
-import re
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from v2 import db  # noqa: E402
+from v2.naming import artifact_stem, parse_file_date, parse_version  # noqa: E402
 
 # ---------------------------------------------------------------- config ----
 
@@ -352,37 +352,11 @@ FRESHNESS_CONFIG = [
     ("milestone_warn_days", "7", "Meilenstein fällig binnen N Tagen → Attention"),
 ]
 
-VERSION_RE = re.compile(r"_v(\d+)(?:[._]|$)", re.IGNORECASE)
-DATE_PREFIX_RE = re.compile(r"^(\d{6})[_ ]")
-
-
 # ---------------------------------------------------------------- helpers ---
 
 
 def table_cols(conn, table):
     return [r[1] for r in conn.execute(f"PRAGMA table_info([{table}])")]
-
-
-def parse_version(name: str):
-    m = VERSION_RE.search(name)
-    return int(m.group(1)) if m else None
-
-
-def parse_file_date(name: str):
-    m = DATE_PREFIX_RE.match(name)
-    if not m:
-        return None
-    yy, mm, dd = m.group(1)[0:2], m.group(1)[2:4], m.group(1)[4:6]
-    if not ("01" <= mm <= "12" and "01" <= dd <= "31"):
-        return None
-    return f"20{yy}-{mm}-{dd}"
-
-
-def artifact_stem(name: str):
-    stem = name.rsplit(".", 1)[0].lower()
-    stem = DATE_PREFIX_RE.sub("", stem)
-    stem = VERSION_RE.sub("", stem)
-    return stem.strip(" _-")
 
 
 # ---------------------------------------------------------------- migrate ---

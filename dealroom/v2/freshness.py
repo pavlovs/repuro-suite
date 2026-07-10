@@ -100,13 +100,16 @@ def deal_flags(conn, deal) -> list[dict]:
                 "roman",
             )
 
-    # -- rule 2: artifact chain broken (rfi/slides older than current databook)
+    # -- rule 2: artifact chain broken (rfi/slides older than current databook).
+    # Several 'current' heads can exist per type (one per version chain) —
+    # the chain rule compares the NEWEST current of each type.
     cur = {
         r["artifact_type"]: r
         for r in conn.execute(
-            "SELECT artifact_type, file_date, file_name FROM deal_artifacts "
-            "WHERE code_name=? AND status='current' "
-            "AND artifact_type IN ('databook','rfi','slides')",
+            "SELECT artifact_type, MAX(file_date) AS file_date FROM deal_artifacts "
+            "WHERE code_name=? AND status IN ('current','final') "
+            "AND artifact_type IN ('databook','rfi','slides') "
+            "AND file_date IS NOT NULL GROUP BY artifact_type",
             (code,),
         )
     }

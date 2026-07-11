@@ -1,8 +1,23 @@
 # DEALROOM — Roadmap
 
-Last updated: 2026-06-10.
+Last updated: 2026-07-11 (v2 local build).
 Scope: NDA exchange → closing (full deal lifecycle since Schema v2).
 ALLEX has authority over pipeline stage — DEALROOM reads, does not write back (for now).
+
+---
+
+## v2 REBUILD (SPEC-DEALROOM-V2.md) — built locally 2026-07-10/11
+
+All six milestones built + tested in `v2/` (34 tests green; plans in
+`ai/PLAN-DR-V2-M1.md` / `-M2` / `-M3` / `-M4-M5`). Local sandbox on :8082
+(`python -m v2.server --port 8082`), DB `data/dealroom_v2.db` (rebuildable via
+`python -m v2.migrate_v1`; v1 read-only). v1 code untouched and still serving prod.
+
+**Open before Fly cutover (needs Roman):**
+1. Confirm stage-correction diffs (Fox/Mantis→due_diligence, Lion→indicative_offer, Swordfish→Aqua revived) — applied in the local sandbox only.
+2. Confirm kill list §10 (v2 DB simply doesn't carry the dead tables; v1 untouched; deal_data_v1_archive exported to `data/archive/`).
+3. Sign-off on the sandbox UI (DEV-FIRST), then cutover: one-time migration against Fly volume, supervisord command → `python -m v2.server --port 8082`, `DEALROOM_TRUSTED_PROXY=1`, boardroom/cockpit repointed (their queries already pass against v2 — tested), retire deploy-time DB snapshot.
+4. Deferred to cutover phase: COM/xlsx extraction adapters push via HTTP (v1 `extract` keeps working locally until then; DR-BUG-020/022/025 move with that work); data-room scanner paths for live seller shares (`data/scanner_paths.json`); scheduled scan via RepuroAgentLoop.
 
 ---
 
@@ -36,6 +51,7 @@ ALLEX has authority over pipeline stage — DEALROOM reads, does not write back 
 | DR-M15 | Investor Report | Export cockpit data as shareable investor update (recipient-aware filtering). Thin layer on DR-M9 | ⬜ |
 | DR-M17 | Outside-In Canvas + `/deal-update` | Per-target strategic canvas via WebSearch + Opus → static HTML | 🔒 Deferred |
 | DR-M25 | Commercial DD Module | `deal_invoices` fact table, databook ingest + 106-check tie-out gate; analyses rendered INSIDE the IC-memo sections (segments→Business Model, cohorts/churn→Customers & Suppliers, findings→DD). Spec: `PLAN-DR-M25-CDD.md` | ✅ |
+| DR-M26 | Deal State Pack (session entry) | `tools/deal_state_pack.py` + `tools/dd_item.py` + `state/<codename>-pack.md`; `deal_dd_items` ledger + `last_verified_at`; `[CODENAME]` prompt-hook injection + `/deal-brief` skill. Interim pre-v2 — generator becomes the v2 M2 scanner; ledger migrates as-is; write path re-points to Fly API at v2 M1 (2026-07-10) | ✅ |
 
 Status: ⬜ = not started, 🔄 = in progress, ✅ = complete
 

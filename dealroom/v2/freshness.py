@@ -282,7 +282,7 @@ def rfi_flags(conn, deal) -> list[dict]:
     row = conn.execute(
         "SELECT COUNT(*) n, MIN(sent_at) oldest FROM deal_questions "
         "WHERE domain=? AND sent_at IS NOT NULL AND answered_at IS NULL "
-        "AND importance='high' AND sent_at <= ?",
+        "AND importance='high' AND substr(sent_at,1,10) <= ?",
         (domain, cutoff),
     ).fetchone()
     if row["n"]:

@@ -237,8 +237,9 @@ TERMS_SEED = [
         unit="K€",
         status="agreed",
         src="LOI vS 03.07.2026 (Landgraf Laborsysteme)",
-        note="3 € je 1 € Ø-EBIT 2026/27 über 450 K€ (nach Tantiemen), "
-        "Formel-Cap 700 K€",
+        note="3 € je 1 € Ø-EBIT 2026/27 über 450 K€ (nach Tantiemen); "
+        "max. anrechenbares Ø-EBIT 700 K€ → 3 × 250 K€ = 750 K€ "
+        "(LOI-Wortlaut geprüft 11.07.2026)",
     ),
     dict(
         code="Mouse",
@@ -489,6 +490,12 @@ def migrate():
             "WHERE code_name=?",
             (new_code, to_stage, entered_at, code),
         )
+        if rename_to:
+            # keep the timeline intact: baseline history follows the rename
+            v2.execute(
+                "UPDATE deal_stage_history SET code_name=? WHERE code_name=?",
+                (new_code, code),
+            )
         v2.execute(
             "INSERT INTO deal_stage_history "
             "(domain, code_name, from_stage, to_stage, changed_at, changed_by, evidence) "
@@ -554,6 +561,18 @@ def migrate():
         v2_n = v2.execute(f"SELECT COUNT(*) FROM [{table}]").fetchone()[0]
         report["tables"][table] = v2_n
         assert v1_n == v2_n, f"row count mismatch {table}: {v1_n} != {v2_n}"
+        # drift guard: v1-only columns with data have no destination — fail
+        # loudly instead of silently dropping (v1 evolves under other sessions)
+        dropped = [c for c in table_cols(v1, table) if c not in set(cols)]
+        for c in dropped:
+            n_drift = v1.execute(
+                f"SELECT COUNT(*) FROM [{table}] WHERE [{c}] IS NOT NULL"
+            ).fetchone()[0]
+            if n_drift:
+                sys.exit(
+                    f"column drift: {table}.{c} has {n_drift} non-null rows in v1 "
+                    "but no v2 destination - extend schema.sql, then re-run."
+                )
 
     # scorecard_config (renamed from deal_scorecard_config)
     cols = [
@@ -629,8 +648,8 @@ def migrate():
                 "INSERT INTO deal_artifacts "
                 "(domain, code_name, artifact_type, artifact_subtype, version, "
                 " file_name, file_path, file_date, file_size_kb, fiscal_year, "
-                " status, supersedes_id, registered_at, note) "
-                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                " status, supersedes_id, registered_at, note, extraction_config) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                     d["domain"],
                     d["code_name"],
@@ -646,6 +665,7 @@ def migrate():
                     prev_id,
                     d.get("registered_at") or now,
                     d.get("doc_status_note"),
+                    d.get("extraction_config"),
                 ),
             )
             prev_id = cur.lastrowid

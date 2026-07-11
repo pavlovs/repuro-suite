@@ -54,4 +54,12 @@ Build SPEC-DEALROOM-V2.md (rev 2, locked) **locally** as a complete-feeling prod
 - Tests: dealroom/v2/tests/ — run `python -m pytest v2/tests/` from dealroom/ with venv? v1 uses .venv — check `python` works with fastapi; else pip install fastapi uvicorn httpx into .venv.
 
 ## Progress log (append per milestone)
-- [x] Recon + M1 plan started
+- [x] Recon + M1 plan
+- [x] M1 data layer + migration (23 tests) — commit 6f5c5de
+- [x] M2 scanner + freshness (30 tests) — verified live on Fox/Mantis
+- [x] M3 answer-first UI — visual pass, validate_ci R2/R3/R4=0
+- [x] M4 CDD tab + M5 negotiation/stakeholders/terms — owner-gating verified
+- [x] M6 e2e (34 tests), docs (ROADMAP v2 block, CLAUDE.md v2 section), final rebuild
+- Mid-session v1 drift handled: §12 negotiation tables + 'executing' status + closed_reason (other sessions were writing v1 concurrently — counts in plans reflect final snapshot)
+- Lion terms reseeded from negotiation locked_terms (3.425 K€ Closing agreed 16.06; R1 2.500 K€ superseded)
+- FOUND (report to Roman): Mantis workshop file sits in Fox folder root (260714_Endoberatung_Workshop_vS.xlsx) — cross-deal contamination in OneDrive, not fixed (not my file to move)

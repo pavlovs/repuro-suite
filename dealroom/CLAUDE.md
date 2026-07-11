@@ -22,6 +22,16 @@ Read in this order:
 
 Never write to `pipeline.db`. Never duplicate ALLEX data into `dealroom.db`. Read it live.
 
+## v2 (SPEC-DEALROOM-V2.md) — built 2026-07-10/11, local sandbox, pre-cutover
+
+Everything under `v2/` — do not confuse with v1 (`src/`, still serving prod).
+
+- **Fly is master** after cutover; until then local = sandbox (labeled in the UI). v1 `data/dealroom.db` is READ-ONLY for v2 code; v2 uses `data/dealroom_v2.db`.
+- Rebuild sandbox: `python -m v2.migrate_v1` (idempotent; server must be stopped) then `python -m v2.server --port 8082`, then rescan: `python -m v2.scanner artifacts --deal <X>` / `rfi --deal <X>` / `dataroom --deal <X> --path <root>` (data rooms strictly read-only).
+- Writes ONLY via the API (`/api/deal/{code}/stage|term|milestone`, `/api/push/*`) — stage changes REQUIRE evidence; terms REQUIRE source_doc.
+- Negotiation/stakeholder views are owner-only (roman). X-Remote-User is trusted only with `DEALROOM_TRUSTED_PROXY=1` (behind suite Caddy).
+- Tests: `python -m pytest v2/tests/` (34). Status + cutover checklist: `ai/ROADMAP.md` v2 block.
+
 ## Non-negotiable decisions
 
 - **Single source of truth**: Company identity, basic financials, outreach history, contact data live in ALLEX `pipeline.db`. DEALROOM reads them via `ATTACH DATABASE`. No copy, no sync job, no duplication.

@@ -135,6 +135,7 @@ CREATE TABLE deal_artifacts (
     dataroom_section TEXT,
     status          TEXT NOT NULL DEFAULT 'current' CHECK(status IN ('current','superseded','final','stale','draft')),
     checks_json     TEXT,
+    extraction_config TEXT,
     supersedes_id   INTEGER REFERENCES deal_artifacts(id),
     registered_at   TEXT NOT NULL,
     last_seen_at    TEXT,
@@ -521,7 +522,7 @@ CREATE TABLE negotiation_rounds (
     round_no INTEGER NOT NULL,
     date TEXT NOT NULL, channel TEXT,
     we_asked TEXT, they_asked TEXT, we_gave TEXT, they_gave TEXT,
-    outcome TEXT, next_step TEXT,
+    outcome TEXT, next_step TEXT, signals TEXT,
     created_at TEXT DEFAULT (datetime('now'))
 );
 CREATE UNIQUE INDEX ux_rounds_no ON negotiation_rounds(strategy_id, round_no);
@@ -612,7 +613,7 @@ CREATE TABLE communication_trail (
     stakeholder_id INTEGER NOT NULL REFERENCES stakeholders(id),
     source TEXT NOT NULL,
     ref TEXT,
-    date TEXT, direction TEXT, subject TEXT,
+    date TEXT, direction TEXT, subject TEXT, triage_note TEXT,
     read_status TEXT NOT NULL DEFAULT 'unread' CHECK(read_status IN ('read','unread','sealed')),
     created_at TEXT DEFAULT (datetime('now'))
 );

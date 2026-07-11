@@ -62,12 +62,15 @@ def fmt_keur(value_k):
 
 
 def fmt_keur_exact(value_k):
-    """Ledger-grade exact display: 5965 → '5.965 K€' (dot thousands)."""
+    """Ledger-grade exact display: 5965 → '5.965 K€'; 5957.5 → '5.957,5 K€';
+    100.05 → '100,05 K€' (two decimals kept when the value carries them)."""
     if value_k is None:
         return "—"
     if value_k == int(value_k):
         return _de(f"{int(value_k):,d}") + " K€"
-    return _de(f"{value_k:,.1f}") + " K€"
+    if round(value_k, 1) == value_k:
+        return _de(f"{value_k:,.1f}") + " K€"
+    return _de(f"{value_k:,.2f}") + " K€"
 
 
 def fmt_mult(value):
@@ -471,11 +474,34 @@ def deal_timeline(conn, code):
 # -------------------------------------------------------------- terms API ---
 
 
+TERM_KEY_ORDER = (
+    "purchase_price_upfront",
+    "ausschuettung_closing",
+    "closing_total",
+    "earnout_max",
+    "rueckbeteiligung",
+    "ev_total_max",
+    "ev_indicative",
+    "multiple",
+    "earnout_mechanics",
+    "guarantee",
+    "seller_commitment",
+    "exclusivity_until",
+    "offer_update",
+)
+
+
 def terms_ledger(conn, code=None):
+    # commercial reading order: upfront → earn-out → total → mechanics → rest
+    order_case = (
+        "CASE term_key "
+        + " ".join(f"WHEN '{k}' THEN {i}" for i, k in enumerate(TERM_KEY_ORDER))
+        + " ELSE 99 END"
+    )
     q = (
         "SELECT * FROM deal_terms "
         + ("WHERE lower(code_name)=lower(?) " if code else "")
-        + "ORDER BY code_name, term_key, id"
+        + f"ORDER BY code_name, {order_case}, id"
     )
     rows = conn.execute(q, (code,) if code else ()).fetchall()
     return [

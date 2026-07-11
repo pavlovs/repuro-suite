@@ -264,7 +264,7 @@ def milestone_flags(conn, deal) -> list[dict]:
                 "severity": "alert" if overdue else "warn",
                 "message": (
                     f"Meilenstein {'überfällig' if overdue else 'fällig'}: "
-                    f"{m['milestone']} ({due.strftime('%d.%m.')}, {m['owner']})"
+                    f"{m['milestone']} ({due.strftime('%d.%m.%y')}, {m['owner']})"
                 ),
                 "group_hint": group,
             }

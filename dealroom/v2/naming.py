@@ -11,7 +11,7 @@ VERSION_RE = re.compile(r"_v(\d+)(?:[._]|$)", re.IGNORECASE)
 DATE_PREFIX_RE = re.compile(r"^(\d{6})[_ ]")
 
 SKIP_DIRS = {"_old", "_archive", "archive"}
-SKIP_FILE_MARKERS = (".bak", "~$", ".tmp", ".lnk")
+SKIP_FILE_MARKERS = (".bak", "~$", ".tmp", ".lnk", "_backup_", "_backup.", "backup_20")
 
 # filename markers → artifact_type (checked in order, first hit wins)
 NAME_RULES = [
@@ -19,7 +19,7 @@ NAME_RULES = [
     (("fragenliste", "datenanfrage", "rfi"), "rfi"),
     (("kaufabsichtserkl", "loi"), "loi"),
     (("vertraulichkeit", "nda"), "nda"),
-    (("spa", "kaufvertrag"), "spa"),
+    (("_spa_", "_spa.", "kaufvertrag"), "spa"),  # bare 'spa' hits Vertriebspartner etc.
     (("angebots-update", "indikatives angebot", "angebot", "nbo", "offer"), "nbo"),
     (("cdd", "chancen_risiken", "dd structure", "dd_v", " dd_"), "slides"),
     (("bewertung", "model", "susa"), "model"),

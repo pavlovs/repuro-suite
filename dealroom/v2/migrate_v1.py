@@ -48,6 +48,10 @@ CARRIED_TABLES = [
     "negotiation_round_reviews",
     "negotiation_lessons",
     "negotiation_predictions",
+    "negotiation_milestones",
+    "negotiation_open_items",
+    "strategy_parties",
+    "negotiation_positions",
     "communication_trail",
     "portfolio_meta",
 ]
@@ -160,7 +164,7 @@ TERMS_SEED = [
         num=3400,
         unit="K€",
         status="agreed",
-        src="Schröcke-Mail 30.06.2026 (modifizierte Variante 2) + LOI v7 03.07",
+        src="Schröcke-Mail 30.06.2026 (modifizierte Variante 2) + LOI v7 03.07.2026",
         note="abzüglich Nettofinanzverbindlichkeiten per 31.12.2025",
     ),
     dict(
@@ -170,7 +174,7 @@ TERMS_SEED = [
         num=2557.5,
         unit="K€",
         status="agreed",
-        src="Schröcke-Mail 30.06.2026 (modifizierte Variante 2) + LOI v7 03.07",
+        src="Schröcke-Mail 30.06.2026 (modifizierte Variante 2) + LOI v7 03.07.2026",
         note="je 2026+2027: 2,75 € je 1 € operativer EBIT über 625 K€, "
         "EBIT-Cap 1.090 K€ → max 2 × 1.278,75 K€",
     ),
@@ -198,7 +202,7 @@ TERMS_SEED = [
         key="earnout_mechanics",
         label="EBIT-Mechanik",
         text="Nachfolge-GF-Kosten mindern EBIT nicht; Budget 2027 gemeinsam; "
-        "EBIT-Definition = v6-Wortlaut unverändert (Roman 03.07)",
+        "EBIT-Definition = v6-Wortlaut unverändert (Roman, 03.07.2026)",
         status="agreed",
         src="LOI v7 03.07.2026",
         note=None,
@@ -256,23 +260,73 @@ TERMS_SEED = [
         src="LOI vS 03.07.2026 (Landgraf Laborsysteme)",
         note=None,
     ),
-    # Lion — round 1 countered, update proposed
+    # Lion — R1 superseded (history), verhandelter Stand aus negotiation
+    # locked_terms (Runden-Record 16.06/26.06), offene Punkte proposed
     dict(
         code="Lion",
         key="purchase_price_upfront",
         label="Sofortzahlung (Runde 1)",
         num=2500,
         unit="K€",
-        status="countered",
+        status="superseded",
         src="Indikatives Angebot 22.05.2026 (deal_valuations R1); "
         "schriftliche Absage Golland 03.06.2026",
-        note="EV mid 3.757 K€ lt. Bewertung 22.05",
+        note="EV mid 3.757 K€ lt. Bewertung 22.05 — abgelöst durch Stand 16.06",
+    ),
+    dict(
+        code="Lion",
+        key="purchase_price_upfront",
+        label="Sofortzahlung",
+        num=3000,
+        unit="K€",
+        status="agreed",
+        src="Verhandlungsstand 16.06.2026 (negotiation_strategies.locked_terms, "
+        "Runden-Record)",
+        note="Teil von Closing gesamt 3.425 K€",
+    ),
+    dict(
+        code="Lion",
+        key="ausschuettung_closing",
+        label="Ausschüttung (Closing)",
+        num=425,
+        unit="K€",
+        status="agreed",
+        src="Verhandlungsstand 16.06.2026 (negotiation_strategies.locked_terms)",
+        note=None,
+    ),
+    dict(
+        code="Lion",
+        key="closing_total",
+        label="Closing gesamt",
+        num=3425,
+        unit="K€",
+        status="agreed",
+        src="Verhandlungsstand 16.06.2026 (negotiation_strategies.locked_terms)",
+        note="3.000 Sofort + 425 Ausschüttung",
+    ),
+    dict(
+        code="Lion",
+        key="earnout_mechanics",
+        label="EO-Struktur",
+        text="EO zweigeteilt 2026/2027; Add-back-Carve-outs nach DD-Bestätigung",
+        status="agreed",
+        src="Verhandlungsstand 16.06.2026 + 26.06.2026 (locked_terms)",
+        note=None,
+    ),
+    dict(
+        code="Lion",
+        key="seller_commitment",
+        label="Verkäufer-Bindung",
+        text="Frau Golland bis 31.12.2027, Gehalt aus EO-EBIT herausgerechnet",
+        status="agreed",
+        src="Verhandlungsstand 26.06.2026 (locked_terms)",
+        note=None,
     ),
     dict(
         code="Lion",
         key="offer_update",
-        label="Angebots-Update",
-        text="v1 vom 08.07.2026 — offene Punkte: Tantieme 135/140 K€, "
+        label="Angebots-Update (offene Punkte)",
+        text="v1 vom 08.07.2026 — offen: Tantieme 135/140 K€, "
         "EO-Staffelung, Kündigungsschutz +1 Jahr",
         status="proposed",
         src="260708_Golmed_Angebots-Update_v1",
@@ -524,7 +578,13 @@ def migrate():
         for r in v2.execute("SELECT domain, code_name FROM deals")
         if r["domain"]
     }
-    docs = [dict(r) for r in v1.execute("SELECT * FROM deal_documents")]
+    from v2.naming import skip_file
+
+    docs = [
+        dict(r)
+        for r in v1.execute("SELECT * FROM deal_documents")
+        if not skip_file(r["file_name"])
+    ]
     for d in docs:
         d["domain"] = DOMAIN_REMAP.get(d["domain"], d["domain"])
         d["code_name"] = code_by_domain.get(d["domain"], d["code_name"])

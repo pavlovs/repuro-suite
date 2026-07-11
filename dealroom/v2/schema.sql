@@ -507,9 +507,9 @@ CREATE TABLE negotiation_strategies (
     outcome_target TEXT NOT NULL,
     reservation TEXT, aspiration TEXT, locked_terms TEXT,
     memo_md TEXT,
-    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','superseded','closed')),
+    status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active','executing','superseded','closed')),
     created_at TEXT DEFAULT (datetime('now')),
-    our_goals TEXT, their_goals TEXT
+    our_goals TEXT, their_goals TEXT, closed_reason TEXT
 );
 CREATE UNIQUE INDEX ux_strategy_active
     ON negotiation_strategies(stakeholder_id, context_ref) WHERE status='active';
@@ -558,6 +558,52 @@ CREATE TABLE negotiation_predictions (
     counter TEXT,
     occurred INTEGER,
     resolved_at TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- §12 negotiation-tool tables (added to v1 on 2026-07-10/11, carried as-is)
+CREATE TABLE negotiation_milestones (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_id INTEGER NOT NULL,
+    date TEXT NOT NULL,
+    label TEXT NOT NULL,
+    side TEXT DEFAULT 'both' CHECK (side IN ('ours','theirs','both')),
+    consequence TEXT,
+    status TEXT DEFAULT 'pending' CHECK (status IN ('pending','met','missed','moved')),
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE negotiation_open_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_id INTEGER NOT NULL,
+    item TEXT NOT NULL,
+    owner TEXT NOT NULL CHECK (owner IN ('us','them')),
+    due TEXT,
+    status TEXT DEFAULT 'open' CHECK (status IN ('open','resolved')),
+    resolution TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    resolved_at TEXT
+);
+
+CREATE TABLE strategy_parties (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_id INTEGER NOT NULL,
+    stakeholder_id INTEGER NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('primary','co_seller','advisor','influencer')),
+    notes TEXT,
+    UNIQUE (strategy_id, stakeholder_id)
+);
+
+CREATE TABLE negotiation_positions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_id INTEGER NOT NULL,
+    term TEXT NOT NULL,
+    preferred TEXT NOT NULL,
+    fallback TEXT,
+    walk_away TEXT,
+    escalation_required INTEGER DEFAULT 0,
+    roman_confirmed INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'open' CHECK (status IN ('open','agreed','conceded','escalated')),
     created_at TEXT DEFAULT (datetime('now'))
 );
 

@@ -36,14 +36,38 @@ TERM_STATUS_ORDER = {
 # ------------------------------------------------------------- formatting ---
 
 
+def _de(num_str: str) -> str:
+    return num_str.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def fmt_keur(value_k):
-    """German convention: 1600 → '1,6 M€'; 79 → '79 K€' (styleguide)."""
+    """German convention (styleguide + Roman's usage): 79 → '79 K€';
+    750 → '0,75 M€'; 1600 → '1,6 M€'; 5957.5 → '5,96 M€'; 12400 → '12,4 M€'.
+    Two decimals below 10 M€ (deal terms need the precision — 5.965 K€ must
+    not read as 6,0 M€), one above; a single trailing zero is stripped."""
     if value_k is None:
         return "—"
-    if abs(value_k) >= 100:
-        m = value_k / 1000.0
-        return f"{m:,.1f}".replace(",", "X").replace(".", ",").replace("X", ".") + " M€"
-    return f"{value_k:,.0f}".replace(",", ".") + " K€"
+    from decimal import ROUND_HALF_UP, Decimal
+
+    if abs(value_k) < 100:
+        return _de(f"{value_k:,.0f}") + " K€"
+    m = Decimal(str(value_k)) / 1000
+    q = Decimal("0.01") if abs(m) < 10 else Decimal("0.1")
+    s = f"{m.quantize(q, rounding=ROUND_HALF_UP):,}"
+    if s.endswith("0") and "." in s and not s.endswith(".00"):
+        s = s[:-1]
+    elif s.endswith(".00"):
+        s = s[:-1]
+    return _de(s) + " M€"
+
+
+def fmt_keur_exact(value_k):
+    """Ledger-grade exact display: 5965 → '5.965 K€' (dot thousands)."""
+    if value_k is None:
+        return "—"
+    if value_k == int(value_k):
+        return _de(f"{int(value_k):,d}") + " K€"
+    return _de(f"{value_k:,.1f}") + " K€"
 
 
 def fmt_mult(value):
@@ -63,10 +87,10 @@ def fmt_date(iso):
         return s
 
 
-def term_display(t) -> str:
+def term_display(t, exact: bool = False) -> str:
     if t["value_num"] is not None:
         if t["unit"] == "K€":
-            return fmt_keur(t["value_num"])
+            return fmt_keur_exact(t["value_num"]) if exact else fmt_keur(t["value_num"])
         if t["unit"] == "x":
             return fmt_mult(t["value_num"])
         return str(t["value_num"])
@@ -209,7 +233,11 @@ def deal_answer(conn, code):
     ).fetchone()
 
     terms = [
-        {**dict(t), "display": term_display(t)}
+        {
+            **dict(t),
+            "display": term_display(t),
+            "display_exact": term_display(t, exact=True),
+        }
         for t in conn.execute(
             "SELECT * FROM deal_terms WHERE code_name=? AND status!='superseded' "
             "ORDER BY CASE status WHEN 'locked' THEN 0 WHEN 'agreed' THEN 1 "
@@ -242,14 +270,25 @@ def deal_answer(conn, code):
         else []
     )
 
+    # Answer view: ONE row per artifact type — the newest current/final file
+    # (several version chains per type exist; the commercial question is
+    # "which databook/LOI/RFI is current", not the full registry → M4 CDD tab).
     artifacts_current = [
         dict(a)
         for a in conn.execute(
-            "SELECT artifact_type, file_name, file_date, version, status "
-            "FROM deal_artifacts WHERE code_name=? AND status IN "
-            "('current','final') AND artifact_type IN "
+            "SELECT a.artifact_type, a.file_name, a.file_date, a.version, "
+            " a.status, (SELECT COUNT(*) FROM deal_artifacts b "
+            "  WHERE b.code_name=a.code_name "
+            "  AND b.artifact_type=a.artifact_type) - 1 AS n_others "
+            "FROM deal_artifacts a "
+            "WHERE a.code_name=? AND a.artifact_type IN "
             "('databook','rfi','slides','model','loi','nbo','spa','fdd_report') "
-            "ORDER BY artifact_type, file_date DESC",
+            "AND a.id = (SELECT b.id FROM deal_artifacts b "
+            "  WHERE b.code_name=a.code_name AND b.artifact_type=a.artifact_type "
+            "  AND b.status IN ('current','final') "
+            "  ORDER BY COALESCE(b.file_date,'0') DESC, COALESCE(b.version,0) DESC, "
+            "  b.id DESC LIMIT 1) "
+            "ORDER BY COALESCE(a.file_date,'0') DESC",
             (code,),
         )
     ]
@@ -274,47 +313,65 @@ def deal_answer(conn, code):
 
 def financial_summary(conn, d):
     """Headline figures with source + as-of chips (spec §4 A3).
-    Priority: extracted authoritative P&L → deal overrides (deals.md numbers)."""
+    Per item: latest ACTUAL-year authoritative extraction (plan years and
+    zero/empty rows excluded — DR-BUG-025 class) → deal override fallback."""
+    import datetime
+
+    current_year = datetime.date.today().year
     out = []
     domain = d["domain"]
-    if domain:
-        for item, label in (("revenue", "Umsatz"), ("ebitda", "EBITDA")):
+    overrides = {
+        "revenue": ("Umsatz", d["rev_m_override"]),
+        "ebitda": ("EBITDA (adj.)", d["ebitda_m_override"]),
+    }
+    for item, label in (("revenue", "Umsatz"), ("ebitda", "EBITDA")):
+        row = None
+        if domain:
             row = conn.execute(
                 "SELECT value_k, fiscal_year, source, extracted_at, is_adjusted "
                 "FROM deal_financials WHERE domain=? AND lower(line_item)=? "
                 "AND period_type='annual' AND is_authoritative=1 "
-                "ORDER BY is_adjusted DESC, fiscal_year DESC LIMIT 1",
-                (domain, item),
+                "AND value_k IS NOT NULL AND value_k != 0 AND fiscal_year < ? "
+                "ORDER BY fiscal_year DESC, is_adjusted DESC LIMIT 1",
+                (domain, item, current_year),
             ).fetchone()
-            if row:
+        if row is None and domain:
+            # no authoritative row — accept the latest year ONLY if it is a
+            # single unambiguous consolidated row (multi-entity years would
+            # show a misleading partial figure)
+            candidates = conn.execute(
+                "SELECT value_k, fiscal_year, source, extracted_at, is_adjusted "
+                "FROM deal_financials WHERE domain=? AND lower(line_item)=? "
+                "AND period_type='annual' AND value_k IS NOT NULL AND value_k != 0 "
+                "AND fiscal_year = (SELECT MAX(fiscal_year) FROM deal_financials "
+                " WHERE domain=? AND lower(line_item)=? AND period_type='annual' "
+                " AND value_k IS NOT NULL AND value_k != 0 AND fiscal_year < ?) "
+                "AND (entity IS NULL OR entity = 'consolidated')",
+                (domain, item, domain, item, current_year),
+            ).fetchall()
+            if len(candidates) == 1:
+                row = candidates[0]
+        if row:
+            out.append(
+                {
+                    "label": f"{label} {row['fiscal_year']}"
+                    + (" (adj.)" if row["is_adjusted"] else ""),
+                    "value": fmt_keur(row["value_k"]),
+                    "source": row["source"],
+                    "as_of": fmt_date(row["extracted_at"]),
+                }
+            )
+        else:
+            olabel, oval = overrides[item]
+            if oval is not None:
                 out.append(
                     {
-                        "label": f"{label} {row['fiscal_year']}"
-                        + (" (adj.)" if row["is_adjusted"] else ""),
-                        "value": fmt_keur(row["value_k"]),
-                        "source": row["source"],
-                        "as_of": fmt_date(row["extracted_at"]),
+                        "label": olabel,
+                        "value": fmt_keur(oval * 1000),
+                        "source": "deals.md (override)",
+                        "as_of": None,
                     }
                 )
-    if not out:
-        if d["rev_m_override"] is not None:
-            out.append(
-                {
-                    "label": "Umsatz",
-                    "value": fmt_keur(d["rev_m_override"] * 1000),
-                    "source": "deals.md (override)",
-                    "as_of": None,
-                }
-            )
-        if d["ebitda_m_override"] is not None:
-            out.append(
-                {
-                    "label": "EBITDA (adj.)",
-                    "value": fmt_keur(d["ebitda_m_override"] * 1000),
-                    "source": "deals.md (override)",
-                    "as_of": None,
-                }
-            )
     return out
 
 
@@ -421,4 +478,11 @@ def terms_ledger(conn, code=None):
         + "ORDER BY code_name, term_key, id"
     )
     rows = conn.execute(q, (code,) if code else ()).fetchall()
-    return [{**dict(t), "display": term_display(t)} for t in rows]
+    return [
+        {
+            **dict(t),
+            "display": term_display(t),
+            "display_exact": term_display(t, exact=True),
+        }
+        for t in rows
+    ]

@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import Response
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -456,17 +456,14 @@ def push_rfi(payload: dict = Body(...), p=Depends(principal)):
     return {"ok": True, "count": len(questions)}
 
 
-# -------------------------------------------------------------- UI (M3+) ----
+# ------------------------------------------------------------------- UI -----
+# Rebuild after 13.07 rejection: screens ship one at a time with sign-off.
+# Screen 1 = Portfolio View (v1 golden reference, ported 1:1). The old M3-M5
+# surfaces (v2.ui / v2.ui_workspace) are unregistered pending their rebuild.
 
-try:
-    from v2 import ui  # noqa: E402
+from v2 import ui_portfolio  # noqa: E402
 
-    ui.register(app, conn, principal, owner_only)
-except ImportError:
-
-    @app.get("/", response_class=HTMLResponse)
-    def index_placeholder(p=Depends(principal)):
-        return HTMLResponse("<h1>DEALROOM v2 — UI kommt mit M3</h1>")
+ui_portfolio.register(app, conn, principal)
 
 
 @app.get("/favicon.ico")

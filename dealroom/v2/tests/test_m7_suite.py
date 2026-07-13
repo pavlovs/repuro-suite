@@ -70,6 +70,13 @@ def client(tmp_path_factory):
     mp.undo()
 
 
+_DEAL_PAGE_SKIP = pytest.mark.skip(
+    reason="deal page unregistered pending UI rebuild (13.07 rejection) — "
+    "re-enable with Screen 2"
+)
+
+
+@_DEAL_PAGE_SKIP
 @pytest.mark.skipif(not COCKPIT.exists(), reason="cockpit.db not available")
 def test_deal_page_shows_execution_and_investor(client):
     page = client.get("/deal/Fox").text
@@ -78,6 +85,7 @@ def test_deal_page_shows_execution_and_investor(client):
     assert "Investor Room" in page  # due_diligence → named live deal
 
 
+@_DEAL_PAGE_SKIP
 def test_deal_page_investor_negative(client):
     # a dead deal must not claim investor visibility
     page = client.get("/deal/Octopus").text

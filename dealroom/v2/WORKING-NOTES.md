@@ -2,6 +2,26 @@
 
 **Re-read this file after any compaction. Never re-derive.**
 
+## 13.07 — UI REJECTED, rebuild screen-by-screen (read this first)
+Roman rejected the M3–M5 UI wholesale ("v0.2 instead of v2, AI slop"). Data
+layer (M1/M2 + tests) stands. Restated goal (confirmed by Roman 13.07):
+- DEALROOM = workspace where deal work HAPPENS (CDD review, IC prep, financial
+  modelling, negotiation) on the one-truth DB. The deal page IS the IC view:
+  answer first, then progressively deeper drill-downs.
+- Landing = v1 Portfolio View ported 1:1 (golden reference: src/templates/
+  dashboard.html + sections/portfolio.js — served VERBATIM, never reinterpreted).
+- NO Attention tab (cockpit owns "what needs me"); freshness = badges later.
+- English throughout. Units in column headers/footnotes, NEVER in cells.
+  Every visible string is product copy — no builder meta-remarks.
+- Terms ledger UI: NOT built here — a separate agent builds it on v1; v2 keeps
+  the /api/terms endpoint only.
+- Process: ONE screen → Roman sign-off → next (FIRST-SCREEN-SIGNOFF). No
+  unattended UI fan-out. validate_ci passing ≠ visual sign-off.
+Screen 1 (portfolio port, v2/ui_portfolio.py) built + verified 13.07 — old
+v2.ui/v2.ui_workspace/v2.uikit UNREGISTERED (delete when rebuild completes);
+their page tests skip-marked. Screen 2 = deal answer card (IC pyramid) — only
+after Roman signs off Screen 1.
+
 ## Mission
 Build SPEC-DEALROOM-V2.md (rev 2, locked) **locally** as a complete-feeling product: data layer v2 + migration + answer-first UI + CDD workspace + negotiation tab + freshness engine. Suite CI tie-in (repuro-ci.css). No Fly deploy this session — local = sandbox, labeled. Roman reviews on local dev URL.
 

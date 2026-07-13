@@ -56,12 +56,12 @@ def test_e2e_scan_push_fresh_ui(client):
     assert fox_flags is not None
     assert any(f["rule"] == "extraction_stale" for f in fox_flags["flags"])
 
-    # UI renders the flag and the current databook
-    page = client.get("/deal/Fox").text
-    assert "extraction_stale" in page
-    assert "Databook" in page
+    # landing (Screen 1: ported v1 Portfolio View) renders the deal
+    page = client.get("/").text
+    assert "Live Deal Portfolio" in page
+    assert '"Fox"' in page  # deal present in DATA payload
 
-    # landing groups Fox under needs_roman
+    # attention API groups Fox under needs_roman (data feed for cockpit)
     attention = client.get("/api/attention").json()
     assert any(e["code_name"] == "Fox" for e in attention["groups"]["needs_roman"])
 
@@ -87,11 +87,12 @@ def test_e2e_dataroom_delta_flag(client):
     fresh = client.get("/api/fresh").json()
     mouse = next((d for d in fresh["deals"] if d["deal"] == "Mouse"), None)
     assert mouse and any(f["rule"] == "dataroom_delta" for f in mouse["flags"])
-    # CDD tab shows the section row with the delta
-    page = client.get("/deal/Mouse/cdd").text
-    assert "Finanzen" in page and "+1 neu" in page
 
 
+@pytest.mark.skip(
+    reason="owner-gated surfaces unregistered pending UI rebuild "
+    "(13.07 rejection) — re-enable with the negotiation screen"
+)
 def test_e2e_owner_gating(client):
     headers = {"X-Remote-User": "florian"}
     assert client.get("/deal/Lion/negotiation", headers=headers).status_code == 403
@@ -101,11 +102,15 @@ def test_e2e_owner_gating(client):
     assert client.get("/stakeholders").status_code == 200
 
 
-def test_e2e_stage_write_shows_in_timeline_ui(client):
+def test_e2e_stage_write_shows_in_timeline(client):
     r = client.post(
         "/api/deal/Panda/stage",
         json={"to_stage": "dead", "evidence": "e2e: kein Kontakt seit April"},
     )
     assert r.status_code == 200
-    page = client.get("/deal/Panda/timeline").text
-    assert "e2e: kein Kontakt seit April" in page
+    events = client.get("/api/deal/Panda/timeline").json()
+    assert any(
+        e["kind"] == "stage"
+        and "e2e: kein Kontakt seit April" in (e.get("detail") or "")
+        for e in events
+    )

@@ -19,8 +19,27 @@ layer (M1/M2 + tests) stands. Restated goal (confirmed by Roman 13.07):
   unattended UI fan-out. validate_ci passing ≠ visual sign-off.
 Screen 1 (portfolio port, v2/ui_portfolio.py) built + verified 13.07 — old
 v2.ui/v2.ui_workspace/v2.uikit UNREGISTERED (delete when rebuild completes);
-their page tests skip-marked. Screen 2 = deal answer card (IC pyramid) — only
-after Roman signs off Screen 1.
+their page tests skip-marked.
+
+13.07 round 2 (after Roman escalation):
+- NUMBERS: Fox EV 1,4 was a stale 22.05 valuation row. Root causes fixed:
+  deal folders moved → all deal_documents paths dead (ingest-docs re-run);
+  get_latest_model picked sheet-less exports (now requires GuV+Bewertung);
+  multi-model residue rows in deal_financials (reads now latest-extraction-
+  wins); portfolio multiple = EV / adj. EBITDA headline year per footnote.
+  `model --all` refreshed 9 deals from their LATEST model files → migrate_v1.
+  Number-freshness chain = ingest-docs → model → migrate (MODEL-IS-EV-TRUTH).
+- DEAL WORKSPACE: full v1 deal view ported over v2 (v2/ui_dealview.py) — the
+  IC one-stop: one-pager, investment analysis, valuation & financials (model
+  APIs), business model, customers/suppliers, thesis, RFI, documents, history.
+  Compat: TEMP views deal_documents→deal_artifacts + empty deal_notes; deals
+  gets NULL read-compat col last_contact_at. ?deal=X serves it; api/data,
+  api/update (full v1 field set), api/financials, api/model-* mirrored.
+- PARALLEL LANE (other agent, uncommitted): v2/ui_negotiation.py Screen 2 =
+  Offer & Negotiation at /deal/{code}/negotiation (owner-gated) + schema.sql/
+  migrate_v1/repo/workspace edits. Their test_lion_renders fails on THEIR
+  in-flight state — not this lane. server.py registers both modules;
+  server.py commit rides with their lane (their module is untracked).
 
 ## Mission
 Build SPEC-DEALROOM-V2.md (rev 2, locked) **locally** as a complete-feeling product: data layer v2 + migration + answer-first UI + CDD workspace + negotiation tab + freshness engine. Suite CI tie-in (repuro-ci.css). No Fly deploy this session — local = sandbox, labeled. Roman reviews on local dev URL.

@@ -69,10 +69,12 @@ def test_api_data_matches_v1_shape(client):
             assert deal[k] is None or isinstance(deal[k], (int, float))
 
 
-def test_deal_link_placeholder(client):
+def test_deal_link_opens_v1_workspace(client):
     page = client.get("/", params={"deal": "Fox"}).text
-    assert "Fox" in page
-    assert "Back to portfolio" in page
+    # v1 deal workspace served over v2 data — mode=deal payload present
+    assert '"mode": "deal"' in page or '"mode":"deal"' in page
+    assert "renderDeal" in page
+    assert client.get("/", params={"deal": "Nessie"}).status_code == 404
 
 
 def test_api_update_status_and_stage_history(client):

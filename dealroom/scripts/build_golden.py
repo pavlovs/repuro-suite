@@ -189,6 +189,9 @@ def get_latest_model(code_name: str, conn) -> Path | None:
     """Get path of the latest non-archive model for a deal.
 
     Prefers date-prefixed files (YYMMDD_...) over generic names like Bilanz.xlsx.
+    A candidate must actually contain the model sheets (GuV + Bewertung) —
+    exports like 260706_Fox_vInvestor.xlsx live in 2_Model but carry neither,
+    and picking one silently freezes the valuation at the previous model.
     """
     rows = conn.execute(
         """SELECT file_path, file_name FROM deal_documents
@@ -201,7 +204,15 @@ def get_latest_model(code_name: str, conn) -> Path | None:
     candidates = dated if dated else rows
     for r in candidates:
         p = Path(r["file_path"])
-        if p.exists():
+        if not p.exists():
+            continue
+        try:
+            wb = openpyxl.load_workbook(p, read_only=True)
+            sheets = set(wb.sheetnames)
+            wb.close()
+        except Exception:
+            continue
+        if "GuV" in sheets and "Bewertung" in sheets:
             return p
     return None
 

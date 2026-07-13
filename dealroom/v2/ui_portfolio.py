@@ -6,8 +6,8 @@ This module serves the v1 template VERBATIM (read from src/templates/ —
 single source, no copy drift) fed from the v2 DB. Data shape and API
 contract mirror src/dashboard.py exactly so the template works unchanged.
 
-Deal pages are rebuilt screen-by-screen with sign-off per screen; until
-Screen 2 ships, deal links land on a minimal placeholder page.
+Deal links open the full v1 deal workspace, equally ported verbatim over the
+v2 DB (v2/ui_dealview.py).
 """
 
 import json
@@ -18,7 +18,7 @@ from typing import Any
 from fastapi import Body, Depends, HTTPException
 from fastapi.responses import HTMLResponse
 
-from v2 import db, repo
+from v2 import db, repo, ui_dealview
 
 V1_TEMPLATES = Path(__file__).resolve().parent.parent / "src" / "templates"
 
@@ -111,7 +111,8 @@ def build_portfolio_data(conn) -> dict[str, Any]:
                  AND period_type = 'annual'
                  AND value_k IS NOT NULL AND value_k != 0
                ORDER BY is_adjusted DESC, fiscal_year DESC,
-                 CASE line_item WHEN 'gesamtleistung' THEN 0 ELSE 1 END
+                 CASE line_item WHEN 'gesamtleistung' THEN 0 ELSE 1 END,
+                 extracted_at DESC
                LIMIT 1""",
             (domain,),
         ).fetchone()
@@ -126,7 +127,7 @@ def build_portfolio_data(conn) -> dict[str, Any]:
                      AND line_item IN ('ebitda_adj', 'ebitda')
                      AND period_type = 'annual'
                      AND fiscal_year = ? AND value_k IS NOT NULL
-                   ORDER BY is_adjusted DESC LIMIT 1""",
+                   ORDER BY is_adjusted DESC, extracted_at DESC LIMIT 1""",
                 (domain, rev_year),
             ).fetchone()
         if ebitda_row is None:
@@ -136,7 +137,8 @@ def build_portfolio_data(conn) -> dict[str, Any]:
                      AND line_item IN ('ebitda_adj', 'ebitda')
                      AND period_type = 'annual'
                      AND value_k IS NOT NULL AND value_k != 0
-                   ORDER BY is_adjusted DESC, fiscal_year DESC LIMIT 1""",
+                   ORDER BY is_adjusted DESC, fiscal_year DESC,
+                     extracted_at DESC LIMIT 1""",
                 (domain,),
             ).fetchone()
         ebitda_k = ebitda_row["value_k"] if ebitda_row else None
@@ -153,11 +155,12 @@ def build_portfolio_data(conn) -> dict[str, Any]:
         if val_row:
             ev_mid = val_row["ev_mid"] or 0
             earnout = val_row["earnout_max"] or 0
-            basis = val_row["ebitda_basis"]
             ev_total_k = ev_mid + earnout
             ev_m_computed = round(ev_total_k / 1000, 2) if ev_total_k else None
-            if ev_m_computed and basis and basis > 0:
-                multiple_computed = round(ev_total_k / basis, 2)
+            # Multiple per the table footnote: EV / adj. EBITDA 2025 (headline
+            # year) — NOT the valuation row's ebitda_basis (avg 2024-25 in the
+            # models), which contradicts both the footnote and the model's own
+            # displayed multiple (Fox: 4,9x per model vs 6,9x on the avg basis).
         if ev_m_computed is None:
             bew = conn.execute(
                 """SELECT line_item, value_k FROM deal_financials
@@ -284,23 +287,60 @@ _DEAL_PLACEHOLDER = """<!DOCTYPE html>
 color:#111827;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}}
 .card{{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:28px 36px;max-width:420px}}
 h1{{font-size:16px;margin:0 0 8px}} p{{font-size:13px;color:#6b7280;margin:0 0 16px}}
-a{{color:#0891B2;font-size:13px;text-decoration:none}} a:hover{{text-decoration:underline}}</style>
+a{{color:#0891B2;font-size:13px;text-decoration:none}} a:hover{{text-decoration:underline}}
+.links a{{display:block;margin-bottom:8px;font-weight:600}}</style>
 </head><body><div class="card"><h1>{code}</h1>
 <p>The deal workspace is being rebuilt and will be back shortly.</p>
+<div class="links">{extra}</div>
 <a href="./">&larr; Back to portfolio</a></div></body></html>"""
+
+
+def _deal_screen_links(conn, code: str, is_owner: bool) -> str:
+    """Screens already rebuilt for this deal (Screen 2 = Offer & Negotiation)."""
+    if not is_owner:
+        return ""
+    d = repo.get_deal(conn, code)
+    if not d:
+        return ""
+    has_strategy = conn.execute(
+        "SELECT 1 FROM negotiation_strategies WHERE deal_domain=? LIMIT 1",
+        (_domain_for(d),),
+    ).fetchone()
+    if not has_strategy:
+        return ""
+    return (
+        f'<a href="deal/{d["code_name"]}/negotiation">'
+        "Offer &amp; Negotiation &rarr;</a>"
+    )
+
+
+ALL_SAVE_FIELDS = (
+    PORTFOLIO_SAVE_FIELDS
+    | ui_dealview.ONEPAGER_SAVE_FIELDS
+    | ui_dealview.DD_CARD_FIELDS
+)
 
 
 def register(app, conn_fn, principal_dep) -> None:
     @app.get("/", response_class=HTMLResponse)
     def index(deal: str | None = None, p=Depends(principal_dep)):
         if deal:
-            return HTMLResponse(_DEAL_PLACEHOLDER.format(code=deal))
+            html = ui_dealview.deal_page(conn_fn(), deal, p.get("sandbox", True))
+            if html is None:
+                raise HTTPException(404, f"unknown deal {deal!r}")
+            return HTMLResponse(html)
         data = build_portfolio_data(conn_fn())
         return HTMLResponse(_build_html(data, sandbox=p.get("sandbox", True)))
 
     @app.get("/api/data")
     def api_data(deal: str | None = None, p=Depends(principal_dep)):
-        # Template refetches on load; portfolio payload regardless of ?deal=.
+        # Mirror of v1 /api/data: deal payload when ?deal= is present,
+        # portfolio payload otherwise (template refetches on load).
+        if deal:
+            payload = ui_dealview.deal_data(conn_fn(), deal)
+            if payload is None:
+                raise HTTPException(404, f"unknown deal {deal!r}")
+            return payload
         return build_portfolio_data(conn_fn())
 
     @app.post("/api/update")
@@ -308,7 +348,7 @@ def register(app, conn_fn, principal_dep) -> None:
         code = (payload.get("code_name") or "").strip()
         field = (payload.get("field") or "").strip()
         value = payload.get("value")
-        if not code or field not in PORTFOLIO_SAVE_FIELDS:
+        if not code or field not in ALL_SAVE_FIELDS:
             raise HTTPException(400, "invalid code_name or field")
         c = conn_fn()
         d = repo.get_deal(c, code)
@@ -325,6 +365,8 @@ def register(app, conn_fn, principal_dep) -> None:
                 value = int(value) if value not in (None, "", "—", "-") else None
             except (TypeError, ValueError):
                 value = None
+        else:
+            value = ui_dealview.cast_update_value(field, value)
 
         if field == "deal_stage":
             if value not in repo.STAGE_LABELS:
@@ -358,6 +400,11 @@ def register(app, conn_fn, principal_dep) -> None:
                 f"UPDATE deals SET {field} = ? WHERE code_name = ?",
                 (value, d["code_name"]),
             )
+            if field in ("onepager_q1", "onepager_q3", "onepager_q4"):
+                c.execute(
+                    "UPDATE deals SET onepager_edited_at = ? WHERE code_name = ?",
+                    (datetime.now(timezone.utc).isoformat(), d["code_name"]),
+                )
             c.commit()
         return {"ok": True}
 

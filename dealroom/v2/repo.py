@@ -300,6 +300,8 @@ def deal_answer(conn, code):
 
     fin = financial_summary(conn, d)
 
+    from v2 import suite  # local import: keeps suite tie optional/degradable
+
     return {
         "deal": dict(d),
         "stage_label": STAGE_LABELS.get(d["deal_stage"], d["deal_stage"]),
@@ -311,6 +313,8 @@ def deal_answer(conn, code):
         "artifacts_current": artifacts_current,
         "flags": flags,
         "financials": fin,
+        "execution": suite.cockpit_execution(code),
+        "investor": suite.investor_visibility(d),
     }
 
 

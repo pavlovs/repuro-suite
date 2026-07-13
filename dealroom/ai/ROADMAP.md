@@ -6,12 +6,18 @@ ALLEX has authority over pipeline stage — DEALROOM reads, does not write back 
 
 ---
 
-## v2 REBUILD (SPEC-DEALROOM-V2.md) — built locally 2026-07-10/11
+## v2 REBUILD (SPEC-DEALROOM-V2.md) — built locally 2026-07-10/13
 
-All six milestones built + tested in `v2/` (34 tests green; plans in
-`ai/PLAN-DR-V2-M1.md` / `-M2` / `-M3` / `-M4-M5`). Local sandbox on :8082
-(`python -m v2.server --port 8082`), DB `data/dealroom_v2.db` (rebuildable via
-`python -m v2.migrate_v1`; v1 read-only). v1 code untouched and still serving prod.
+All six milestones + suite tie-in built + tested in `v2/` (39 tests green; plans
+`ai/PLAN-DR-V2-M1.md` / `-M2` / `-M3` / `-M4-M5` / `-M7-SUITE-TIE`). Local sandbox
+on :8082 (`python -m v2.server --port 8082`), DB `data/dealroom_v2.db` (rebuildable
+via `python -m v2.migrate_v1`; v1 read-only). v1 code untouched and still serving prod.
+
+**Suite tie (M7, 13.07)**: deal page reads Cockpit (read-only) for the deal's
+open deliverables + tasks ("Execution — Cockpit" section, deep-linked) and shows
+Investor-Room visibility (named live-deal vs anonymised funnel) computed with
+boardroom's own stage buckets. Negotiation tie = M5. `cockpit.db` path is
+`COCKPIT_DB` on Fly / sibling locally; absent DB degrades cleanly.
 
 **Open before Fly cutover (needs Roman):**
 1. Confirm stage-correction diffs (Fox/Mantis→due_diligence, Lion→indicative_offer, Swordfish→Aqua revived) — applied in the local sandbox only.

@@ -266,6 +266,88 @@ def _figures_block(figures: list[dict]) -> str:
     return f'<div class="grid grid--4">{"".join(tiles)}</div>'
 
 
+def _investor_chip(inv: dict) -> str:
+    if not inv:
+        return ""
+    if not inv["visible"]:
+        return f'<span class="chip" title="{esc(inv["detail"])}">Investor: —</span>'
+    cls = "chip--info" if inv["mode"] == "named" else "chip"
+    inner = (
+        f'<a class="chip {cls}" href="{esc(inv["url"])}" title="{esc(inv["detail"])}">'
+        f"Investor Room · {esc(inv['label'])}</a>"
+    )
+    return inner
+
+
+def _execution_block(ex: dict) -> str:
+    """Cockpit PM state — the deliverables/tasks that actually move the deal.
+    Cockpit is the execution master; dealroom only reads it (suite tie)."""
+    if not ex:
+        return ""
+    if not ex.get("linked"):
+        return (
+            '<div class="hr"></div>'
+            '<div class="tile"><span class="label">Execution (Cockpit)</span>'
+            '<p class="empty">Kein Cockpit-Workstream für diesen Deal verknüpft.</p>'
+            "</div>"
+        )
+    ws = ex["workstream"]
+    head = (
+        '<div class="hr"></div>'
+        '<div class="rowline rowline--between">'
+        f"<h3>Execution — Cockpit</h3>"
+        f'<a class="btn btn--ghost btn--sm" href="{esc(ex["url"])}">'
+        f"Im Cockpit öffnen →</a></div>"
+    )
+    # progress line
+    prog = (
+        f'<div class="rowline"><span class="badge badge--muted">'
+        f"{esc(ws['name'])} · {esc(ws['status'])}</span>"
+        f'<span class="text-sm">{ex["deliverables_done"]}/'
+        f"{ex['deliverables_total']} Deliverables erledigt</span>"
+    )
+    if ex["waiting"]:
+        prog += f'<span class="chip chip--warn">{len(ex["waiting"])} wartet auf Gegenseite</span>'
+    prog += "</div>"
+
+    # open deliverables (the DD execution lane)
+    d_rows = []
+    for de in ex["deliverables_open"][:8]:
+        due = repo.fmt_date(de["target_date"]) if de["target_date"] else "—"
+        d_rows.append(
+            f'<div class="kv"><span class="k">{esc(de["name"])}</span>'
+            f'<span class="v num">{due}</span></div>'
+        )
+    deliv_card = (
+        '<div class="tile"><span class="label">Offene Deliverables</span>'
+        + ("".join(d_rows) or '<p class="empty">Keine offenen.</p>')
+        + "</div>"
+    )
+
+    # waiting-on tasks first, else next open tasks
+    t_src = ex["waiting"] or ex["tasks_open"]
+    t_rows = []
+    for t in t_src[:8]:
+        wait = (
+            f'<span class="chip chip--warn">wartet: {esc(t["waiting_on_party"])}</span>'
+            if t["waiting_on_party"]
+            else ""
+        )
+        due = repo.fmt_date(t["deadline"]) if t["deadline"] else ""
+        t_rows.append(
+            f'<div class="kv"><span class="k">{esc(t["text"][:80])} {wait}</span>'
+            f'<span class="v num">{due}</span></div>'
+        )
+    label = "Wartet auf Gegenseite" if ex["waiting"] else "Nächste Aufgaben"
+    task_card = (
+        f'<div class="tile"><span class="label">{label}</span>'
+        + ("".join(t_rows) or '<p class="empty">Keine offenen Aufgaben.</p>')
+        + "</div>"
+    )
+
+    return head + prog + f'<div class="grid grid--2">{deliv_card}{task_card}</div>'
+
+
 def render_deal(
     answer: dict,
     timeline: list[dict],
@@ -297,6 +379,7 @@ def render_deal(
             if ev and ev["evidence"]
             else ""
         )
+        + _investor_chip(answer.get("investor"))
         + "</div>",
     ]
     if answer["flags"]:
@@ -328,6 +411,8 @@ def render_deal(
         + _risks_card(answer["risks"])
         + "</div>"
     )
+
+    parts.append(_execution_block(answer.get("execution")))
 
     if answer["artifacts_current"]:
         rows = []

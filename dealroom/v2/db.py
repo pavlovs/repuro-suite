@@ -40,6 +40,17 @@ def pipeline_db_path() -> Path | None:
     return default if default.exists() else None
 
 
+def cockpit_db_path() -> Path | None:
+    """Cockpit PM DB, read-only (suite tie: deliverables/tasks per deal).
+    Mirrors boardroom's foreign-DB pattern. On Fly it is COCKPIT_DB on the
+    shared volume; locally the sibling cockpit/data/cockpit.db."""
+    env = os.environ.get("COCKPIT_DB") or os.environ.get("DEALROOM_COCKPIT_DB")
+    if env:
+        return Path(env) if Path(env).exists() else None
+    default = DEALROOM_DIR.parent / "cockpit" / "data" / "cockpit.db"
+    return default if default.exists() else None
+
+
 def on_fly() -> bool:
     return bool(os.environ.get("FLY_APP_NAME"))
 

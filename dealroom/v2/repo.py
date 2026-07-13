@@ -73,6 +73,18 @@ def fmt_keur_exact(value_k):
     return _de(f"{value_k:,.2f}") + " K€"
 
 
+def fmt_num_bare(value):
+    """Ledger cells: German-formatted bare number — the unit lives in the
+    column header, never in the cell (UI-COPY-IS-PRODUCT)."""
+    if value is None:
+        return "—"
+    if value == int(value):
+        return _de(f"{int(value):,d}")
+    if round(value, 1) == value:
+        return _de(f"{value:,.1f}")
+    return _de(f"{value:,.2f}")
+
+
 def fmt_mult(value):
     if value is None:
         return "—"

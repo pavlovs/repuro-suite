@@ -186,7 +186,11 @@ def negotiation_payload(conn, code):
         (d["domain"],),
     ).fetchone()
     if not strategy:
-        return {"deal": dict(d), "strategy": None}
+        return {
+            "deal": dict(d),
+            "stage_label": repo.STAGE_LABELS.get(d["deal_stage"], d["deal_stage"]),
+            "strategy": None,
+        }
     sid = strategy["id"]
 
     # rounds = the DEAL's full history across memo versions (a new strategy
@@ -234,8 +238,11 @@ def negotiation_payload(conn, code):
         dict(r)
         for r in conn.execute(
             "SELECT term, preferred, fallback, walk_away, escalation_required, "
-            " roman_confirmed, status FROM negotiation_positions "
-            "WHERE strategy_id=? ORDER BY CASE status WHEN 'open' THEN 0 ELSE 1 END, id",
+            " roman_confirmed, status, their_position, prio "
+            "FROM negotiation_positions "
+            "WHERE strategy_id=? ORDER BY CASE status WHEN 'open' THEN 0 ELSE 1 END, "
+            "CASE prio WHEN 'high' THEN 0 WHEN 'med' THEN 1 WHEN 'low' THEN 2 "
+            "ELSE 3 END, id",
             (sid,),
         )
     ]
@@ -272,6 +279,59 @@ def negotiation_payload(conn, code):
         (strategy["stakeholder_id"],),
     ).fetchone()
 
+    # bucket-based offer history — deal-wide across strategy generations
+    # (a superseded strategy keeps its offer events, like rounds)
+    offers = []
+    for o in conn.execute(
+        "SELECT o.* FROM negotiation_offers o "
+        "JOIN negotiation_strategies s3 ON s3.id=o.strategy_id "
+        "WHERE s3.deal_domain=? ORDER BY o.date, o.id",
+        (d["domain"],),
+    ):
+        terms = [
+            dict(t)
+            for t in conn.execute(
+                "SELECT term_key, label, value_num, unit, value_text, note "
+                "FROM negotiation_offer_terms WHERE offer_id=? ORDER BY id",
+                (o["id"],),
+            )
+        ]
+        offers.append({**dict(o), "terms": terms})
+
+    # freshness: latest agreement-grade package must match the terms ledger
+    latest_pkg = next(
+        (o for o in reversed(offers) if o["status"] in ("accepted", "signed")), None
+    )
+    terms_sync = {"checked": False, "mismatches": []}
+    if latest_pkg:
+        terms_sync["checked"] = True
+        cur = {t["term_key"]: t for t in locked_terms}
+        for t in latest_pkg["terms"]:
+            ct = cur.get(t["term_key"])
+            if (
+                t["value_num"] is not None
+                and ct is not None
+                and ct["value_num"] is not None
+                and abs(t["value_num"] - ct["value_num"]) > 0.01
+            ):
+                terms_sync["mismatches"].append(
+                    {
+                        "term_key": t["term_key"],
+                        "offer": t["value_num"],
+                        "ledger": ct["value_num"],
+                    }
+                )
+
+    today = _today().isoformat()
+    for m in neg_milestones:
+        m["overdue"] = m["status"] == "pending" and m["date"] < today
+    for it in open_items:
+        it["overdue"] = it["status"] == "open" and bool(it["due"]) and it["due"] < today
+    next_milestone = next(
+        (m for m in neg_milestones if m["status"] == "pending" and m["date"] >= today),
+        None,
+    ) or next((m for m in neg_milestones if m["status"] == "pending"), None)
+
     return {
         "deal": dict(d),
         "stage_label": repo.STAGE_LABELS.get(d["deal_stage"], d["deal_stage"]),
@@ -283,9 +343,18 @@ def negotiation_payload(conn, code):
         "positions": positions,
         "open_items": open_items,
         "neg_milestones": neg_milestones,
+        "next_milestone": next_milestone,
         "parties": parties,
+        "offers": offers,
+        "terms_sync": terms_sync,
         "trail": {"total": trail["n"] or 0, "read": trail["n_read"] or 0},
-        "validation": validate_strategy(sid),
+        # validator gates deliverable-grade memos; a seeded strategy without a
+        # memo — or a superseded/closed one — is honest state, not a FAIL wall
+        "validation": (
+            validate_strategy(sid)
+            if strategy["memo_md"] and strategy["status"] in ("active", "executing")
+            else {"ran": False, "passed": None, "skipped": True}
+        ),
     }
 
 

@@ -605,7 +605,34 @@ CREATE TABLE negotiation_positions (
     escalation_required INTEGER DEFAULT 0,
     roman_confirmed INTEGER DEFAULT 0,
     status TEXT DEFAULT 'open' CHECK (status IN ('open','agreed','conceded','escalated')),
+    their_position TEXT,
+    prio TEXT,
     created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- bucket-based offer history (SPEC-OFFER-NEGOTIATION-TAB §2, added to v1 2026-07-13)
+CREATE TABLE negotiation_offers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_id INTEGER NOT NULL REFERENCES negotiation_strategies(id),
+    round_id INTEGER,
+    side TEXT NOT NULL CHECK (side IN ('ours','theirs')),
+    date TEXT NOT NULL,
+    label TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('sent','received','accepted','signed','superseded','withdrawn')),
+    source_doc TEXT,
+    note TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE negotiation_offer_terms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    offer_id INTEGER NOT NULL REFERENCES negotiation_offers(id),
+    term_key TEXT NOT NULL,
+    label TEXT,
+    value_num REAL,
+    unit TEXT,
+    value_text TEXT,
+    note TEXT
 );
 
 CREATE TABLE communication_trail (

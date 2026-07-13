@@ -458,12 +458,15 @@ def push_rfi(payload: dict = Body(...), p=Depends(principal)):
 
 # ------------------------------------------------------------------- UI -----
 # Rebuild after 13.07 rejection: screens ship one at a time with sign-off.
-# Screen 1 = Portfolio View (v1 golden reference, ported 1:1). The old M3-M5
+# Screen 1 = Portfolio View (v1 golden reference, ported 1:1). Screen 2 =
+# Offer & Negotiation (v1 visual language, owner-only). The old M3-M5
 # surfaces (v2.ui / v2.ui_workspace) are unregistered pending their rebuild.
 
-from v2 import ui_portfolio  # noqa: E402
+from v2 import ui_dealview, ui_negotiation, ui_portfolio  # noqa: E402
 
 ui_portfolio.register(app, conn, principal)
+ui_dealview.register(app, conn, principal)
+ui_negotiation.register(app, conn, owner_only)
 
 
 @app.get("/favicon.ico")

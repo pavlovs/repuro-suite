@@ -4,6 +4,8 @@ are encoded as named tests — the theme: watch silence must mean VERIFIED-quiet
 Runnable standalone (python test_negotiate_ops.py) or via pytest.
 """
 
+import contextlib
+import io
 import json
 import sqlite3
 import sys
@@ -382,6 +384,334 @@ def test_migrate_detects_malformed_preexisting_table():
             raise AssertionError("migration reported ok on malformed table")
         except SystemExit as e:
             assert "INCOMPLETE" in str(e)
+
+
+# ---- offer ledger (SPEC-OFFER-NEGOTIATION-TAB §2-§4) ----
+
+
+def _offer_args(db, **kw):
+    kw.setdefault("action", "add")
+    kw.setdefault("strategy", 1)
+    kw.setdefault("side", "ours")
+    kw.setdefault("date", "2026-07-01")
+    kw.setdefault("label", "NBO v1")
+    kw.setdefault("status", "sent")
+    kw.setdefault("round_id", None)
+    kw.setdefault("source_doc", "test.docx")
+    kw.setdefault("note", None)
+    kw.setdefault("term", [])
+    kw.setdefault("id", None)
+    return Args(db, **kw)
+
+
+def test_migrate_creates_offer_tables_and_position_columns():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = make_db(tmp)  # migrated once by the helper
+        negotiate_ops.cmd_migrate(Args(db))  # re-run must stay idempotent
+        con = sqlite3.connect(db)
+        tables = {
+            r[0]
+            for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
+        pos = {r[1] for r in con.execute("PRAGMA table_info(negotiation_positions)")}
+        offers = {r[1] for r in con.execute("PRAGMA table_info(negotiation_offers)")}
+        terms = {
+            r[1] for r in con.execute("PRAGMA table_info(negotiation_offer_terms)")
+        }
+        con.close()
+        assert {"negotiation_offers", "negotiation_offer_terms"} <= tables
+        assert {"their_position", "prio"} <= pos
+        assert {
+            "strategy_id",
+            "round_id",
+            "side",
+            "date",
+            "label",
+            "status",
+            "source_doc",
+            "note",
+        } <= offers
+        assert {
+            "offer_id",
+            "term_key",
+            "label",
+            "value_num",
+            "unit",
+            "value_text",
+            "note",
+        } <= terms
+
+
+def test_offer_add_numeric_text_comma_thousands_terms():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = make_db(tmp)
+        seed(db)
+        negotiate_ops.cmd_offer(
+            _offer_args(
+                db,
+                term=[
+                    "purchase_price_upfront=3.400|K",  # German thousands -> 3400
+                    "earnout_multiple=2,75|x",  # comma decimal -> 2.75
+                    "ev_total_max=5.957.500",  # multi-group thousands
+                    "gf_salary=135|K p.a.|Tantieme offen",  # note segment
+                    "earnout_threshold=EBIT > 625 p.a.",  # non-numeric -> text
+                    "multiple=4.9",  # dot decimal -> 4.9
+                ],
+            )
+        )
+        con = sqlite3.connect(db)
+        rows = {
+            r[0]: r
+            for r in con.execute(
+                "SELECT term_key, value_num, value_text, unit, note "
+                "FROM negotiation_offer_terms"
+            )
+        }
+        con.close()
+        assert rows["purchase_price_upfront"][1] == 3400.0
+        assert rows["earnout_multiple"][1] == 2.75
+        assert rows["ev_total_max"][1] == 5957500.0
+        assert rows["gf_salary"][1] == 135.0
+        assert rows["gf_salary"][3] == "K p.a."
+        assert rows["gf_salary"][4] == "Tantieme offen"
+        assert rows["earnout_threshold"][1] is None
+        assert rows["earnout_threshold"][2] == "EBIT > 625 p.a."
+        assert rows["multiple"][1] == 4.9
+
+
+def test_offer_unknown_term_key_hard_error_no_partial_write():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = make_db(tmp)
+        seed(db)
+        try:
+            negotiate_ops.cmd_offer(_offer_args(db, term=["sofort=3400"]))
+            raise AssertionError("unknown term_key was accepted")
+        except SystemExit as e:
+            assert "purchase_price_upfront" in str(e), "error must list valid keys"
+        row = _q(db, "SELECT COUNT(*) FROM negotiation_offers")
+        assert row[0] == 0, "a bad term must not leave a partial offer row"
+
+
+def test_offer_other_requires_label():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = make_db(tmp)
+        seed(db)
+        try:
+            negotiate_ops.cmd_offer(_offer_args(db, term=["other=+1 MA"]))
+            raise AssertionError("'other' without a label was accepted")
+        except SystemExit as e:
+            assert "label" in str(e)
+        negotiate_ops.cmd_offer(_offer_args(db, term=["other:Kuendigungsschutz=+1 MA"]))
+        row = _q(
+            db,
+            "SELECT label, value_text, value_num FROM negotiation_offer_terms "
+            "WHERE term_key='other'",
+        )
+        assert row[0] == "Kuendigungsschutz"
+        assert row[1] == "+1 MA" and row[2] is None
+
+
+def test_offer_list_chronological_terms_inline():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = make_db(tmp)
+        seed(db)
+        negotiate_ops.cmd_offer(
+            _offer_args(
+                db,
+                date="2026-07-03",
+                label="LOI v7",
+                term=["purchase_price_upfront=3.400|K"],
+            )
+        )
+        negotiate_ops.cmd_offer(
+            _offer_args(
+                db, date="2026-05-07", label="NBO", side="theirs", status="received"
+            )
+        )
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            negotiate_ops.cmd_offer(_offer_args(db, action="list", strategy=1))
+        text = out.getvalue()
+        assert text.index("NBO") < text.index("LOI v7"), "list must be chronological"
+        assert "purchase_price_upfront = 3400 K" in text, "terms must print inline"
+
+
+def test_offer_signed_immutable():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = make_db(tmp)
+        seed(db)
+        negotiate_ops.cmd_offer(_offer_args(db, status="signed", label="LOI signed"))
+        negotiate_ops.cmd_offer(
+            _offer_args(db, action="set-status", id=1, status="withdrawn")
+        )
+        row = _q(db, "SELECT status FROM negotiation_offers WHERE id=1")
+        assert row[0] == "signed", "signed offers must be immutable"
+
+
+def test_offer_set_status_transition_and_double_noop():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = make_db(tmp)
+        seed(db)
+        negotiate_ops.cmd_offer(_offer_args(db))  # status=sent
+        negotiate_ops.cmd_offer(
+            _offer_args(db, action="set-status", id=1, status="superseded")
+        )
+        assert _q(db, "SELECT status FROM negotiation_offers WHERE id=1")[0] == (
+            "superseded"
+        )
+        # superseded is terminal: a second transition must be a no-op
+        negotiate_ops.cmd_offer(
+            _offer_args(db, action="set-status", id=1, status="signed")
+        )
+        assert _q(db, "SELECT status FROM negotiation_offers WHERE id=1")[0] == (
+            "superseded"
+        )
+        # and set-status must reject back-transitions to sent/received
+        try:
+            negotiate_ops.cmd_offer(
+                _offer_args(db, action="set-status", id=1, status="sent")
+            )
+            raise AssertionError("set-status accepted 'sent'")
+        except SystemExit:
+            pass
+
+
+def test_offer_add_rejects_lifecycle_status():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = make_db(tmp)
+        seed(db)
+        try:
+            negotiate_ops.cmd_offer(_offer_args(db, status="superseded"))
+            raise AssertionError("offer add accepted a lifecycle-only status")
+        except SystemExit:
+            pass
+        assert _q(db, "SELECT COUNT(*) FROM negotiation_offers")[0] == 0
+
+
+def test_offer_add_via_main_end_to_end():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = make_db(tmp)
+        seed(db)
+        negotiate_ops.main(
+            [
+                "--db",
+                db,
+                "offer",
+                "add",
+                "--strategy",
+                "1",
+                "--side",
+                "ours",
+                "--date",
+                "2026-07-03",
+                "--label",
+                "LOI v7",
+                "--status",
+                "sent",
+                "--term",
+                "purchase_price_upfront=3.400|K",
+                "--source-doc",
+                "LOI_v7.docx",
+            ]
+        )
+        row = _q(
+            db,
+            "SELECT value_num FROM negotiation_offer_terms "
+            "WHERE term_key='purchase_price_upfront'",
+        )
+        assert row[0] == 3400.0
+
+
+def test_offer_add_date_strict_via_main():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = make_db(tmp)
+        seed(db)
+        try:
+            negotiate_ops.main(
+                [
+                    "--db",
+                    db,
+                    "offer",
+                    "add",
+                    "--strategy",
+                    "1",
+                    "--side",
+                    "ours",
+                    "--date",
+                    "07.05.2026",
+                    "--label",
+                    "NBO",
+                    "--status",
+                    "sent",
+                ]
+            )
+            raise AssertionError("non-ISO offer date was accepted")
+        except SystemExit:
+            pass
+        assert _q(db, "SELECT COUNT(*) FROM negotiation_offers")[0] == 0
+
+
+# ---- position their_position / prio (SPEC-OFFER §4) ----
+
+
+def test_position_their_position_prio_roundtrip():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = make_db(tmp)
+        seed(db)
+        negotiate_ops.cmd_position(
+            Args(
+                db,
+                action="add",
+                strategy=1,
+                term="Kaufpreis",
+                preferred="3.400 K",
+                fallback=None,
+                walk_away=None,
+                escalation=False,
+                their_position="3.200 K fix",
+                prio="high",
+                id=None,
+            )
+        )
+        row = _q(
+            db, "SELECT their_position, prio FROM negotiation_positions WHERE id=1"
+        )
+        assert row[0] == "3.200 K fix" and row[1] == "high"
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            negotiate_ops.cmd_position(Args(db, action="list", strategy=1))
+        text = out.getvalue()
+        assert "their pos: 3.200 K fix" in text
+        assert "prio high" in text
+
+
+def test_position_prio_validated_via_main():
+    with tempfile.TemporaryDirectory() as tmp:
+        db = make_db(tmp)
+        seed(db)
+        err = io.StringIO()
+        try:
+            with contextlib.redirect_stderr(err):
+                negotiate_ops.main(
+                    [
+                        "--db",
+                        db,
+                        "position",
+                        "add",
+                        "--strategy",
+                        "1",
+                        "--term",
+                        "T",
+                        "--preferred",
+                        "P",
+                        "--prio",
+                        "urgent",
+                    ]
+                )
+            raise AssertionError("--prio urgent was accepted")
+        except SystemExit:
+            pass
+        assert _q(db, "SELECT COUNT(*) FROM negotiation_positions")[0] == 0
 
 
 if __name__ == "__main__":

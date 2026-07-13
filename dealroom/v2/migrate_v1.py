@@ -52,9 +52,15 @@ CARRIED_TABLES = [
     "negotiation_open_items",
     "strategy_parties",
     "negotiation_positions",
+    "negotiation_offers",
+    "negotiation_offer_terms",
     "communication_trail",
     "portfolio_meta",
 ]
+
+# Present in v1 only after `negotiate_ops.py migrate` ran there — skip with a
+# report note instead of crashing on an older v1 copy.
+OPTIONAL_TABLES = {"negotiation_offers", "negotiation_offer_terms"}
 
 # v1 doc_type → v2 artifact_type (spec §5 set + granular v1 types kept)
 DOC_TYPE_MAP = {
@@ -104,26 +110,30 @@ AQUA_CORRECTION = {
 }
 
 TERMS_SEED = [
-    # Fox — locked (signed LOI)
+    # Fox — locked (signed LOI). Corrected 13.07 against the signed PDF
+    # (260522_Kaufabsichtserklärung C2M_vClean-endgültig26-05-2026_signed.pdf):
+    # "Sofortzahlung in Höhe von 1.000.000 €" + "Ungefähr 150.000 € … für 1
+    # Anteil an der Co-Med" + Earn-Out gestaffelt bis 750.000 €. The previous
+    # seed (1.600 + 300 EO, from deals.md prose) contradicted the signed doc.
     dict(
         code="Fox",
         key="purchase_price_upfront",
         label="Sofortzahlung (EV Closing)",
-        num=1600,
+        num=1000,
         unit="K€",
         status="locked",
-        src="Unterzeichnete LOI Com2Med (gegengezeichnet ~26.05.2026)",
-        note="4,5x adj. EBITDA",
+        src="260522_Kaufabsichtserklärung C2M_vClean-endgültig26-05-2026_signed.pdf",
+        note="+ ca. 150 K€ für 1 Co-Med-Anteil zum Vollzug (separat)",
     ),
     dict(
         code="Fox",
         key="earnout_max",
         label="Earn-Out (max)",
-        num=300,
+        num=750,
         unit="K€",
         status="locked",
-        src="Unterzeichnete LOI Com2Med (gegengezeichnet ~26.05.2026)",
-        note=None,
+        src="260522_Kaufabsichtserklärung C2M_vClean-endgültig26-05-2026_signed.pdf",
+        note="gestaffelt nach Ø-EBIT 2026/27: 100 (<225) bis 750 (≥325)",
     ),
     dict(
         code="Fox",
@@ -132,8 +142,8 @@ TERMS_SEED = [
         num=1900,
         unit="K€",
         status="locked",
-        src="Unterzeichnete LOI Com2Med (gegengezeichnet ~26.05.2026)",
-        note="5,3x adj. EBITDA",
+        src="260522_Kaufabsichtserklärung C2M_vClean-endgültig26-05-2026_signed.pdf",
+        note="1.000 Sofort + ca. 150 Co-Med + 750 EO max",
     ),
     # Mantis — locked (signed LOI)
     dict(
@@ -544,6 +554,9 @@ def migrate():
 
     # 5 — carried tables (with domain remap on child tables)
     for table in CARRIED_TABLES:
+        if table in OPTIONAL_TABLES and not table_cols(v1, table):
+            report["tables"][table] = "skipped (not in v1 yet)"
+            continue
         cols = [c for c in table_cols(v2, table) if c in set(table_cols(v1, table))]
         sel = ", ".join(f"[{c}]" for c in cols)
         rows = v1.execute(f"SELECT {sel} FROM [{table}]").fetchall()

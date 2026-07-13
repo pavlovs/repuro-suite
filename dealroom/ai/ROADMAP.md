@@ -13,6 +13,20 @@ All six milestones + suite tie-in built + tested in `v2/` (39 tests green; plans
 on :8082 (`python -m v2.server --port 8082`), DB `data/dealroom_v2.db` (rebuildable
 via `python -m v2.migrate_v1`; v1 read-only). v1 code untouched and still serving prod.
 
+**UI rebuild after 13.07 rejection** (screens ship one at a time, sign-off each;
+old M3–M5 surfaces unregistered): Screen 1 = Portfolio (v1 port, e69bbe6).
+**Screen 2 = Offer & Negotiation (13.07, this block)**: standalone v1-language
+page `/deal/{code}/negotiation` (owner-only), spec `ai/SPEC-OFFER-NEGOTIATION-TAB.md`.
+Data layer: `negotiation_offers` + `negotiation_offer_terms` (bucket-based offer
+history per LOI structure) + `negotiation_positions.their_position/prio` — added
+to v1 via `negotiate_ops.py migrate` (new `offer` subcommand, 31 tool tests),
+carried by migrate_v1. Populated for Cat/Lion/Fox/Mantis/Mouse/Aqua from source
+docs (signed LOI PDFs, offer PDFs, negotiation rounds, deals.md; every event
+source-cited). NOTE: Fox deal_terms seed corrected against the signed LOI
+(1.000 Sofort + ca. 150 Co-Med + 750 EO gestaffelt = 1.900; deals.md prose
+"1.6 + 0.3 EO" contradicts the signed doc — Roman to update deals.md).
+Screen-2 tests: `v2/tests/test_ui_negotiation.py` (6).
+
 **Suite tie (M7, 13.07)**: deal page reads Cockpit (read-only) for the deal's
 open deliverables + tasks ("Execution — Cockpit" section, deep-linked) and shows
 Investor-Room visibility (named live-deal vs anonymised funnel) computed with

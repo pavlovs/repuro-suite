@@ -10,8 +10,11 @@ Subcommands (all local, stdlib-only, additive writes only):
     trail-add <stakeholder> --source S --date D --subject S [...]
     milestone add|list|set-status
     open-item add|list|resolve
-    position add|list|confirm     three-tier terms (preferred/fallback/walk-away)
+    position add|list|confirm     three-tier terms (preferred/fallback/walk-away
+                                  + their_position/prio, SPEC-OFFER §4)
     round add|review              quick round capture + self-rating review
+    offer add|list|set-status     append-only offer-event ledger with canonical
+                                  bucket terms (SPEC-OFFER-NEGOTIATION-TAB §2-§4)
 
 Morning-brief integration: `watch --brief` prints nothing when all quiet,
 pre-formatted alert lines otherwise (same contract as Steuer deadlines.py).
@@ -77,6 +80,28 @@ CREATE TABLE IF NOT EXISTS negotiation_positions (
   status TEXT DEFAULT 'open' CHECK (status IN ('open','agreed','conceded','escalated')),
   created_at TEXT DEFAULT (datetime('now'))
 );
+CREATE TABLE IF NOT EXISTS negotiation_offers (
+  id INTEGER PRIMARY KEY,
+  strategy_id INTEGER NOT NULL REFERENCES negotiation_strategies(id),
+  round_id INTEGER REFERENCES negotiation_rounds(id),
+  side TEXT NOT NULL CHECK(side IN ('ours','theirs')),
+  date TEXT NOT NULL,
+  label TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('sent','received','accepted','signed','superseded','withdrawn')),
+  source_doc TEXT,
+  note TEXT,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS negotiation_offer_terms (
+  id INTEGER PRIMARY KEY,
+  offer_id INTEGER NOT NULL REFERENCES negotiation_offers(id),
+  term_key TEXT NOT NULL,
+  label TEXT,
+  value_num REAL,
+  unit TEXT,
+  value_text TEXT,
+  note TEXT
+);
 """
 # additive column adds; each guarded because ALTER has no IF NOT EXISTS
 MIGRATE_COLUMNS = [
@@ -84,6 +109,8 @@ MIGRATE_COLUMNS = [
     ("negotiation_rounds", "signals", "TEXT"),
     ("negotiation_strategies", "closed_reason", "TEXT"),
     ("communication_trail", "triage_note", "TEXT"),
+    ("negotiation_positions", "their_position", "TEXT"),
+    ("negotiation_positions", "prio", "TEXT"),
 ]
 # table -> columns that must exist for the module to work; a PRE-EXISTING
 # table with the right name but wrong shape must fail the migration report
@@ -117,6 +144,27 @@ MIGRATE_TABLE_COLUMNS = {
         "walk_away",
         "roman_confirmed",
         "status",
+    },
+    "negotiation_offers": {
+        "id",
+        "strategy_id",
+        "round_id",
+        "side",
+        "date",
+        "label",
+        "status",
+        "source_doc",
+        "note",
+    },
+    "negotiation_offer_terms": {
+        "id",
+        "offer_id",
+        "term_key",
+        "label",
+        "value_num",
+        "unit",
+        "value_text",
+        "note",
     },
 }
 MIGRATE_TABLES = tuple(MIGRATE_TABLE_COLUMNS)
@@ -642,8 +690,8 @@ def cmd_position(args):
     if args.action == "add":
         con.execute(
             "INSERT INTO negotiation_positions "
-            "(strategy_id, term, preferred, fallback, walk_away, escalation_required) "
-            "VALUES (?,?,?,?,?,?)",
+            "(strategy_id, term, preferred, fallback, walk_away, escalation_required, "
+            "their_position, prio) VALUES (?,?,?,?,?,?,?,?)",
             (
                 args.strategy,
                 args.term,
@@ -651,6 +699,8 @@ def cmd_position(args):
                 args.fallback,
                 args.walk_away,
                 1 if args.escalation else 0,
+                args.their_position,
+                args.prio,
             ),
         )
         con.commit()
@@ -669,16 +719,23 @@ def cmd_position(args):
             " WHERE strategy_id=?" if args.strategy else ""
         )
         rows = con.execute(q, (args.strategy,) if args.strategy else ()).fetchall()
+        cols = {r[1] for r in con.execute("PRAGMA table_info(negotiation_positions)")}
+        migrated = {"their_position", "prio"} <= cols
         for r in rows:
             conf = "OK Roman" if r["roman_confirmed"] else "UNCONFIRMED"
+            prio = r["prio"] if migrated and r["prio"] else None
             print(
-                f"{r['id']:>3} S{r['strategy_id']} [{r['status']}, {conf}] {r['term']}"
+                f"{r['id']:>3} S{r['strategy_id']} [{r['status']}, {conf}"
+                + (f", prio {prio}" if prio else "")
+                + f"] {r['term']}"
             )
             print(f"      preferred: {r['preferred']}")
             if r["fallback"]:
                 print(f"      fallback:  {r['fallback']}")
             if r["walk_away"]:
                 print(f"      walk-away: {r['walk_away']}")
+            if migrated and r["their_position"]:
+                print(f"      their pos: {r['their_position']}")
     con.close()
 
 
@@ -747,6 +804,205 @@ def cmd_round(args):
 
 
 # --------------------------------------------------------------------------
+# offer-event ledger (SPEC-OFFER-NEGOTIATION-TAB §2-§4). Append-only: one row
+# per package on the table; corrections = new event, NEVER an UPDATE of terms.
+CANON_TERM_LABELS = {
+    "purchase_price_upfront": "Sofort",
+    "earnout_max": "EO max",
+    "earnout_threshold": "EO-Schwelle",
+    "earnout_multiple": "EO-Multiple",
+    "ev_total_max": "Gesamt max",
+    "rueckbeteiligung": "Rückbeteiligung",
+    "gf_salary": "GF-Gehalt/Tantieme",
+    "multiple": "Multiple",
+    "other": None,  # free rows — label mandatory via "other:<Label>=..." syntax
+}
+OFFER_ADD_STATUSES = ("sent", "received", "accepted", "signed")
+OFFER_SET_STATUSES = ("superseded", "accepted", "signed", "withdrawn")
+
+GERMAN_THOUSANDS_RX = re.compile(r"^\d{1,3}(\.\d{3})+$")
+
+
+def _parse_term_value(raw):
+    """Term value -> (value_num, value_text), exactly one of them set.
+    German decimal commas accepted ('2,75' -> 2.75); dot decimals too
+    ('2.75' -> 2.75). AMBIGUITY RULE: a value matching ^\\d{1,3}(\\.\\d{3})+$
+    ('3.400', '5.957.500') is German THOUSANDS -> 3400 / 5957500, never 3.4.
+    Mixed German form '3.400,50' -> 3400.5. Anything non-numeric -> value_text
+    unchanged (unit lives in the unit segment, NEVER inside the value)."""
+    v = raw.strip()
+    if GERMAN_THOUSANDS_RX.match(v):
+        return float(v.replace(".", "")), None
+    try:
+        if "," in v:
+            return float(v.replace(".", "").replace(",", ".")), None
+        return float(v), None
+    except ValueError:
+        return None, v
+
+
+def _parse_term(spec):
+    """--term "key=value|unit|note" -> row dict (unit and note optional).
+    key must be canonical (§3); unknown key = hard error listing the valid set.
+    'other' requires a display label: --term "other:Kündigungsschutz=+1 MA".
+    key:label also works on canonical keys as a display override (§2 label)."""
+    if "=" not in spec:
+        sys.exit(f'--term must be "key=value|unit|note", got: {spec!r}')
+    key_part, _, rest = spec.partition("=")
+    key, _, label = key_part.partition(":")
+    key, label = key.strip(), (label.strip() or None)
+    if key not in CANON_TERM_LABELS:
+        sys.exit(
+            f"unknown term_key {key!r} — valid keys: "
+            + ", ".join(sorted(CANON_TERM_LABELS))
+        )
+    if key == "other" and not label:
+        sys.exit(
+            '"other" terms need a label — use --term "other:<Label>=<value>|<unit>|<note>"'
+        )
+    segs = rest.split("|")
+    value = segs[0].strip()
+    if not value:
+        sys.exit(f"--term {spec!r} has an empty value")
+    unit = segs[1].strip() if len(segs) > 1 and segs[1].strip() else None
+    note = "|".join(segs[2:]).strip() if len(segs) > 2 else None
+    value_num, value_text = _parse_term_value(value)
+    return {
+        "term_key": key,
+        "label": label,
+        "value_num": value_num,
+        "unit": unit,
+        "value_text": value_text,
+        "note": note or None,
+    }
+
+
+def cmd_offer(args):
+    if args.action == "add":
+        if args.status not in OFFER_ADD_STATUSES:
+            sys.exit(
+                "offer add --status must be one of: "
+                + "|".join(OFFER_ADD_STATUSES)
+                + " (superseded/withdrawn happen later, via set-status)"
+            )
+        # parse + validate EVERY term before touching the DB — a bad term must
+        # never leave a partial offer row behind
+        terms = [_parse_term(t) for t in args.term]
+        con = _connect(args.db)
+        if not con.execute(
+            "SELECT id FROM negotiation_strategies WHERE id=?", (args.strategy,)
+        ).fetchone():
+            con.close()
+            sys.exit(f"no strategy {args.strategy}")
+        if (
+            args.round_id
+            and not con.execute(
+                "SELECT id FROM negotiation_rounds WHERE id=?", (args.round_id,)
+            ).fetchone()
+        ):
+            con.close()
+            sys.exit(f"no round {args.round_id}")
+        cur = con.execute(
+            "INSERT INTO negotiation_offers "
+            "(strategy_id, round_id, side, date, label, status, source_doc, note) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (
+                args.strategy,
+                args.round_id,
+                args.side,
+                args.date,
+                args.label,
+                args.status,
+                args.source_doc,
+                args.note,
+            ),
+        )
+        offer_id = cur.lastrowid
+        con.executemany(
+            "INSERT INTO negotiation_offer_terms "
+            "(offer_id, term_key, label, value_num, unit, value_text, note) "
+            "VALUES (?,?,?,?,?,?,?)",
+            [
+                (
+                    offer_id,
+                    t["term_key"],
+                    t["label"],
+                    t["value_num"],
+                    t["unit"],
+                    t["value_text"],
+                    t["note"],
+                )
+                for t in terms
+            ],
+        )
+        con.commit()
+        con.close()
+        print(
+            f"offer {offer_id} added: S{args.strategy} {args.date} ({args.side}, "
+            f"{args.status}) {args.label} — {len(terms)} term(s)"
+        )
+        if not args.source_doc:
+            print(
+                "WARNING: no --source-doc — citation discipline: name the file or "
+                "mail the numbers come from"
+            )
+    elif args.action == "set-status":
+        if args.status not in OFFER_SET_STATUSES:
+            sys.exit(
+                "offer set-status --status must be one of: "
+                + "|".join(OFFER_SET_STATUSES)
+            )
+        con = _connect(args.db)
+        # transition guard (same discipline as milestone set-status): only
+        # sent|received|accepted move; signed/superseded/withdrawn are terminal
+        # (correct with a NEW event); terms rows are never UPDATEd, ever
+        cur = con.execute(
+            "UPDATE negotiation_offers SET status=? WHERE id=? "
+            "AND status IN ('sent','received','accepted') AND status<>?",
+            (args.status, args.id, args.status),
+        )
+        con.commit()
+        con.close()
+        print(
+            f"offer {args.id} -> {args.status}"
+            if cur.rowcount
+            else f"no-op: offer {args.id} not found, already {args.status}, or in "
+            f"a terminal state (signed/superseded/withdrawn are immutable — "
+            f"correct with a NEW offer event)"
+        )
+    else:  # list — chronological, terms inline
+        con = _connect(args.db, readonly=True)
+        offers = con.execute(
+            "SELECT * FROM negotiation_offers WHERE strategy_id=? ORDER BY date, id",
+            (args.strategy,),
+        ).fetchall()
+        for o in offers:
+            print(
+                f"{o['id']:>3} S{o['strategy_id']} {o['date']} [{o['status']:<10}] "
+                f"({o['side']}) {o['label']}"
+                + (f" | src: {o['source_doc']}" if o["source_doc"] else "")
+            )
+            if o["note"]:
+                print(f"      note: {o['note']}")
+            for t in con.execute(
+                "SELECT * FROM negotiation_offer_terms WHERE offer_id=? ORDER BY id",
+                (o["id"],),
+            ):
+                val = (
+                    f"{t['value_num']:g}"
+                    if t["value_num"] is not None
+                    else (t["value_text"] or "")
+                )
+                key = t["term_key"] + (f":{t['label']}" if t["label"] else "")
+                print(
+                    f"      {key} = {val}"
+                    + (f" {t['unit']}" if t["unit"] else "")
+                    + (f" | {t['note']}" if t["note"] else "")
+                )
+        con.close()
+
+
+# --------------------------------------------------------------------------
 def main(argv=None):
     p = argparse.ArgumentParser(prog="negotiate_ops")
     p.add_argument("--db", default=str(DEFAULT_DB))
@@ -802,7 +1058,48 @@ def main(argv=None):
     pp.add_argument("--fallback")
     pp.add_argument("--walk-away", dest="walk_away")
     pp.add_argument("--escalation", action="store_true")
+    pp.add_argument("--their-position", dest="their_position")
+    pp.add_argument("--prio", choices=("high", "med", "low"))
     pp.add_argument("--id", type=int)
+
+    pf = sub.add_parser(
+        "offer",
+        description=(
+            "Append-only offer-event ledger (SPEC-OFFER-NEGOTIATION-TAB). "
+            "Term values: parse as float -> value_num, else -> value_text. "
+            'German decimal commas accepted ("2,75" -> 2.75), dot decimals too. '
+            "AMBIGUITY RULE: a value matching ^\\d{1,3}(\\.\\d{3})+$ "
+            '("3.400", "5.957.500") is read as GERMAN THOUSANDS -> 3400 / '
+            "5957500, never 3.4. Units belong in the unit segment, not the value."
+        ),
+    )
+    pf.add_argument("action", choices=("add", "list", "set-status"))
+    pf.add_argument("--strategy", type=int)
+    pf.add_argument("--side", choices=("ours", "theirs"))
+    pf.add_argument("--date")
+    pf.add_argument("--label")
+    pf.add_argument(
+        "--status",
+        choices=("sent", "received", "accepted", "signed", "superseded", "withdrawn"),
+        help="add: sent|received|accepted|signed; "
+        "set-status: superseded|accepted|signed|withdrawn (signed is terminal)",
+    )
+    pf.add_argument("--round", type=int, dest="round_id")
+    pf.add_argument("--source-doc", dest="source_doc")
+    pf.add_argument("--note")
+    pf.add_argument(
+        "--term",
+        action="append",
+        default=[],
+        metavar='"key=value|unit|note"',
+        help="repeatable; unit and note optional. key: purchase_price_upfront, "
+        "earnout_max, earnout_threshold, earnout_multiple, ev_total_max, "
+        "rueckbeteiligung, gf_salary, multiple, other. 'other' needs a label: "
+        '"other:Kuendigungsschutz=+1 MA". value: "2,75" -> 2.75 (comma '
+        'decimal); "3.400" -> 3400 (German thousands, ^\\d{1,3}(\\.\\d{3})+$); '
+        "non-numeric -> value_text",
+    )
+    pf.add_argument("--id", type=int)
 
     pr = sub.add_parser("round")
     pr.add_argument("action", choices=("add", "review"))
@@ -834,6 +1131,9 @@ def main(argv=None):
         ("position", "confirm"): ("id",),
         ("round", "add"): ("strategy", "date", "channel"),
         ("round", "review"): ("id", "went_well", "went_wrong", "lesson", "rating"),
+        ("offer", "add"): ("strategy", "side", "date", "label", "status"),
+        ("offer", "list"): ("strategy",),
+        ("offer", "set-status"): ("id", "status"),
     }
     need = reqs.get((args.cmd, getattr(args, "action", None)))
     if need:
@@ -851,6 +1151,8 @@ def main(argv=None):
         _valid_date(args.due, "--due")
     if args.cmd == "round" and args.action == "add":
         _valid_date(args.date, "--date")
+    if args.cmd == "offer" and args.action == "add":
+        _valid_date(args.date, "--date")
 
     {
         "migrate": cmd_migrate,
@@ -861,6 +1163,7 @@ def main(argv=None):
         "open-item": cmd_open_item,
         "position": cmd_position,
         "round": cmd_round,
+        "offer": cmd_offer,
     }[args.cmd](args)
 
 

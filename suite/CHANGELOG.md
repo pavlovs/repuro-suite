@@ -4,6 +4,27 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.27 + team-login — 2026-07-15 (config-only cherry-pick deploy)
+
+Deployed from `prod/team-login-2026-07-15` (= v109 commit 36b19cc + cherry-pick
+b8d1a4f) — NOT a dev merge; all post-07-08 dev work (calendar module, dealroom
+v2, boardroom ACT1) remains unshipped pending sign-off.
+
+### Suite (Caddy)
+- **`team` basic-auth user** (`AUTH_TEAM_HASH` Fly secret) — third suite login
+  for team@repuro.de. Cockpit principal `team` via teams layer: workstreams rw
+  (M&A + Standalone only; Holding workstreams assigned to `md` = hidden),
+  overview/timeline ro, allex rw, dealroom ro. New space `s-3 Standalone`.
+- **Security**: `/allex/` + `/deals/` reverse_proxy now overwrite
+  `X-Remote-User` (client-set header could impersonate an owner once a backend
+  trusts it — dealroom v2 owner-gating). `team` is 403'd from `/investor/` at
+  the proxy (boardroom serves the admin draft view to any non-investor
+  identity — needs a proper fix before a 4th login).
+- Incident note: first attempt deployed from master (v2.1.24) and transiently
+  rolled back the investor-room week lifecycle for ~25 min (00:30 CET);
+  repaired by the cherry-pick deploy above. Root cause: prod had been deployed
+  from dev on 07-08 (v107–v109) without merging master — master is stale.
+
 ## v2.1.27 — 2026-07-08
 
 ### Investor Room — week lifecycle v2 (Roman's model: static dated weeks + dynamic draft)

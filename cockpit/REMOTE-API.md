@@ -45,6 +45,7 @@ Caddy handles basic auth on the public URL, so direct HTTP from your machine won
 
 - **X-Remote-User: roman** → maps to principal `rd` (human role, full access)
 - **X-Remote-User: florian** → maps to principal `ff` (human role, full access)
+- **X-Remote-User: team** → principal `team` (team-scoped since 2026-07-15: cockpit workstreams rw / overview+timeline ro, allex rw, dealroom ro; NO agents/calendar/investor. Workstream visibility: M&A + Standalone only — all Holding workstreams are assigned to the `md` team. NEW Holding workstreams MUST be assigned to `md` at creation or team sees them — unassigned = visible to all.)
 - Bearer tokens in `.env` work on localhost but the remote DB may have different token hashes — use X-Remote-User instead.
 
 ### API reference

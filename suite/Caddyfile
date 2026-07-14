@@ -25,6 +25,7 @@
 		roman {$AUTH_ROMAN_HASH}
 		florian {$AUTH_FLORIAN_HASH}
 		investor {$AUTH_INVESTOR_HASH}
+		team {$AUTH_TEAM_HASH}
 	}
 
 	header {
@@ -78,6 +79,17 @@ a:hover{background:#0891B2;color:#fff}
 </div></body></html>` 403
 	}
 
+	# Investor Room is founders+investor only: boardroom's GET / serves the
+	# admin draft view to ANY non-investor identity, so a suite login that
+	# isn't roman/florian must be stopped at the proxy.
+	@team_investor {
+		expression {http.auth.user.id} == "team"
+		path /investor /investor/*
+	}
+	handle @team_investor {
+		respond "Forbidden" 403
+	}
+
 	handle /api/whoami {
 		header Content-Type "application/json"
 		respond `{"user":"{http.auth.user.id}"}` 200
@@ -92,12 +104,18 @@ a:hover{background:#0891B2;color:#fff}
 		respond 204
 	}
 
+	# The reverse_proxy blocks below MUST overwrite X-Remote-User (like /cockpit/
+	# does): without header_up, a client-set X-Remote-User header passes through
+	# to the backend, letting any authed user impersonate an owner once the
+	# backend trusts the header (dealroom v2 owner-gating).
 	handle_path /allex/* {
 		forward_auth localhost:8083 {
 			uri /api/authz?module=allex
 			header_up X-Remote-User {http.auth.user.id}
 		}
-		reverse_proxy localhost:8081
+		reverse_proxy localhost:8081 {
+			header_up X-Remote-User {http.auth.user.id}
+		}
 	}
 
 	handle_path /deals/* {
@@ -105,7 +123,9 @@ a:hover{background:#0891B2;color:#fff}
 			uri /api/authz?module=dealroom
 			header_up X-Remote-User {http.auth.user.id}
 		}
-		reverse_proxy localhost:8082
+		reverse_proxy localhost:8082 {
+			header_up X-Remote-User {http.auth.user.id}
+		}
 	}
 
 	handle_path /cockpit/* {

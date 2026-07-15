@@ -1346,6 +1346,12 @@ def delete_deliverable(did: str, p=Depends(human_only)):
         raise HTTPException(404, f"{did} not found")
     ref = models.deliv_id(num)
     with db.WRITE_LOCK:
+        # A non-admin must not orphan a FOUNDERS' agent task by deleting the
+        # shared deliverable it hangs under (codex 2026-07-15 r3).
+        for child in conn.execute(
+            "SELECT execution, created_by FROM tasks WHERE deliverable_id=?", (num,)
+        ):
+            _guard_foreign_agent(child, p)
         conn.execute(
             "UPDATE tasks SET deliverable_id=NULL, updated_at=? WHERE deliverable_id=?",
             (db.now_iso(), num),
@@ -1899,10 +1905,17 @@ def delete_task(tid: str, p=Depends(human_only)):
         _guard_personal(row, p["id"])
         _guard_foreign_agent(row, p)
         ref = models.task_id(num)
-        for other in conn.execute(
-            "SELECT id, prereqs, version FROM tasks WHERE prereqs LIKE ?",
+        dependents = conn.execute(
+            "SELECT id, prereqs, version, execution, created_by FROM tasks "
+            "WHERE prereqs LIKE ?",
             (f'%"{ref}"%',),
-        ).fetchall():
+        ).fetchall()
+        # A non-admin's delete must not silently strip a prereq from — and bump
+        # the version of — a FOUNDERS' agent task that depends on it (codex
+        # 2026-07-15 r3). Block rather than mutate across the lane boundary.
+        for other in dependents:
+            _guard_foreign_agent(other, p)
+        for other in dependents:
             pruned = [p_ for p_ in json.loads(other["prereqs"]) if p_.get("ref") != ref]
             conn.execute(
                 "UPDATE tasks SET prereqs=?, version=version+1, updated_at=? WHERE id=?",

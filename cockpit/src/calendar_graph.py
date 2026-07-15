@@ -117,9 +117,14 @@ def _normalise(event: dict, upn: str) -> dict:
     all_day = event.get("isAllDay", False)
     start_block = event.get("start", {})
     end_block = event.get("end", {})
+    # Graph returns start/end as {dateTime, timeZone} for EVERY event — including
+    # all-day ones (dateTime = local midnight, isAllDay=true). It does NOT send a
+    # `date` field here, so reading .date dropped every all-day event to an empty
+    # start and made it vanish from the grid. Prefer date when present (defensive)
+    # but fall back to dateTime, which is what the live API actually sends.
     if all_day:
-        start = start_block.get("date", "")
-        end = end_block.get("date", "")
+        start = start_block.get("date") or start_block.get("dateTime", "")
+        end = end_block.get("date") or end_block.get("dateTime", "")
     else:
         start = start_block.get("dateTime", "")
         end = end_block.get("dateTime", "")

@@ -4,6 +4,25 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.29 — 2026-07-15
+
+### Cockpit — calendar module goes live + two pre-deploy fixes
+- **Calendar module deployed** — week-grid view, Me/Team scope, connect flow.
+  Azure app (`COCKPIT_GRAPH_*`) was already live + admin-consented; this ships
+  the cockpit UI/endpoints that use it. Migration 14 (`users.calendar_upn`,
+  idempotent) runs on startup.
+- **Fix (found pre-deploy, real Graph):** all-day events were parsed from a
+  `start.date` field the live API never sends (it sends `dateTime` even for
+  all-day), so every OOO/holiday/multi-day block silently vanished. Now falls
+  back to `dateTime`.
+- **Fix (permissions, found by Roman): standalone-task leak.** Tasks with no
+  workstream had no team assignment to gate them and bypassed the visibility
+  filter — a non-admin saw ALL founders' loose fundraising/investor tasks
+  (Strada, escrow, FDD). Now a non-admin sees a standalone task only if they
+  created it or own it. Applied to `/api/state` + `/api/export`.
+
+---
+
 ## v2.1.28 — 2026-07-15
 
 ### Cockpit — multi-user personal cockpit (Anton onboarding)

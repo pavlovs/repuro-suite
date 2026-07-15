@@ -1,6 +1,11 @@
 /* ===== Agents — review-first: "Needs your review" up top, then Running, Queue, FAQ ===== */
-/* person → handover initials: RD = RC (Roman), FF = FC (Flo) */
-var HANDOVER_INITIALS = { RD: "RC", FF: "FC" };
+/* person (initials) → their agent-lane label, from the server's users.represents
+   mapping (window.LANES: user id -> lane label, e.g. rd -> RC). Data-driven —
+   onboarding a new person + runner never touches this file. */
+function laneOfPerson(p) {
+  var person = PEOPLE[p];
+  return (person && LANES[person.userId]) || null;
+}
 
 /* Safe minimal markdown renderer — escapes HTML first, then applies inline formatting.
    Supports: ## headings, **bold**, `code`, [label](url) / bare https:// links, - bullets.
@@ -220,7 +225,7 @@ function AgentReviewCard(props) {
         {canWriteAgents && (
         <div className="ag-rev-fb-actions">
           <button className="btn approve" onClick={function() {
-            var initials = HANDOVER_INITIALS[person] || person;
+            var initials = laneOfPerson(person) || person;
             api.save(t, { owners: [initials] }).then(function(ok) {
               if (ok !== false) api.verdict(t, "approve", fbVal.trim() || undefined);
             });
@@ -405,16 +410,19 @@ function LessonRow(props) {
 
 function AgentsView({ openTask, person }) {
   var allAgents = TASKS.filter(function(t) { return t.execution === "agent"; });
-  /* prefilter the lane to the logged-in person: Roman (RD) → RC, Flo (FF) → FC */
-  var laneState = React.useState(HANDOVER_INITIALS[person] || "all");
+  /* Admins see every lane (prefiltered to their own); non-admins only ever
+     receive their OWN agent workflows from the server — no lane bar for them. */
+  var isAdmin = !!(window.COCKPIT && window.COCKPIT.isAdmin);
+  var laneState = React.useState(isAdmin ? (laneOfPerson(person) || "all") : "all");
   var laneVal = laneState[0], setLane = laneState[1];
   /* re-prefilter if the active person changes mid-session (person-switch toggle) */
-  React.useEffect(function() { setLane(HANDOVER_INITIALS[person] || "all"); }, [person]);
+  React.useEffect(function() { if (isAdmin) setLane(laneOfPerson(person) || "all"); }, [person]);
   var agents = laneVal === "all" ? allAgents : allAgents.filter(function(t) { return t.lane === laneVal; });
 
-  /* learnings are lane-scoped like tasks (lane 'rd'/'ff', null = both lanes) —
+  /* learnings are lane-scoped like tasks (lane = user id, null = every lane) —
      the lane filter applies to their counts and lists too (verifier AC7) */
-  var LANE_KEY = { RC: "rd", FC: "ff" };
+  var LANE_KEY = {}; // lane label -> user id, e.g. RC -> rd
+  Object.keys(LANES).forEach(function(uid) { LANE_KEY[LANES[uid]] = uid; });
   var laneMatch = function(l) {
     return laneVal === "all" || !l.lane || l.lane === LANE_KEY[laneVal];
   };
@@ -451,7 +459,9 @@ function AgentsView({ openTask, person }) {
       return t.status !== "done" && (l === "all" || t.lane === l);
     }).length;
   };
-  var LANES = [["all", "All"], ["RC", "RC"], ["FC", "FC"]];
+  var LANE_OPTS = [["all", "All"]].concat(
+    Object.keys(LANES).map(function(uid) { return [LANES[uid], LANES[uid]]; })
+  );
 
   var parseId = function(id) { return parseInt((id || "").replace("t-", ""), 10) || 0; };
   var queuedSorted = queued.slice().sort(function(a, b) {
@@ -494,10 +504,11 @@ function AgentsView({ openTask, person }) {
           })}
           <button className="ag-help-btn" title="How to set up & run /repuro" onClick={function() { setHelp(true); }}>?</button>
         </div>
+        {isAdmin && (
         <div className="ag-lanebar">
           <span className="ag-lanebar-label">Lane</span>
           <div className="ag-seg">
-            {LANES.map(function(l) {
+            {LANE_OPTS.map(function(l) {
               return (
                 <button key={l[0]} className={"ag-seg-btn" + (laneVal === l[0] ? " on" : "")}
                   onClick={function() { setLane(l[0]); }}>
@@ -507,6 +518,7 @@ function AgentsView({ openTask, person }) {
             })}
           </div>
         </div>
+        )}
       </div>
 
       {/* ================= INBOX — everything that waits on a human ================= */}

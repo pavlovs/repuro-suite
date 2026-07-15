@@ -306,8 +306,7 @@ function DeliverableView({ mutate, openTask, openDeliv }) {
     return out;
   }
 
-  const rdGroups = personGroups("RD");
-  const ffGroups = personGroups("FF");
+  const colPeople = meFirst(Object.keys(PEOPLE));
 
   const PersonCol = ({ id, groups }) => {
     const totalDelivs = groups.reduce((n, g) => n + g.delivs.length, 0);
@@ -354,9 +353,8 @@ function DeliverableView({ mutate, openTask, openDeliv }) {
   };
 
   return (
-    <div className="wk-cols wk-cols-2" style={{ marginTop: 12 }}>
-      <PersonCol id="RD" groups={rdGroups} />
-      <PersonCol id="FF" groups={ffGroups} />
+    <div className={"wk-cols wk-cols-" + Math.min(colPeople.length, 3)} style={{ marginTop: 12 }}>
+      {colPeople.map((p) => <PersonCol key={p} id={p} groups={personGroups(p)} />)}
     </div>
   );
 }

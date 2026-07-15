@@ -65,7 +65,7 @@ function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setF
       {layout !== "deliverables" && (
         <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={activeFilterCount} hideToggle>
           <div className="seg">
-            {[["", "Everyone"], ["RD", "Roman"], ["FF", "Flo"]].map(([v, l]) => (
+            {[["", "Everyone"]].concat(meFirst(Object.keys(PEOPLE)).map((p) => [p, PEOPLE[p].name])).map(([v, l]) => (
               <button key={v} className={filters.person === v ? "on" : ""} onClick={() => setFilters({ ...filters, person: v })}>{l}</button>
             ))}
           </div>
@@ -122,7 +122,7 @@ function tabFromHash() {
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [tab, setTabState] = React.useState(tabFromHash);
-  const [person, setPerson] = React.useState(sessionStorage.getItem("cockpit_person") || "RD");
+  const [person, setPerson] = React.useState(sessionStorage.getItem("cockpit_person") || ME);
   const [drawer, setDrawer] = React.useState(null);
   const [delivDrawer, setDelivDrawer] = React.useState(null);
   const [palette, setPalette] = React.useState(false);
@@ -174,7 +174,10 @@ function App() {
   const badge = { week: chaseN, agents: verdictN };
 
   const cur = NAV.find((n) => n.id === tab) || (tab === "admin" ? NAV_ADMIN : NAV[0]);
-  const showPerson = tab === "overview";
+  /* The person switch is an admin lens (view the cockpit as someone else).
+     Non-admins ARE their person — no switch, no Roman/Flo flip. */
+  const showPerson = tab === "overview" && window.COCKPIT && window.COCKPIT.isAdmin && Object.keys(PEOPLE).length > 1;
+  const meKey = PEOPLE[ME] ? ME : person;
 
   const canWriteWorkstreams = window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw"));
 
@@ -215,8 +218,8 @@ function App() {
         <nav className="side-nav"><NavList /></nav>
         <div className="side-foot">
           <div className="side-user">
-            <Avatar id={person} size={30} />
-            <div><div className="nm">{PEOPLE[person].full}</div><div className="rl">{PEOPLE[person].role}</div></div>
+            <Avatar id={meKey} size={30} />
+            <div><div className="nm">{(PEOPLE[meKey] || {}).full || meKey}</div><div className="rl">{(PEOPLE[meKey] || {}).role || ""}</div></div>
           </div>
         </div>
       </aside>
@@ -235,7 +238,7 @@ function App() {
           </button>
           {showPerson && (
             <div className="person-switch">
-              {["RD", "FF"].map((p) => (
+              {meFirst(Object.keys(PEOPLE)).map((p) => (
                 <button key={p} className={person === p ? "on" : ""} onClick={() => pickPerson(p)}>
                   <Avatar id={p} size={18} />{PEOPLE[p].name}
                 </button>

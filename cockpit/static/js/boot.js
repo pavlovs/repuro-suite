@@ -167,11 +167,40 @@
     return (resp || "").split(/[,;\/\s]+/).filter(Boolean);
   }
 
+  /* People directory comes from the server (users table, humans only) — a new
+     team member is a data row, never a frontend change. Founders keep their
+     established colors/labels; everyone else draws from a fixed palette. */
+  var FOUNDER_META = {
+    rd: { name: "Roman", full: "Roman Dobriakov", color: "#0891B2", role: "Co-founder" },
+    ff: { name: "Flo", full: "Florian Fischer", color: "#A855F7", role: "Co-founder" },
+  };
+  var TEAM_COLORS = ["#D97706", "#0F766E", "#BE185D", "#4D7C0F", "#6D28D9"];
+  var _laneMap = {}; // created_by (user id) -> lane label, e.g. {rd:"RC"} — server truth
+
+  function buildPeople(users) {
+    var people = {};
+    var teamIdx = 0;
+    (users && users.length ? users : [{ id: "rd", initials: "RD" }, { id: "ff", initials: "FF" }])
+      .forEach(function (u) {
+        var meta = FOUNDER_META[u.id];
+        var key = u.initials || (u.id || "").toUpperCase().slice(0, 2);
+        people[key] = {
+          id: key, userId: u.id,
+          name: meta ? meta.name : (u.name || u.id).split(/\s+/)[0],
+          full: meta ? meta.full : (u.name || u.id),
+          color: meta ? meta.color : TEAM_COLORS[teamIdx++ % TEAM_COLORS.length],
+          role: meta ? meta.role : "Team",
+        };
+      });
+    return people;
+  }
+
+  var _peopleMap = {}; // initials -> person, module-level so mapTask can filter owners
+
   function mapState(state) {
-    var PEOPLE = {
-      RD: { id: "RD", name: "Roman", full: "Roman Dobriakov", color: "#0891B2", role: "Co-founder" },
-      FF: { id: "FF", name: "Flo", full: "Florian Fischer", color: "#A855F7", role: "Co-founder" },
-    };
+    var PEOPLE = buildPeople(state.users);
+    _peopleMap = PEOPLE;
+    _laneMap = state.lanes || { rd: "RC", ff: "FC" };
     var stageOf = {};
     (state.deals || []).forEach(function (d) { stageOf[d.codename] = d.stage; });
 
@@ -247,12 +276,13 @@
       SPACES: SPACES, WORKSTREAMS: WORKSTREAMS, DELIVERABLES: DELIVERABLES,
       TASKS: TASKS, PERSONAL: PERSONAL, PRINCIPAL: state.principal || null,
       LEARNINGS: state.learnings || [],
+      LANES: _laneMap,
       STAGE_LABEL: STAGE_LABEL,
     };
   }
 
   function mapTask(t, delivId) {
-    var owners = tokensOf(t.responsible).filter(function (x) { return x === "RD" || x === "FF"; });
+    var owners = tokensOf(t.responsible).filter(function (x) { return !!_peopleMap[x]; });
     return {
       id: t.id, d: delivId, text: t.text, detail: t.detail || null,
       owners: owners, ownersRaw: t.responsible || "",
@@ -283,7 +313,7 @@
       reviewRound: t.review_round || 0,
       claimed_by: t.claimed_by || null, claim_expires_at: t.claim_expires_at || null,
       created_by: t.created_by || null,
-      lane: t.created_by === "rd" ? "RC" : (t.created_by === "ff" ? "FC" : null),
+      lane: _laneMap[t.created_by] || null,
       doneAt: t.done_at || null,
       kind: t.kind, dealCode: t.deal || null, version: t.version,
       inputFrom: t.input_from || null, inputQuestion: t.input_question || null,
@@ -589,7 +619,8 @@
       var delivId = (await r.json()).id;
       var prev = null;
       for (var i = 0; i < steps.length; i++) {
-        var body = { deliverable_id: delivId, text: steps[i], kind: "workplan", deal: codename, responsible: "RD" };
+        var me = sessionStorage.getItem("cockpit_person") || "RD";
+        var body = { deliverable_id: delivId, text: steps[i], kind: "workplan", deal: codename, responsible: me };
         if (prev) body.prereqs = [{ ref: prev, hardness: "hard" }];
         var tr = await authedFetch("/api/task", {
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -718,9 +749,15 @@
       perms: (state.principal && state.principal.perms) || {},
       isAdmin: !!(state.principal && state.principal.is_admin),
     };
-    if (state.principal && state.principal.id && !sessionStorage.getItem("cockpit_person")) {
-      var pMap = {rd: "RD", ff: "FF"};
-      if (pMap[state.principal.id]) sessionStorage.setItem("cockpit_person", pMap[state.principal.id]);
+    /* The logged-in identity drives the person lens. Non-admins are ALWAYS
+       themselves (no Roman/Flo flip for a team member); admins default to
+       themselves but keep a person switch chosen earlier this session. */
+    var pr = state.principal || {};
+    var myInitials = pr.initials || (pr.id ? pr.id.toUpperCase().slice(0, 2) : null);
+    if (myInitials && pr.role === "human") {
+      var stored = sessionStorage.getItem("cockpit_person");
+      var validStored = stored && window.COCKPIT_DATA.PEOPLE[stored];
+      if (!pr.is_admin || !validStored) sessionStorage.setItem("cockpit_person", myInitials);
     }
 
     var sources = await Promise.all(JSX_FILES.map(function (f) {

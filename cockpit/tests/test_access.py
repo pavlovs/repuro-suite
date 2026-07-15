@@ -499,6 +499,146 @@ def test_teamless_legacy_owner_still_fail_open(cockpit_db, client):
     assert "workstreams" in state["principal"]["perms"]
 
 
+# ---------------------------------------------------------------------------
+# Multi-user personal cockpit (2026-07-15): users/lanes payload, per-user agent
+# scoping, lane-scoped learnings, agent-user provisioning
+# ---------------------------------------------------------------------------
+
+TEAMMEMBER_TOKEN = "test-token-anton"
+
+
+def _team_auth():
+    return {"Authorization": f"Bearer {TEAMMEMBER_TOKEN}"}
+
+
+@pytest.fixture()
+def team_member_client(cockpit_db, client):
+    """Non-admin team member (anton) in a crew team with workstreams+agents rw."""
+    cockpit_db.execute(
+        "INSERT INTO teams (id, name, permissions) VALUES ('crew','Crew',"
+        '\'{"overview":"ro","week":"rw","workstreams":"rw","agents":"rw"}\')'
+    )
+    cockpit_db.commit()
+    _seed_user(cockpit_db, "anton", TEAMMEMBER_TOKEN, login="anton", teams=("crew",))
+    return client
+
+
+def _agent_task(client, headers, text="agent job"):
+    r = client.post(
+        "/api/task",
+        json={
+            "text": text,
+            "execution": "agent_supervised",
+            "acceptance_criteria": "done when done",
+        },
+        headers=headers,
+    )
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def _all_task_ids(state):
+    ids = {t["id"] for t in state.get("standalone_tasks", [])}
+    for s in state.get("spaces", []):
+        for w in s.get("workstreams", []):
+            for d in w.get("deliverables", []):
+                ids |= {t["id"] for t in d.get("tasks", [])}
+    return ids
+
+
+def test_state_contains_users_and_lanes(client):
+    state = client.get("/api/state", headers=auth()).json()
+    users = {u["id"]: u for u in state["users"]}
+    assert "rd" in users and users["rd"]["initials"] == "RD"
+    assert all(u["id"] != "rc-agent" for u in state["users"])  # humans only
+    assert state["lanes"] == {"rd": "RC"}
+
+
+def test_non_admin_sees_only_own_agent_tasks(team_member_client):
+    c = team_member_client
+    foreign = _agent_task(c, auth(), "rd's agent job")
+    own = _agent_task(c, _team_auth(), "anton's agent job")
+    plain = c.post("/api/task", json={"text": "shared plain"}, headers=auth())
+    assert plain.status_code == 201
+
+    member_ids = _all_task_ids(c.get("/api/state", headers=_team_auth()).json())
+    assert own["id"] in member_ids
+    assert foreign["id"] not in member_ids
+    assert plain.json()["id"] in member_ids  # non-agent tasks stay shared
+
+    admin_ids = _all_task_ids(c.get("/api/state", headers=auth()).json())
+    assert foreign["id"] in admin_ids and own["id"] in admin_ids
+
+
+def test_non_admin_learnings_scoped_to_own_lane(cockpit_db, team_member_client):
+    c = team_member_client
+    for lane in ("rd", "anton", None):
+        cockpit_db.execute(
+            "INSERT INTO learnings (lane, text, status, created_at) "
+            "VALUES (?,?, 'candidate', '2026-07-15T00:00:00Z')",
+            (lane, f"lesson for {lane or 'all'}"),
+        )
+    cockpit_db.commit()
+    member = c.get("/api/state", headers=_team_auth()).json()
+    assert {l["lane"] for l in member["learnings"]} == {"anton"}
+    admin = c.get("/api/state", headers=auth()).json()
+    assert {l["lane"] for l in admin["learnings"]} == {"rd", "anton", None}
+
+
+def test_admin_can_create_agent_user_with_lane(team_member_client):
+    c = team_member_client
+    r = c.post(
+        "/api/admin/user",
+        json={
+            "id": "ac-agent",
+            "name": "Anton's Claude",
+            "initials": "AC",
+            "role": "agent",
+            "represents": "anton",
+        },
+        headers=auth(),
+    )
+    assert r.status_code == 201, r.text
+    state = c.get("/api/state", headers=auth()).json()
+    assert state["lanes"]["anton"] == "AC"
+    # the new agent token drains anton's lane
+    own = _agent_task(c, _team_auth(), "anton lane job")
+    q = c.get(
+        "/api/agent/queue",
+        headers={"Authorization": f"Bearer {r.json()['token']}"},
+    ).json()
+    assert [t["id"] for t in q["queue"]] == [own["id"]]
+
+
+def test_admin_create_user_rejects_unknown_represents(client):
+    r = client.post(
+        "/api/admin/user",
+        json={"id": "x-agent", "name": "X", "role": "agent", "represents": "ghost"},
+        headers=auth(),
+    )
+    assert r.status_code == 422
+
+
+def test_admin_patch_user_name_initials(team_member_client):
+    c = team_member_client
+    r = c.patch(
+        "/api/admin/user/anton",
+        json={"name": "Anton Neu", "initials": "AN"},
+        headers=auth(),
+    )
+    assert r.status_code == 200
+    ov = c.get("/api/admin/overview", headers=auth()).json()
+    anton = next(u for u in ov["users"] if u["id"] == "anton")
+    assert anton["name"] == "Anton Neu" and anton["initials"] == "AN"
+
+
+def test_non_admin_cannot_patch_users(team_member_client):
+    r = team_member_client.patch(
+        "/api/admin/user/anton", json={"name": "Hax"}, headers=_team_auth()
+    )
+    assert r.status_code == 403
+
+
 def test_module_gate_bounds_state_payload(cockpit_db, client):
     """A team WITHOUT the workstreams module must not receive workstream/task
     data in /api/state, even for unassigned (visible-to-all) workstreams."""

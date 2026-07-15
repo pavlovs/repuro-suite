@@ -3,6 +3,13 @@ const { TODAY, PEOPLE, EXT, SPACES, WORKSTREAMS, DELIVERABLES, TASKS, STAGE_LABE
 const PERSONAL = window.COCKPIT_DATA.PERSONAL || [];
 const PRINCIPAL = window.COCKPIT_DATA.PRINCIPAL || null;
 const LEARNINGS = window.COCKPIT_DATA.LEARNINGS || [];
+const LANES = window.COCKPIT_DATA.LANES || {}; // user id -> agent lane label (rd -> RC)
+/* The logged-in person's initials — every "me" default in the views. Falls back
+   to RD only for legacy tokens that predate principal payloads. */
+const ME = (PRINCIPAL && PRINCIPAL.initials) || sessionStorage.getItem("cockpit_person") || "RD";
+function meFirst(keys) {
+  return keys.slice().sort((a, b) => (a === ME ? -1 : b === ME ? 1 : 0));
+}
 const byPersonal = Object.fromEntries(PERSONAL.map((t) => [t.id, t]));
 const byLearning = Object.fromEntries(LEARNINGS.map((l) => [l.id, l]));
 
@@ -199,7 +206,7 @@ WORKSTREAMS.forEach((w) => { if (wsPerSpace[w.space]) wsPerSpace[w.space].push(w
 
 Object.assign(window, {
   TODAY, PEOPLE, EXT, SPACES, WORKSTREAMS, DELIVERABLES, TASKS, PERSONAL, PRINCIPAL, STAGE_LABEL,
-  LEARNINGS, byLearning,
+  LEARNINGS, byLearning, LANES, ME, meFirst,
   todayDate, byTask, byDeliv, byWs, bySpace, byPersonal, wsPerSpace,
   daysUntil, addDays, fdate, fdateShort, readiness, blockingPrereqs, risks, recommendation, chaseDue,
   delivOf, wsOf, dealOf, STATUS_LABEL, STATUS_ORDER, DEPENDENTS,

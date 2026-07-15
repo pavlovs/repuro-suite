@@ -312,6 +312,10 @@
 .filter-bar-toggle:not(.active) .filter-bar-badge { background: var(--brand); color: #fff; }
 .filter-bar-chevron { font-size: 10px; opacity: .7; }
 .filter-bar-body { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.filter-ws { display: inline-flex; align-items: center; gap: 6px; }
+.filter-ws-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+.filter-ws select { font-size: 12px; font-weight: 600; color: var(--ink); padding: 4px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: #fff; cursor: pointer; }
+.filter-ws select:hover { border-color: var(--brand); }
 
 /* Activity log panel */
 .activity-scrim { position: fixed; inset: 0; background: rgba(10, 35, 45, .3); z-index: 85; }

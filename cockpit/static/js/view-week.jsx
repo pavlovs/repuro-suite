@@ -5,9 +5,27 @@ function MeetingView({ mutate, openTask }) {
   const [mode, setMode] = React.useState("daily");
   const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
   const live = TASKS.filter((t) => t.status !== "done" && t.execution !== "agent");
-  /* One column per person, me first — the meeting agenda covers everyone in the
-     viewer's scope (server already filters workstreams by team visibility). */
-  const MTG_PEOPLE = meFirst(Object.keys(PEOPLE));
+  /* Meeting is a focused 1:1 / small-group surface — MAX 3 columns. With a
+     bigger team, pick who's in THIS meeting (persisted per browser). Team-wide
+     review lives in Workstreams (filter by workstream there), not here. */
+  const ALL_PEOPLE = meFirst(Object.keys(PEOPLE));
+  const [mtgSel, setMtgSel] = React.useState(() => {
+    let saved = null;
+    try { saved = JSON.parse(sessionStorage.getItem("cockpit_mtg_people") || "null"); } catch (_) {}
+    const valid = Array.isArray(saved) ? saved.filter((p) => PEOPLE[p]) : null;
+    return valid && valid.length ? valid.slice(0, 3) : ALL_PEOPLE.slice(0, 3);
+  });
+  const toggleMtg = (p) => setMtgSel((sel) => {
+    let next;
+    if (sel.includes(p)) next = sel.filter((x) => x !== p);
+    else if (sel.length >= 3) next = [...sel.slice(1), p]; // keep max 3, drop oldest
+    else next = [...sel, p];
+    if (!next.length) next = [p]; // never empty
+    sessionStorage.setItem("cockpit_mtg_people", JSON.stringify(next));
+    return next;
+  });
+  // render in the canonical me-first order, restricted to the picked set
+  const MTG_PEOPLE = ALL_PEOPLE.filter((p) => mtgSel.includes(p));
   const mtgColsCls = "wk-cols wk-cols-" + Math.min(MTG_PEOPLE.length, 3);
 
   // Deadlines — next upcoming milestone per active deal
@@ -118,6 +136,17 @@ function MeetingView({ mutate, openTask }) {
           <button className={mode === "daily" ? "on" : ""} onClick={() => setMode("daily")}>Daily</button>
           <button className={mode === "weekly" ? "on" : ""} onClick={() => setMode("weekly")}>Weekly</button>
         </div>
+        {ALL_PEOPLE.length > 3 && (
+          <div className="mtg-pick" title="Choose up to 3 people for this meeting">
+            <span className="mtg-pick-lbl">In this meeting</span>
+            {ALL_PEOPLE.map((p) => (
+              <button key={p} className={"mtg-pick-chip" + (mtgSel.includes(p) ? " on" : "")}
+                onClick={() => toggleMtg(p)} title={PEOPLE[p].full}>
+                <Avatar id={p} size={16} />{PEOPLE[p].name}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="ws-toolbar-sp" />
         <span className="ws-toolbar-note">{mode === "weekly" ? "Week " + weekNum + " · " : ""}{todayDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</span>
       </div>

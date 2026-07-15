@@ -143,7 +143,8 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
     );
   };
 
-  const standalone = TASKS.filter((t) => !t.d && visible(t))
+  // standalone tasks have no workstream — a workstream filter excludes them
+  const standalone = filters.workstream ? [] : TASKS.filter((t) => !t.d && visible(t))
     .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
   return (
@@ -152,7 +153,8 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
         <span>Task</span><span>Owner</span><span>Due</span>
       </div>
       {SPACES.map((space) => {
-        const allSpaceWs = (wsPerSpace[space.id] || []);
+        let allSpaceWs = (wsPerSpace[space.id] || []);
+        if (filters.workstream) allSpaceWs = allSpaceWs.filter((w) => w.id === filters.workstream);
         const hiddenCount = allSpaceWs.filter((w) => w.visibility === "hidden").length;
         const spaceWs = showAllDeals ? allSpaceWs : allSpaceWs.filter((w) => w.visibility !== "hidden");
         if (!spaceWs.length && !hiddenCount) return null;
@@ -283,7 +285,8 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
 }
 window.TableView = TableView;
 
-function DeliverableView({ mutate, openTask, openDeliv }) {
+function DeliverableView({ mutate, openTask, openDeliv, filters }) {
+  filters = filters || {};
   const [expanded, setExpanded] = React.useState({});
   const toggle = (id) => setExpanded((o) => ({ ...o, [id]: !o[id] }));
   const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
@@ -291,6 +294,7 @@ function DeliverableView({ mutate, openTask, openDeliv }) {
   function personGroups(person) {
     const out = [];
     for (const ws of WORKSTREAMS) {
+      if (filters.workstream && ws.id !== filters.workstream) continue;
       const matching = [];
       for (const d of DELIVERABLES.filter((d) => d.ws === ws.id)) {
         const allTasks = TASKS.filter((t) => t.d === d.id);

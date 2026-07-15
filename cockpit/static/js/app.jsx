@@ -35,14 +35,14 @@ const NAV = NAV_ALL.filter(n => _ckModules.includes(n.module));
 function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setFiltersOpen, setFilterCount }) {
   const [layout, setLayout] = React.useState("table");
   const [grouping, setGrouping] = React.useState("workstream");
-  const [filters, setFilters] = React.useState({ person: "", readiness: "", priority: "", showDone: false });
+  const [filters, setFilters] = React.useState({ workstream: "", person: "", readiness: "", priority: "", showDone: false });
 
-  const activeFilterCount = [filters.person, filters.readiness].filter(f => f !== "").length
+  const activeFilterCount = [filters.workstream, filters.person, filters.readiness].filter(f => f !== "").length
     + (layout === "table" && filters.priority !== "" ? 1 : 0)
     + (layout === "table" && filters.showDone ? 1 : 0);
-  // Issue 29: report active-filter count to the topbar Filter button.
-  // null = no filter body in this layout (Deliverables) → topbar hides the button entirely.
-  React.useEffect(() => { setFilterCount && setFilterCount(layout === "deliverables" ? null : activeFilterCount); }, [activeFilterCount, layout]);
+  // Report active-filter count to the topbar Filter button. Every layout has at
+  // least the workstream filter now, so the button shows in all of them.
+  React.useEffect(() => { setFilterCount && setFilterCount(activeFilterCount); }, [activeFilterCount, layout]);
 
   return (
     <div>
@@ -62,13 +62,30 @@ function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setF
         <div className="ws-toolbar-sp" />
       </div>
 
-      {layout !== "deliverables" && (
-        <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={activeFilterCount} hideToggle>
+      <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={activeFilterCount} hideToggle>
+        <label className="filter-ws">
+          <span className="filter-ws-lbl">Workstream</span>
+          <select value={filters.workstream} onChange={(e) => setFilters({ ...filters, workstream: e.target.value })}>
+            <option value="">All workstreams</option>
+            {SPACES.map((s) => {
+              const list = (wsPerSpace[s.id] || []);
+              if (!list.length) return null;
+              return (
+                <optgroup key={s.id} label={s.name}>
+                  {list.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </optgroup>
+              );
+            })}
+          </select>
+        </label>
+        {layout !== "deliverables" && (
           <div className="seg">
             {[["", "Everyone"]].concat(meFirst(Object.keys(PEOPLE)).map((p) => [p, PEOPLE[p].name])).map(([v, l]) => (
               <button key={v} className={filters.person === v ? "on" : ""} onClick={() => setFilters({ ...filters, person: v })}>{l}</button>
             ))}
           </div>
+        )}
+        {layout !== "deliverables" && (
           <div className="seg">
             {[["", "Any readiness"], ["red", "Blocked"], ["amber", "Prereqs running"], ["green", "Ready"]].map(([v, l]) => (
               <button key={v} className={filters.readiness === v ? "on" : ""} onClick={() => setFilters({ ...filters, readiness: v })}>
@@ -76,19 +93,19 @@ function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setF
               </button>
             ))}
           </div>
-          {layout === "table" && (
-            <div className="seg">
-              {[["", "Any priority"], ["high", "High"], ["med", "Medium"]].map(([v, l]) => (
-                <button key={v} className={filters.priority === v ? "on" : ""} onClick={() => setFilters({ ...filters, priority: v })}>{l}</button>
-              ))}
-            </div>
-          )}
-          {layout === "table" && <label className="chk-lbl"><input type="checkbox" checked={filters.showDone} onChange={(e) => setFilters({ ...filters, showDone: e.target.checked })} /> show done</label>}
-        </FilterBar>
-      )}
+        )}
+        {layout === "table" && (
+          <div className="seg">
+            {[["", "Any priority"], ["high", "High"], ["med", "Medium"]].map(([v, l]) => (
+              <button key={v} className={filters.priority === v ? "on" : ""} onClick={() => setFilters({ ...filters, priority: v })}>{l}</button>
+            ))}
+          </div>
+        )}
+        {layout === "table" && <label className="chk-lbl"><input type="checkbox" checked={filters.showDone} onChange={(e) => setFilters({ ...filters, showDone: e.target.checked })} /> show done</label>}
+      </FilterBar>
 
       {layout === "deliverables"
-        ? <DeliverableView mutate={mutate} openTask={openTask} openDeliv={openDeliv} />
+        ? <DeliverableView mutate={mutate} openTask={openTask} openDeliv={openDeliv} filters={filters} />
         : layout === "table"
         ? <TableView mutate={mutate} openTask={openTask} openDeliv={openDeliv} filters={filters} />
         : <BoardView grouping={grouping} mutate={mutate} openTask={openTask} filters={filters} />}

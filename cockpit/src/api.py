@@ -791,6 +791,17 @@ def _guard_personal(row, principal_id):
         raise HTTPException(403, "personal todo belongs to another user")
 
 
+def _guard_foreign_agent(row, p):
+    """Agent workflows are lane-private: only the creating human or an admin may
+    read or mutate them (codex 2026-07-15 #3 — without this, the /api/state
+    scrub is bypassable via direct task routes). Agent principals pass — the
+    claim/result/block endpoints govern the runner side."""
+    if p.get("role") != "human" or p.get("is_admin"):
+        return
+    if row["execution"] in models.AGENT_EXECUTIONS and row["created_by"] != p["id"]:
+        raise HTTPException(403, "agent task belongs to another user's lane")
+
+
 # Private body fields of a personal todo — never written verbatim into audit_log,
 # so deleted personal tasks (unclassifiable at read time) leave no leaked body.
 _PERSONAL_PRIVATE_FIELDS = ("text", "detail")
@@ -1005,6 +1016,21 @@ def _scrub_foreign_agent_tasks(st, viewer):
     return st
 
 
+def _recount_progress(st):
+    """Re-derive deliverable progress from the tasks that SURVIVED scrubbing —
+    otherwise the counts leak how many hidden (foreign agent/personal) tasks
+    exist and contradict the visible list (codex 2026-07-15 #5)."""
+    for space in st.get("spaces", []):
+        for ws in space.get("workstreams", []):
+            for d in ws.get("deliverables", []):
+                ch = d.get("tasks", [])
+                d["computed"]["progress"] = {
+                    "done": sum(1 for c in ch if c["status"] == "done"),
+                    "total": len(ch),
+                }
+    return st
+
+
 @app.get("/api/state")
 def state(p=Depends(principal)):
     conn = db.get_conn()
@@ -1036,6 +1062,8 @@ def state(p=Depends(principal)):
         s["learnings"] = [_learning_json(r) for r in conn.execute(learn_sql)]
     # Server-side privacy: filter personal todos to the authenticated viewer.
     _scrub_state_personal(s, p["id"])
+    if p["role"] == "human" and not is_admin_human:
+        _recount_progress(s)
     return s
 
 
@@ -1122,7 +1150,9 @@ def patch_task(tid: str, payload: dict = Body(...), p=Depends(principal)):
         payload["deliverable_id"] = dnum
     _validate_task_fields(conn, payload)
     with db.WRITE_LOCK:
-        _guard_personal(_get_task(conn, num), p["id"])
+        row = _get_task(conn, num)
+        _guard_personal(row, p["id"])
+        _guard_foreign_agent(row, p)
         _update_task(conn, p["id"], num, payload, expected_version=version)
         conn.commit()
     _broadcast(p["id"])
@@ -1684,6 +1714,7 @@ def answer_blocker(
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
         _guard_personal(row, p["id"])
+        _guard_foreign_agent(row, p)
         if row["status"] != "blocked" or not row["input_question"]:
             raise HTTPException(
                 409, f"task is {row['status']} and/or has no open question"
@@ -1792,6 +1823,10 @@ def decide_learning(
     row = conn.execute("SELECT * FROM learnings WHERE id=?", (lid,)).fetchone()
     if not row:
         raise HTTPException(404, f"learning {lid} not found")
+    # Lane privacy: non-admins curate only their own lane (codex 2026-07-15 #4).
+    # Lane-NULL (global) entries are founders' rules — admin-only to decide.
+    if not p.get("is_admin") and row["lane"] != p["id"]:
+        raise HTTPException(403, "learning belongs to another lane")
     with db.WRITE_LOCK:
         if action == "promote":
             if row["status"] == "active":
@@ -1850,6 +1885,7 @@ def delete_task(tid: str, p=Depends(human_only)):
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
         _guard_personal(row, p["id"])
+        _guard_foreign_agent(row, p)
         ref = models.task_id(num)
         for other in conn.execute(
             "SELECT id, prereqs, version FROM tasks WHERE prereqs LIKE ?",
@@ -1978,6 +2014,7 @@ def approve(tid: str, p=Depends(human_only)):
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
         _guard_personal(row, p["id"])
+        _guard_foreign_agent(row, p)
         if row["status"] != "in_review":
             raise HTTPException(409, f"task is {row['status']}, not in_review")
         _update_task(conn, p["id"], num, {"status": "done"}, action="task_approve")
@@ -2002,6 +2039,7 @@ def reject(
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
         _guard_personal(row, p["id"])
+        _guard_foreign_agent(row, p)
         if row["status"] != "in_review":
             raise HTTPException(409, f"task is {row['status']}, not in_review")
         evidence = (row["evidence"] or "") + f"\nREJECTED ({p['id']}): {comment}"
@@ -2042,6 +2080,7 @@ def request_changes(
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
         _guard_personal(row, p["id"])
+        _guard_foreign_agent(row, p)
         if row["status"] != "in_review":
             raise HTTPException(409, f"task is {row['status']}, not in_review")
         new_round = (row["review_round"] or 0) + 1
@@ -2196,6 +2235,10 @@ def export_md(scope: str = Query(default="all"), p=Depends(principal)):
     # Privacy: drop personal todos not owned by the requester, for ALL scopes
     # (incl. scope=all) before scope filtering and rendering.
     _scrub_state_personal(st, p["id"])
+    # Same lane-privacy gate as /api/state — the export must never be the side
+    # door to foreign agent workflows (codex 2026-07-15 #1).
+    if p["role"] == "human" and not p.get("is_admin"):
+        _scrub_foreign_agent_tasks(st, p["id"])
     st = _filter_scope(st, scope)
     return mdio.render_export(st, scope)
 
@@ -2402,27 +2445,46 @@ def activity_log(entity: str | None = Query(default=None), p=Depends(principal))
     # redacted. Rows whose task no longer exists can't be classified — but
     # personal-task bodies are no longer written into audit_log (see _audit_task),
     # so those legacy rows carry no private body for new personal todos.
-    personal_owner = {}  # entity ref -> created_by, for kind='personal' tasks
+    # Foreign AGENT tasks go further: for a non-admin human the entry is DROPPED
+    # entirely — audit after-fields carry the full task body, and even the
+    # entity id enables follow-on reads (codex 2026-07-15 #2).
+    task_meta = {}  # entity ref -> live task row (kind, execution, created_by)
 
-    def _is_other_personal(entity):
+    def _task_row(entity):
         if not entity or not entity.startswith("t-"):
-            return False
-        if entity not in personal_owner:
+            return None
+        if entity not in task_meta:
             try:
                 _, n = _safe_ref(entity)
-                trow = conn.execute(
-                    "SELECT kind, created_by FROM tasks WHERE id=?", (n,)
+                task_meta[entity] = conn.execute(
+                    "SELECT kind, execution, created_by FROM tasks WHERE id=?", (n,)
                 ).fetchone()
             except Exception:
-                trow = None
-            personal_owner[entity] = (
-                trow["created_by"] if trow and trow["kind"] == "personal" else False
-            )
-        owner = personal_owner[entity]
-        return owner is not False and owner != p["id"]
+                task_meta[entity] = None
+        return task_meta[entity]
+
+    def _is_other_personal(entity):
+        trow = _task_row(entity)
+        return bool(
+            trow and trow["kind"] == "personal" and trow["created_by"] != p["id"]
+        )
+
+    hide_foreign_agent = p["role"] == "human" and not p.get("is_admin")
+
+    def _is_foreign_agent(entity):
+        if not hide_foreign_agent:
+            return False
+        trow = _task_row(entity)
+        return bool(
+            trow
+            and trow["execution"] in models.AGENT_EXECUTIONS
+            and trow["created_by"] != p["id"]
+        )
 
     entries = []
     for r in rows:
+        if _is_foreign_agent(r["entity"]):
+            continue
         redacted = _is_other_personal(r["entity"])
         entries.append(
             {

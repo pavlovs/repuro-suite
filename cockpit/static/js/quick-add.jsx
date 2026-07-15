@@ -191,7 +191,7 @@ function QuickAdd({ open, onClose, prefill }) {
                 <div className="qa-row">
                   <label>Who
                     <select value={f.inputFrom} onChange={(e) => setF({ ...f, inputFrom: e.target.value })}>
-                      {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p].name}</option>)}
+                      {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p] ? PEOPLE[p].name : p}</option>)}
                     </select>
                   </label>
                   <label style={{flex:2}}>What's needed

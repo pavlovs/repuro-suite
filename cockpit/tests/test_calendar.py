@@ -440,6 +440,44 @@ def test_real_graph_path_url_and_error_handling(monkeypatch):
     )
 
 
+def test_normalise_allday_event_uses_datetime():
+    """Live Graph returns all-day start/end as {dateTime} (NOT {date}); reading
+    .date dropped every all-day event to an empty start and made it vanish from
+    the grid. Regression: an all-day event must keep a non-empty start/end.
+    (Verified against real roman@kamukapital.de 'Flo OOO' event 2026-07-15.)"""
+    import src.calendar_graph as cg
+
+    ev = cg._normalise(
+        {
+            "subject": "Flo OOO",
+            "isAllDay": True,
+            "start": {
+                "dateTime": "2026-07-20T00:00:00.0000000",
+                "timeZone": "W. Europe Standard Time",
+            },
+            "end": {
+                "dateTime": "2026-07-25T00:00:00.0000000",
+                "timeZone": "W. Europe Standard Time",
+            },
+        },
+        "roman@kamukapital.de",
+    )
+    assert ev["all_day"] is True
+    assert ev["start"].startswith("2026-07-20")
+    assert ev["end"].startswith("2026-07-25")
+    # defensive: a `date`-shaped all-day event (older Graph shape) still parses
+    ev2 = cg._normalise(
+        {
+            "subject": "H",
+            "isAllDay": True,
+            "start": {"date": "2026-08-01"},
+            "end": {"date": "2026-08-02"},
+        },
+        "x@y.de",
+    )
+    assert ev2["start"] == "2026-08-01" and ev2["end"] == "2026-08-02"
+
+
 def test_events_rejects_datetime_start(cal_client, monkeypatch):
     """start must be a bare date — a datetime would corrupt start_iso for Graph."""
     monkeypatch.setenv("COCKPIT_CALENDAR_FAKE", "1")

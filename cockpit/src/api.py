@@ -1015,14 +1015,27 @@ def _scrub_foreign_agent_tasks(st, viewer):
     return st
 
 
-def _recount_progress(st):
-    """Re-derive deliverable progress from the tasks that SURVIVED scrubbing —
-    otherwise the counts leak how many hidden (foreign agent/personal) tasks
-    exist and contradict the visible list (codex 2026-07-15 #5)."""
+def _recount_progress(st, today):
+    """Re-derive deliverable rollups from the tasks that SURVIVED scrubbing —
+    otherwise progress counts leak how many hidden (foreign agent/personal)
+    tasks exist, and readiness/risk can be tinted by a hidden task's state
+    (codex 2026-07-15 #5 + r2). Recompute the same way assemble_state does."""
     for space in st.get("spaces", []):
         for ws in space.get("workstreams", []):
             for d in ws.get("deliverables", []):
+                if d.get("staging"):
+                    continue
                 ch = d.get("tasks", [])
+                open_rd = [
+                    c["computed"]["readiness"]
+                    for c in ch
+                    if c["computed"]["readiness"] and c["status"] != "done"
+                ]
+                rollup_rd, rollup_risks = compute.deliverable_rollup(
+                    open_rd, d.get("target_date"), today
+                )
+                d["computed"]["readiness"] = rollup_rd
+                d["computed"]["risks"] = rollup_risks
                 d["computed"]["progress"] = {
                     "done": sum(1 for c in ch if c["status"] == "done"),
                     "total": len(ch),
@@ -1062,7 +1075,7 @@ def state(p=Depends(principal)):
     # Server-side privacy: filter personal todos to the authenticated viewer.
     _scrub_state_personal(s, p["id"])
     if p["role"] == "human" and not is_admin_human:
-        _recount_progress(s)
+        _recount_progress(s, _today())
     return s
 
 
@@ -1924,6 +1937,10 @@ def reorder_tasks(
     with db.WRITE_LOCK:
         for idx, tid_str in enumerate(task_ids):
             num = _tid(tid_str)
+            # A non-admin must not churn a foreign agent task's order/version
+            # (bumping it 409s the real owner) — same lane gate as the other
+            # task routes (codex 2026-07-15 r2).
+            _guard_foreign_agent(_get_task(conn, num), p)
             conn.execute(
                 "UPDATE tasks SET sort_order=?, updated_at=?, version=version+1 WHERE id=?",
                 (idx, db.now_iso(), num),
@@ -2168,7 +2185,7 @@ def upload_preview(
     _check_write(p, "agents")
     conn = db.get_conn()
     num = _tid(tid)
-    _get_task(conn, num)
+    _guard_foreign_agent(_get_task(conn, num), p)
     out = _store_preview(conn, p["id"], tid, num, file)
     _broadcast(p["id"])
     return out
@@ -2413,6 +2430,7 @@ def import_md(
         return summary
     with db.WRITE_LOCK:
         for num, fields in resolved_updates:
+            _guard_foreign_agent(_get_task(conn, num), p)
             _update_task(conn, p["id"], num, fields, action="import_update")
         created_ids = [
             models.task_id(_insert_task(conn, p["id"], f)) for f in resolved_creates
@@ -2480,11 +2498,23 @@ def activity_log(entity: str | None = Query(default=None), p=Depends(principal))
             and trow["created_by"] != p["id"]
         )
 
+    def _unclassifiable_task(entity):
+        """A task entity that no longer exists — a DELETED task. Its audit
+        before-body carries the full row (incl. a possibly-foreign agent task
+        that _is_foreign_agent can't catch post-delete). Redact the body for
+        non-admins rather than leak it (codex 2026-07-15 r2 #2)."""
+        return (
+            hide_foreign_agent
+            and entity
+            and entity.startswith("t-")
+            and _task_row(entity) is None
+        )
+
     entries = []
     for r in rows:
         if _is_foreign_agent(r["entity"]):
             continue
-        redacted = _is_other_personal(r["entity"])
+        redacted = _is_other_personal(r["entity"]) or _unclassifiable_task(r["entity"])
         entries.append(
             {
                 "id": r["id"],

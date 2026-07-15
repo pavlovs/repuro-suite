@@ -756,6 +756,58 @@ def test_non_admin_learning_decide_lane_gated(cockpit_db, team_member_client):
     assert admin.status_code == 200
 
 
+def test_non_admin_reorder_and_import_cannot_touch_foreign_agent(team_member_client):
+    c = team_member_client
+    foreign = _agent_task(c, auth(), "rd reorder/import guard")
+    own = c.post("/api/task", json={"text": "anton plain"}, headers=_team_auth()).json()
+    # reorder including a foreign agent task -> 403
+    r = c.patch(
+        "/api/tasks/reorder",
+        json={"task_ids": [own["id"], foreign["id"]]},
+        headers=_team_auth(),
+    )
+    assert r.status_code == 403
+    # reorder of only own tasks -> ok
+    r = c.patch(
+        "/api/tasks/reorder", json={"task_ids": [own["id"]]}, headers=_team_auth()
+    )
+    assert r.status_code == 200
+    # md import targeting the foreign task -> 403
+    md = f"## task-update\n- id: {foreign['id']} | version: {foreign['version']} | text: hax\n"
+    r = c.post(
+        "/api/import",
+        content=md,
+        headers={**_team_auth(), "Content-Type": "text/markdown"},
+    )
+    assert r.status_code == 403
+
+
+def test_non_admin_cannot_upload_preview_to_foreign_agent(team_member_client):
+    c = team_member_client
+    foreign = _agent_task(c, auth(), "rd preview guard")
+    r = c.post(
+        f"/api/task/{foreign['id']}/upload-preview",
+        files={"file": ("x.md", b"secret", "text/markdown")},
+        headers=_team_auth(),
+    )
+    assert r.status_code == 403
+
+
+def test_activity_redacts_deleted_task_body_for_non_admin(team_member_client):
+    c = team_member_client
+    foreign = _agent_task(c, auth(), "SECRET deleted agent body")
+    assert c.delete(f"/api/task/{foreign['id']}", headers=auth()).status_code == 200
+    # non-admin: EVERY audit entry for the deleted foreign task carries no body
+    entries = c.get("/api/activity", headers=_team_auth()).json()["entries"]
+    mine = [e for e in entries if e["entity"] == foreign["id"]]
+    for e in mine:
+        assert e.get("before") is None and e.get("after") is None
+    # admin: the body survives somewhere (create.after or delete.before)
+    admin_entries = c.get("/api/activity", headers=auth()).json()["entries"]
+    admin_mine = [e for e in admin_entries if e["entity"] == foreign["id"]]
+    assert any(e.get("before") or e.get("after") for e in admin_mine)
+
+
 def test_non_admin_progress_counts_match_visible_tasks(team_member_client):
     c = team_member_client
     wid = _make_ws(c, name="Progress WS")

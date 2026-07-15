@@ -577,17 +577,66 @@ def week_page(ref_date: str, x_remote_user: str | None = Header(default=None)):
     return _serve_archived_week(iso, x_remote_user == "investor")
 
 
+# ACT1 slot visibility (templates/sections/act1-thisweek.html): edit ids are
+# '<slot>-title' / '<slot>-body' / '<slot>-comment' / '<slot>-rec'; spare slots
+# start hidden and are revealed via the '__slots__' inline edit ({slot: 1|0}).
+_SLOT_EDIT_RE = re.compile(r"^((?:tile|dec)-\d+)-")
+_DEFAULT_HIDDEN_SLOTS = {
+    "tile-5",
+    "tile-6",
+    "tile-7",
+    "tile-8",
+    "dec-3",
+    "dec-4",
+    "dec-5",
+    "dec-6",
+}
+
+
+def _strip_hidden_slot_edits(inline_edits: dict) -> dict:
+    """Publish-time privacy: content typed into a slot that is HIDDEN at publish
+    must not ship to the investor inside the frozen edits (it would be recoverable
+    from page source even though the UI hides the slot). The '__slots__' visibility
+    map itself stays; only content edits of hidden slots are dropped. The draft's
+    inline_edits rows are untouched — undo/re-add before publish keeps content."""
+    try:
+        slots = json.loads(inline_edits.get("__slots__", "{}"))
+        if not isinstance(slots, dict):
+            slots = {}
+    except ValueError:
+        slots = {}
+
+    def _hidden(slot: str) -> bool:
+        v = slots.get(slot)
+        if v is None:
+            return slot in _DEFAULT_HIDDEN_SLOTS
+        # Fail closed: the map is admin-supplied free-form JSON, so anything
+        # other than an explicit 1/true (e.g. "0", "false", garbage) is hidden.
+        return v is not True and v != 1
+
+    out = {}
+    for k, v in inline_edits.items():
+        m = _SLOT_EDIT_RE.match(k)
+        if m and _hidden(m.group(1)):
+            continue
+        out[k] = v
+    return out
+
+
 @app.post("/api/investor-view/publish")
 def publish_investor_view(p=Depends(admin_only)):
     """Freeze the current draft as this week's static snapshot: templates +
     inline edits → published investor_view at its dated URL. Archives the
-    previous published week, runs the denylist scan, then CLEARS inline_edits —
-    edits are week-scoped (frozen into the snapshot; the next draft starts
-    clean from templates, no cross-week bleed)."""
+    previous published week and runs the denylist scan. Inline edits are
+    frozen into the snapshot AND KEPT in the live draft (Roman 10-07: publish
+    must never scrub the draft back to bare templates — the 10 Jul publish
+    silently dropped all of the 09 Jul edits). Stale-edit hygiene when a
+    template content refresh ships is the weekly workflow's job, not an
+    automatic scrub."""
     html = _assemble_page()
 
     rows = db.get_conn().execute("SELECT edit_id, content FROM inline_edits").fetchall()
-    inline_edits = {r["edit_id"]: r["content"] for r in rows}
+    inline_edits = _strip_hidden_slot_edits({r["edit_id"]: r["content"] for r in rows})
 
     body = {"html": html, "inline_edits": inline_edits}
 
@@ -610,7 +659,6 @@ def publish_investor_view(p=Depends(admin_only)):
             "VALUES ('investor_view', ?, 'Investor View', 'published', ?, ?, ?, 1)",
             (ref, json.dumps(body), now, now),
         )
-        cleared = conn.execute("DELETE FROM inline_edits").rowcount
         conn.commit()
         pub_id = cur.lastrowid
 
@@ -619,7 +667,7 @@ def publish_investor_view(p=Depends(admin_only)):
         "publish_investor_view",
         f"pub:{pub_id}",
         None,
-        {"ref": ref, "status": "published", "inline_edits_cleared": cleared},
+        {"ref": ref, "status": "published", "inline_edits_kept": len(inline_edits)},
     )
     return {
         "id": pub_id,
@@ -627,7 +675,7 @@ def publish_investor_view(p=Depends(admin_only)):
         "ref": ref,
         "url": _yymmdd(ref),
         "published_at": now,
-        "inline_edits_cleared": cleared,
+        "inline_edits_kept": len(inline_edits),
     }
 
 
@@ -883,40 +931,20 @@ def _archive_select_html(is_investor: bool, light_bg: bool = False) -> str:
 
 
 def _draft_controls_html() -> str:
-    """Admin-only cluster for the draft view, styled like the topbar's own
-    room-tag chips: DRAFT status (incl. what investors currently see) +
-    Publish / Unpublish. Lives in the topline next to the Archive select."""
-    pub = (
-        db.get_conn()
-        .execute(
-            "SELECT ref FROM publications WHERE kind='investor_view' "
-            "AND status='published' ORDER BY published_at DESC LIMIT 1"
-        )
-        .fetchone()
-    )
-    see = _ref_label(pub["ref"]) if pub else "nothing"
+    """Admin draft chrome = ONE Publish button, nothing else (Roman 08-07:
+    no chips, no extra buttons — EDIT MODE badge already marks the draft and
+    the Archive '(live)' option already shows what investors see). Unpublish
+    stays API-only: POST /api/investor-view/unpublish."""
     return (
-        '<div id="iv-draft" style="display:flex;align-items:center;gap:8px">'
-        '<span style="font-size:11px;font-weight:700;letter-spacing:.06em;'
-        'background:rgba(255,255,255,.18);padding:3px 10px;border-radius:20px;white-space:nowrap">'
-        "DRAFT · investors see " + see + "</span>"
+        '<div id="iv-draft" style="display:flex;align-items:center">'
         '<button onclick="_pubIV()" style="background:#fff;color:#0891B2;border:none;'
         'padding:5px 14px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">Publish</button>'
-        '<button onclick="_unpubIV()" style="background:transparent;color:#fff;'
-        "border:1px solid rgba(255,255,255,.4);padding:4px 10px;border-radius:6px;"
-        'font-size:11px;cursor:pointer">Unpublish</button>'
         "</div>"
         "<script>"
-        "function _pubIV(){if(!confirm('Publish to investors? Inline edits are frozen into this week and cleared for the next.'))return;"
+        "function _pubIV(){if(!confirm('Publish to investors? This freezes the current draft (incl. inline edits) as this week\\'s version. Your edits stay in the draft.'))return;"
         "fetch('api/investor-view/publish',{method:'POST',credentials:'include'})"
         ".then(function(r){return r.json()}).then(function(d){"
         "if(d.status==='published'){alert('Published');location.reload()}"
-        "else alert('Error: '+(d.detail||JSON.stringify(d)))"
-        "}).catch(function(e){alert('Error: '+e)})}"
-        "function _unpubIV(){if(!confirm('Unpublish? Investors fall back to the archive.'))return;"
-        "fetch('api/investor-view/unpublish',{method:'POST',credentials:'include'})"
-        ".then(function(r){return r.json()}).then(function(d){"
-        "if(d.ok){alert('Unpublished');location.reload()}"
         "else alert('Error: '+(d.detail||JSON.stringify(d)))"
         "}).catch(function(e){alert('Error: '+e)})}"
         "</script>"
@@ -924,14 +952,20 @@ def _draft_controls_html() -> str:
 
 
 def _inject_topline(html: str, controls: str) -> str:
-    """Insert controls into the existing blue topline as flex siblings right
-    after the .meta block. No injected bars, no body-padding hacks."""
+    """Insert controls INTO the existing blue topline, LEFT of the .meta block.
+    The meta ('Investor View / Weekly call · date') keeps its far-right anchor
+    (Roman 08-07 review 2: date stays right, Archive sits left of it); the
+    controls wrapper takes over meta's auto left-margin."""
+    wrapper = (
+        '<div id="iv-controls" style="margin-left:auto;display:flex;'
+        'align-items:center;gap:8px">' + controls + "</div>"
+        "<style>.topbar .meta{margin-left:0}</style>"
+    )
     out, n = re.subn(
-        r'(<div class="meta">.*?</div>)',
-        lambda m: m.group(1) + controls,
+        r'<div class="meta">',
+        lambda m: wrapper + m.group(0),
         html,
         count=1,
-        flags=re.S,
     )
     return out if n else html
 

@@ -139,13 +139,52 @@ document.querySelectorAll('.dec-link').forEach(function(a){
 
 // ---- inline edit (admin-only, persisted to investor.db) ----
 (function(){
-  // Published snapshot: apply frozen edits, skip fetch + contenteditable
+  // Slot visibility: ACT1 update tiles + decision rows carry data-slot; spare
+  // slots (data-slot-extra) are hidden by default. State lives as ONE inline
+  // edit under SLOT_KEY ({slot:1|0}) so it rides the existing persist/freeze/
+  // clear-on-publish lifecycle — no server changes.
+  var SLOT_KEY='__slots__';
+  // Values normalize to 1|0 with the same strict rule as the server-side
+  // publish strip (only an explicit 1/true is visible) — client display and
+  // server privacy must never disagree on a slot.
+  function parseSlots(raw){
+    try{
+      var s=JSON.parse(raw||'{}');
+      if(!s||typeof s!=='object')return {};
+      var out={};
+      for(var k in s){out[k]=(s[k]===1||s[k]===true)?1:0;}
+      return out;
+    }catch(e){return {};}
+  }
+  function applySlots(state){
+    document.querySelectorAll('[data-slot]').forEach(function(el){
+      var s=el.getAttribute('data-slot');
+      var vis=(state[s]!==undefined)?!!state[s]:!el.hasAttribute('data-slot-extra');
+      el.classList.toggle('slot-off',!vis);
+    });
+    renumber();
+  }
+  function renumber(){
+    var n=0;
+    document.querySelectorAll('.changed-tile[data-slot]').forEach(function(el){
+      if(el.classList.contains('slot-off'))return;
+      n++;var c=el.querySelector('.cnum');if(c)c.textContent=n;
+    });
+    n=0;
+    document.querySelectorAll('tr[data-slot]').forEach(function(el){
+      if(el.classList.contains('slot-off'))return;
+      n++;var c=el.querySelector('.dec-n');if(c)c.textContent=n;
+    });
+  }
+
+  // Published snapshot: apply frozen edits + frozen slot state, skip fetch + contenteditable
   if(window.__INVESTOR_VIEW_PUBLISHED){
     var fe=window.__FROZEN_EDITS||{};
     document.querySelectorAll('[data-edit-id]').forEach(function(el){
       var eid=el.getAttribute('data-edit-id');
       if(fe[eid]!==undefined){el.innerHTML=fe[eid];}
     });
+    applySlots(parseSlots(fe[SLOT_KEY]));
     return;
   }
 
@@ -171,6 +210,8 @@ document.querySelectorAll('.dec-link').forEach(function(a){
         var eid=el.getAttribute('data-edit-id');
         if(edits[eid]!==undefined){el.innerHTML=edits[eid];el.classList.add('edit-dirty');}
       });
+      var slots=parseSlots(edits[SLOT_KEY]);
+      applySlots(slots);
       if(!isAdmin) return;
       var badge=document.createElement('span');
       badge.className='edit-badge';
@@ -196,6 +237,68 @@ document.querySelectorAll('.dec-link').forEach(function(a){
           }).catch(function(){showToast('Network error',true);});
         });
       });
+
+      // ---- slot add/remove controls (admin draft only) ----
+      // Saves are chained: each request snapshots state at click time and requests
+      // run strictly in order, so rapid add/remove/undo can't land out of order
+      // and overwrite a newer visibility map with an older one.
+      var slotSaveChain=Promise.resolve();
+      function saveSlots(){
+        var payload=JSON.stringify({edit_id:SLOT_KEY,content:JSON.stringify(slots)});
+        slotSaveChain=slotSaveChain.then(function(){
+          return fetch('api/inline-edit',{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:payload
+          }).then(function(r){
+            if(!r.ok){showToast('Save failed',true);}
+          });
+        }).catch(function(){showToast('Network error',true);});
+      }
+      function showUndo(msg,fn){
+        toast.innerHTML='';
+        toast.appendChild(document.createTextNode(msg+' '));
+        var a=document.createElement('a');
+        a.textContent='Undo';a.href='#';
+        a.style.cssText='color:#fff;text-decoration:underline;pointer-events:auto';
+        a.addEventListener('click',function(e){e.preventDefault();fn();toast.classList.remove('show');});
+        toast.appendChild(a);
+        toast.classList.remove('err');toast.classList.add('show');
+        clearTimeout(toastTimer);
+        toastTimer=setTimeout(function(){toast.classList.remove('show');},6000);
+      }
+      document.querySelectorAll('[data-slot]').forEach(function(el){
+        var s=el.getAttribute('data-slot');
+        var x=document.createElement('button');
+        x.className='slot-x';x.textContent='×';x.title='Remove';
+        x.setAttribute('contenteditable','false');
+        x.addEventListener('click',function(){
+          slots[s]=0;applySlots(slots);saveSlots();
+          showUndo('Removed.',function(){slots[s]=1;applySlots(slots);saveSlots();});
+        });
+        (el.tagName==='TR'?el.querySelector('.dec-num'):el).appendChild(x);
+      });
+      function revealNext(prefix,label){
+        // first hidden spare in DOM order; fall back to a removed standard slot
+        var hidden=[].slice.call(document.querySelectorAll('[data-slot^="'+prefix+'"].slot-off'));
+        var el=null;
+        for(var i=0;i<hidden.length;i++){if(hidden[i].hasAttribute('data-slot-extra')){el=hidden[i];break;}}
+        if(!el&&hidden.length)el=hidden[0];
+        if(!el){showToast('No more '+label+' slots',true);return;}
+        slots[el.getAttribute('data-slot')]=1;
+        applySlots(slots);saveSlots();
+        var t=el.querySelector('[data-edit-id]');
+        if(t){t.focus();}
+      }
+      function addBtn(label,onclick,afterEl){
+        if(!afterEl)return;
+        var b=document.createElement('button');
+        b.className='slot-add';b.textContent='+ '+label;
+        b.addEventListener('click',onclick);
+        afterEl.parentNode.insertBefore(b,afterEl.nextSibling);
+      }
+      addBtn('Add update',function(){revealNext('tile-','update');},document.querySelector('.changed-grid'));
+      addBtn('Add decision',function(){revealNext('dec-','decision');},document.querySelector('.dec-table'));
     });
   }).catch(function(e){/* no auth = static view, nothing to do */});
 })();

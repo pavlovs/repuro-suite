@@ -6,7 +6,7 @@ the suite at `/investor/`. Two parts: **Updates** (weekly investor update) + **B
 Module folder is `boardroom/` on disk; product/route/auth-user = `investor`.
 
 ## Architecture (one line)
-FastAPI + SQLite (`/data/investor.db`, journal DELETE) on :8084 → suite Caddy `/investor/*`
+FastAPI + SQLite (`data/investor.db` local, `/data/` volume on Fly; journal DELETE) on :8084 → suite Caddy `/investor/*`
 with X-Remote-User auth. Investor sees only approved, published `publications`; never a live DB.
 
 ## Investor view HTML — edit templates/, never a monolith
@@ -16,6 +16,13 @@ Weekly edits go into the small per-deal/per-act files — see the edit map in
 `SPEC-investor-split.md`. Deal files hold one fragment per view behind
 `<!-- ONEPAGER/SCORECARD/SU/VALUATION -->` markers. The old monolith
 (`static/index.html.pre-split.bak`) is rollback-only — do NOT edit it.
+
+**ACT1 slots (add/remove elements, admin draft only):** update tiles (`tile-1..8`) and
+decision rows (`dec-1..6`) carry `data-slot`; spares (`data-slot-extra`, tiles 5-8 /
+decisions 3-6) start hidden. Admin draft shows `+ Add update` / `+ Add decision` and a
+`×` per element; numbering is recomputed client-side. Visibility state is ONE inline edit
+(`edit_id='__slots__'`, JSON `{slot:1|0}`) — it freezes into the published snapshot and
+clears on publish like every other inline edit. Tests: `tests/test_slot_visibility.py`.
 
 ## Hard rules (inherit suite + cockpit CLAUDE.md, plus)
 - **Permission is the product.** `investor` principal: 403 outside `/investor/*` (Caddy CEL),

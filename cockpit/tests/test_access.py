@@ -808,6 +808,46 @@ def test_activity_redacts_deleted_task_body_for_non_admin(team_member_client):
     assert any(e.get("before") or e.get("after") for e in admin_mine)
 
 
+def test_non_admin_delete_cannot_sideeffect_foreign_agent(team_member_client):
+    c = team_member_client
+    # (1) deleting an own task that a foreign agent task depends on -> blocked
+    gate = c.post("/api/task", json={"text": "anton gate"}, headers=_team_auth()).json()
+    dep = c.post(
+        "/api/task",
+        json={
+            "text": "rd agent depends on anton",
+            "execution": "agent_supervised",
+            "acceptance_criteria": "x",
+            "prereqs": [{"ref": gate["id"], "hardness": "hard"}],
+        },
+        headers=auth(),
+    )
+    assert dep.status_code == 201
+    assert c.delete(f"/api/task/{gate['id']}", headers=_team_auth()).status_code == 403
+    # admin can (strips the ref)
+    assert c.delete(f"/api/task/{gate['id']}", headers=auth()).status_code == 200
+
+    # (2) deleting a shared deliverable that holds a foreign agent task -> blocked
+    wid = _make_ws(c, name="Shared deliv WS")
+    did = c.post(
+        "/api/deliverable",
+        json={"workstream_id": wid, "name": "shared deliv"},
+        headers=_team_auth(),
+    ).json()["id"]
+    c.post(
+        "/api/task",
+        json={
+            "text": "rd agent under shared deliv",
+            "deliverable_id": did,
+            "execution": "agent_supervised",
+            "acceptance_criteria": "x",
+        },
+        headers=auth(),
+    )
+    assert c.delete(f"/api/deliverable/{did}", headers=_team_auth()).status_code == 403
+    assert c.delete(f"/api/deliverable/{did}", headers=auth()).status_code == 200
+
+
 def test_non_admin_progress_counts_match_visible_tasks(team_member_client):
     c = team_member_client
     wid = _make_ws(c, name="Progress WS")

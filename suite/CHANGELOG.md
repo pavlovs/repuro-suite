@@ -4,6 +4,29 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.28 — 2026-07-15
+
+### Cockpit — multi-user personal cockpit (Anton onboarding)
+- **Identity = login**: sidebar shows the logged-in principal; non-admins are
+  always themselves — the Roman/Flo person flip is gone for team members.
+  Person switch (view-as lens) is now admin-only.
+- **People directory**: `/api/state` carries `users` + `lanes`; every owner
+  picker, person column and meeting column renders from it (me-first).
+  Onboarding a member = data rows, no code change.
+- **Agent privacy, server-enforced**: non-admin humans receive only the agent
+  workflows they created + their own lane's learnings. Admins keep the full
+  picture; Agents-view lane bar is admin-only and data-driven.
+- **Meeting view multi-user**: N person columns from the viewer's team-visible
+  scope (daily standup surface for Roman/Flo/Anton).
+- Admin API: `POST /api/admin/user` accepts `role=agent` + `represents`
+  (new runner lanes); `PATCH /api/admin/user/{uid}` supports name/initials.
+- Data (post-deploy): `team` user → Anton (AN); team perms +`week` +`agents`;
+  agent user `ac-agent` (represents `team`) for Anton's runner lane.
+- Deployed from `prod/team-login-2026-07-15` (a4c4e1d) — dev's un-signed-off
+  calendar module stays out of prod.
+
+---
+
 ## v2.1.27 + team-login — 2026-07-15 (config-only cherry-pick deploy)
 
 Deployed from `prod/team-login-2026-07-15` (= v109 commit 36b19cc + cherry-pick

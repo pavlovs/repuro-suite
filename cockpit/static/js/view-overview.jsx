@@ -11,7 +11,7 @@ function delivStats(d) {
 /* Private per-user todo list — kind="personal", scoped server-side to the logged-in principal.
    Add happens inline here only — personal kind is NOT available in the top QuickAdd modal. */
 function PersonalTodos({ mutate, openTask, bare }) {
-  const code = PRINCIPAL && PRINCIPAL.id === "ff" ? "FF" : "RD";
+  const code = ME;
   const open = PERSONAL.filter((t) => t.status !== "done");
   const [adding, setAdding] = React.useState(false);
   const [text, setText] = React.useState("");
@@ -56,7 +56,7 @@ function PersonalTodos({ mutate, openTask, bare }) {
   return (
     <div className="card" style={{ marginTop: 12 }}>
       <div className="wk-h">My personal list<span className="wk-n">{open.length}</span>
-        <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--muted)" }}>private to {PEOPLE[code].name}</span>
+        <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--muted)" }}>private to {(PEOPLE[code] || {}).name || code}</span>
       </div>
       {body}
     </div>

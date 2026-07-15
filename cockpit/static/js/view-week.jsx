@@ -5,6 +5,10 @@ function MeetingView({ mutate, openTask }) {
   const [mode, setMode] = React.useState("daily");
   const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
   const live = TASKS.filter((t) => t.status !== "done" && t.execution !== "agent");
+  /* One column per person, me first — the meeting agenda covers everyone in the
+     viewer's scope (server already filters workstreams by team visibility). */
+  const MTG_PEOPLE = meFirst(Object.keys(PEOPLE));
+  const mtgColsCls = "wk-cols wk-cols-" + Math.min(MTG_PEOPLE.length, 3);
 
   // Deadlines — next upcoming milestone per active deal
   const activeStages = new Set(["loi_signed", "dd", "indicative_offer", "valuation_rfi"]);
@@ -35,8 +39,8 @@ function MeetingView({ mutate, openTask }) {
   const lastMonISO = localISO(lastMon); // NOT toISOString — UTC shift breaks local dates east of UTC
   const recentDone = TASKS.filter((t) => t.status === "done" && t.execution !== "agent" && t.doneAt && t.doneAt >= lastMonISO)
     .sort((a, b) => (b.doneAt || "").localeCompare(a.doneAt || ""));
-  const rdDone = recentDone.filter((t) => (t.owners || []).includes("RD"));
-  const ffDone = recentDone.filter((t) => (t.owners || []).includes("FF"));
+  const doneBy = {};
+  MTG_PEOPLE.forEach((p) => { doneBy[p] = recentDone.filter((t) => (t.owners || []).includes(p)); });
 
   // ---- Section 2: Decisions & waiting — only what needs a person to act (issue 30) ----
   // Roman's rule: show Decisions needed + Waiting on external ONLY. NOT plain overdue,
@@ -82,11 +86,14 @@ function MeetingView({ mutate, openTask }) {
     return Object.entries(map);
   }
 
-  const rd = personFocus("RD"), ff = personFocus("FF");
+  const focusBy = {};
+  MTG_PEOPLE.forEach((p) => { focusBy[p] = personFocus(p); });
 
   // Daily mode data
-  const dueTodayRD = live.filter((t) => (t.owners || []).includes("RD") && t.due && daysUntil(t.due) <= 0 && t.status !== "waiting").sort((a, b) => a.due.localeCompare(b.due));
-  const dueTodayFF = live.filter((t) => (t.owners || []).includes("FF") && t.due && daysUntil(t.due) <= 0 && t.status !== "waiting").sort((a, b) => a.due.localeCompare(b.due));
+  const dueTodayBy = {};
+  MTG_PEOPLE.forEach((p) => {
+    dueTodayBy[p] = live.filter((t) => (t.owners || []).includes(p) && t.due && daysUntil(t.due) <= 0 && t.status !== "waiting").sort((a, b) => a.due.localeCompare(b.due));
+  });
   const delivsDueToday = DELIVERABLES
     .filter((d) => d.target && daysUntil(d.target) <= 0 && TASKS.some((t) => t.d === d.id && t.status !== "done" && t.execution !== "agent"))
     .map((d) => ({ ...d, s: delivStats(d), wsObj: byWs[d.ws] }))
@@ -138,8 +145,8 @@ function MeetingView({ mutate, openTask }) {
       {mode === "daily" && (
         <React.Fragment>
           <div className="mtg-sec-label"><Icon name="week" size={14} /> Due Today</div>
-          <div className="wk-cols wk-cols-2">
-            {[["RD", dueTodayRD], ["FF", dueTodayFF]].map(([p, tasks]) => (
+          <div className={mtgColsCls}>
+            {MTG_PEOPLE.map((p) => [p, dueTodayBy[p]]).map(([p, tasks]) => (
               <div key={p} className="card wk-col">
                 <div className="wk-h"><Avatar id={p} size={18} /> {PEOPLE[p].name}<span className="wk-n">{tasks.length}</span></div>
                 {tasks.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
@@ -173,8 +180,8 @@ function MeetingView({ mutate, openTask }) {
       {mode === "weekly" && (
         <React.Fragment>
           <div className="mtg-sec-label"><Icon name="week" size={14} /> This week's focus</div>
-          <div className="wk-cols wk-cols-2">
-            {[["RD", rd], ["FF", ff]].map(([p, data]) => {
+          <div className={mtgColsCls}>
+            {MTG_PEOPLE.map((p) => [p, focusBy[p]]).map(([p, data]) => {
               const groups = groupByWs(data.delivs);
               const taskCount = data.delivs.reduce((n, d) => n + d.myTasks.length, 0) + data.standalone.length;
               return (
@@ -267,7 +274,7 @@ function MeetingView({ mutate, openTask }) {
           </div>
           <div id="mtg-done-body" style={{display:"none"}}>
             <div className="mtg-done-cols">
-              {[["RD", rdDone], ["FF", ffDone]].map(([p, items]) => items.length > 0 && (
+              {MTG_PEOPLE.map((p) => [p, doneBy[p]]).map(([p, items]) => items.length > 0 && (
                 <div key={p} className="mtg-done-col">
                   <div className="mtg-done-person"><Avatar id={p} size={16} /> {PEOPLE[p].name}</div>
                   {items.map((t) => (
@@ -417,8 +424,11 @@ function WeekRow({ t, mutate, openTask, showWs = true, showDate = true, dragHand
   );
 }
 
-/* ---- AgentQueue: agent tasks waiting on Roman — in_review or blocked with a question ---- */
+/* ---- AgentQueue: agent tasks waiting on the viewer — in_review or blocked with a question.
+   TASKS is already scoped server-side: non-admins only ever receive their own
+   agent workflows here. Hidden entirely without the agents module. ---- */
 function AgentQueue({ openTask }) {
+  const hasAgents = window.COCKPIT && (window.COCKPIT.modules || []).includes("agents");
   const needsMe = TASKS
     .filter((t) =>
       t.execution === "agent" &&
@@ -426,7 +436,7 @@ function AgentQueue({ openTask }) {
     )
     .slice(0, 5);
 
-  if (!needsMe.length) return null;
+  if (!hasAgents || !needsMe.length) return null;
 
   return (
     <div className="card" style={{marginTop:12}}>

@@ -985,18 +985,55 @@ def _scrub_state_personal(st, viewer):
     return st
 
 
+def _scrub_foreign_agent_tasks(st, viewer):
+    """Agent workflows are personal: a non-admin human sees only the agent-execution
+    tasks they created themselves. Admins (md team) keep the full agent picture.
+    Same in-place shape as _scrub_state_personal — apply to /api/state for
+    non-admin humans so foreign 'Waiting on you' items never reach the client."""
+
+    def keep(t):
+        return (
+            t.get("execution") not in models.AGENT_EXECUTIONS
+            or t.get("created_by") == viewer
+        )
+
+    st["standalone_tasks"] = [t for t in st.get("standalone_tasks", []) if keep(t)]
+    for space in st.get("spaces", []):
+        for ws in space.get("workstreams", []):
+            for d in ws.get("deliverables", []):
+                d["tasks"] = [t for t in d.get("tasks", []) if keep(t)]
+    return st
+
+
 @app.get("/api/state")
 def state(p=Depends(principal)):
     conn = db.get_conn()
     s = assemble_state(conn, me=p)
     s["principal"] = p
-    s["learnings"] = [
-        _learning_json(r)
+    # The people directory drives every owner picker / person column in the UI —
+    # a new team member is a users row, never a frontend change.
+    s["users"] = [
+        {"id": r["id"], "name": r["name"], "initials": r["initials"]}
         for r in conn.execute(
-            "SELECT * FROM learnings WHERE status!='dismissed' "
-            "ORDER BY status='candidate' DESC, kind='constraint' DESC, id"
+            "SELECT id, name, initials FROM users WHERE role='human' "
+            "ORDER BY CASE id WHEN 'rd' THEN 0 WHEN 'ff' THEN 1 ELSE 2 END, id"
         )
     ]
+    s["lanes"] = _owner_tag_map(conn)
+    is_admin_human = p["role"] == "human" and p.get("is_admin")
+    learn_sql = (
+        "SELECT * FROM learnings WHERE status!='dismissed' "
+        "ORDER BY status='candidate' DESC, kind='constraint' DESC, id"
+    )
+    if p["role"] == "human" and not is_admin_human:
+        # Non-admin humans get only their own lane's lessons — the founders'
+        # playbook (deal context, global rules) is not theirs to curate or read.
+        s["learnings"] = [
+            _learning_json(r) for r in conn.execute(learn_sql) if r["lane"] == p["id"]
+        ]
+        _scrub_foreign_agent_tasks(s, p["id"])
+    else:
+        s["learnings"] = [_learning_json(r) for r in conn.execute(learn_sql)]
     # Server-side privacy: filter personal todos to the authenticated viewer.
     _scrub_state_personal(s, p["id"])
     return s
@@ -2472,7 +2509,20 @@ def admin_create_user(payload: dict = Body(...), p=Depends(human_only)):
     login_val = (payload.get("login") or "").strip() or None
     all_teams_val = 1 if payload.get("all_teams") else 0
     teams = payload.get("teams") or []
+    role = payload.get("role") or "human"
+    if role not in ("human", "agent"):
+        raise HTTPException(422, "role must be 'human' or 'agent'")
+    represents = (payload.get("represents") or "").strip() or None
     conn = db.get_conn()
+    if (
+        represents
+        and not conn.execute(
+            "SELECT 1 FROM users WHERE id=? AND role='human'", (represents,)
+        ).fetchone()
+    ):
+        raise HTTPException(
+            422, f"represents must be an existing human: {represents!r}"
+        )
     if conn.execute("SELECT 1 FROM users WHERE id=?", (uid,)).fetchone():
         raise HTTPException(409, f"user {uid!r} already exists")
     for tid in teams:
@@ -2482,9 +2532,18 @@ def admin_create_user(payload: dict = Body(...), p=Depends(human_only)):
     token_hash = hashlib.sha256(token.encode()).hexdigest()
     with db.WRITE_LOCK:
         conn.execute(
-            "INSERT INTO users (id, name, initials, role, token_hash, login, all_teams) "
-            "VALUES (?,?,?,?,?,?,?)",
-            (uid, name, initials, "human", token_hash, login_val, all_teams_val),
+            "INSERT INTO users (id, name, initials, role, token_hash, login, all_teams, represents) "
+            "VALUES (?,?,?,?,?,?,?,?)",
+            (
+                uid,
+                name,
+                initials,
+                role,
+                token_hash,
+                login_val,
+                all_teams_val,
+                represents,
+            ),
         )
         for tid in teams:
             conn.execute(
@@ -2660,6 +2719,17 @@ def admin_patch_user(uid: str, payload: dict = Body(...), p=Depends(human_only))
     if not conn.execute("SELECT 1 FROM users WHERE id=?", (uid,)).fetchone():
         raise HTTPException(404, f"user {uid!r} not found")
     with db.WRITE_LOCK:
+        if "name" in payload:
+            if not (payload["name"] or "").strip():
+                raise HTTPException(422, "name must not be empty")
+            conn.execute(
+                "UPDATE users SET name=? WHERE id=?", (payload["name"].strip(), uid)
+            )
+        if "initials" in payload:
+            conn.execute(
+                "UPDATE users SET initials=? WHERE id=?",
+                ((payload["initials"] or "").strip() or None, uid),
+            )
         if "login" in payload:
             conn.execute(
                 "UPDATE users SET login=? WHERE id=?", (payload["login"] or None, uid)
@@ -2688,7 +2758,9 @@ def admin_patch_user(uid: str, payload: dict = Body(...), p=Depends(human_only))
             "user_update",
             uid,
             after={
-                k: payload[k] for k in ("login", "all_teams", "teams") if k in payload
+                k: payload[k]
+                for k in ("name", "initials", "login", "all_teams", "teams")
+                if k in payload
             },
         )
         conn.commit()

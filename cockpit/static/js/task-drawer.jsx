@@ -109,7 +109,7 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
 
         <div className="drawer-meta">
           <div><span className="dm-k">Owner</span><span className="dm-v dm-edit">
-            {!readOnly && ["RD", "FF"].map((p) => (
+            {!readOnly && meFirst(Object.keys(PEOPLE)).map((p) => (
               <button key={p} className={"own-toggle" + ((task.owners || []).includes(p) ? " on" : "")}
                 title={(task.owners || []).includes(p) ? "remove " + PEOPLE[p].name : "add " + PEOPLE[p].name}
                 onClick={() => {
@@ -118,7 +118,7 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
                   api.save(task, { owners });
                 }}><Avatar id={p} size={20} /></button>
             ))}
-            {task.ownersRaw && !["RD", "FF"].some((p) => (task.ownersRaw || "").includes(p)) &&
+            {task.ownersRaw && !Object.keys(PEOPLE).some((p) => (task.ownersRaw || "").includes(p)) &&
               <span className="dm-ext" title={task.ownersRaw}>{task.ownersRaw}</span>}
           </span></div>
           <div><span className="dm-k">Due</span><span className="dm-v">
@@ -206,7 +206,7 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
             ))}
             {preQ.trim() && !preHits.length && (
               <button className="drawer-link-row dm-pre-create" onClick={async () => {
-                const created = await api.create({ text: preQ.trim(), owners: task.owners || ["RD"], d: task.d || "" });
+                const created = await api.create({ text: preQ.trim(), owners: task.owners || [ME], d: task.d || "" });
                 if (created) {
                   api.save(task, { prereqs: [...(task.prereqs || []), created.id] });
                   setAddingPre(false); setPreQ("");

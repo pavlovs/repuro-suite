@@ -178,7 +178,7 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
                 api.save(task, { inputFrom: v, inputQuestion: v ? task.inputQuestion : null });
               }}>
               <option value="">— none —</option>
-              {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p].name}</option>)}
+              {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p] ? PEOPLE[p].name : p}</option>)}
             </select>
           </span></div>}
           {task.inputFrom && (

@@ -996,6 +996,33 @@ def _scrub_state_personal(st, viewer):
     return st
 
 
+def _owner_tokens(responsible):
+    """Split a responsible string ('RD, FF' / 'CFO / RD' / 'FF; Corp Comms') into
+    owner tokens for membership tests."""
+    return {t for t in re.split(r"[,;/\s]+", responsible or "") if t}
+
+
+def _scrub_standalone_tasks(st, p):
+    """Standalone tasks (no workstream) have NO team assignment to gate them, so
+    they bypassed the workstream-visibility filter and reached every principal
+    with the workstreams module — a non-admin saw all of the founders' loose
+    fundraising/investor/escrow tasks (Roman caught 'Feedback Strada on FMIP +
+    Term Sheet' visible to team, 2026-07-15; the codex rounds only covered agent
+    tasks). Scope them like ownership: a non-admin human keeps a standalone task
+    only if they created it or are one of its owners. Tasks under a workstream
+    are already team-filtered upstream; this only touches the loose ones."""
+    initials = p.get("initials")
+    pid = p["id"]
+
+    def keep(t):
+        if t.get("created_by") == pid:
+            return True
+        return bool(initials) and initials in _owner_tokens(t.get("responsible"))
+
+    st["standalone_tasks"] = [t for t in st.get("standalone_tasks", []) if keep(t)]
+    return st
+
+
 def _scrub_foreign_agent_tasks(st, viewer):
     """Agent workflows are personal: a non-admin human sees only the agent-execution
     tasks they created themselves. Admins (md team) keep the full agent picture.
@@ -1071,6 +1098,7 @@ def state(p=Depends(principal)):
             _learning_json(r) for r in conn.execute(learn_sql) if r["lane"] == p["id"]
         ]
         _scrub_foreign_agent_tasks(s, p["id"])
+        _scrub_standalone_tasks(s, p)
     else:
         s["learnings"] = [_learning_json(r) for r in conn.execute(learn_sql)]
     # Server-side privacy: filter personal todos to the authenticated viewer.
@@ -2266,9 +2294,11 @@ def export_md(scope: str = Query(default="all"), p=Depends(principal)):
     # (incl. scope=all) before scope filtering and rendering.
     _scrub_state_personal(st, p["id"])
     # Same lane-privacy gate as /api/state — the export must never be the side
-    # door to foreign agent workflows (codex 2026-07-15 #1).
+    # door to foreign agent workflows (codex 2026-07-15 #1) or founders' loose
+    # standalone tasks (Strada leak 2026-07-15).
     if p["role"] == "human" and not p.get("is_admin"):
         _scrub_foreign_agent_tasks(st, p["id"])
+        _scrub_standalone_tasks(st, p)
     st = _filter_scope(st, scope)
     return mdio.render_export(st, scope)
 

@@ -566,13 +566,17 @@ def test_non_admin_sees_only_own_agent_tasks(team_member_client):
     c = team_member_client
     foreign = _agent_task(c, auth(), "rd's agent job")
     own = _agent_task(c, _team_auth(), "anton's agent job")
-    plain = c.post("/api/task", json={"text": "shared plain"}, headers=auth())
+    # a non-agent standalone task the team member owns is NOT removed by the
+    # agent scrub (control: the agent scrub is agent-specific)
+    plain = c.post(
+        "/api/task", json={"text": "anton plain", "responsible": "AN"}, headers=auth()
+    )
     assert plain.status_code == 201
 
     member_ids = _all_task_ids(c.get("/api/state", headers=_team_auth()).json())
     assert own["id"] in member_ids
     assert foreign["id"] not in member_ids
-    assert plain.json()["id"] in member_ids  # non-agent tasks stay shared
+    assert plain.json()["id"] in member_ids  # team's own non-agent task stays
 
     admin_ids = _all_task_ids(c.get("/api/state", headers=auth()).json())
     assert foreign["id"] in admin_ids and own["id"] in admin_ids
@@ -846,6 +850,62 @@ def test_non_admin_delete_cannot_sideeffect_foreign_agent(team_member_client):
     )
     assert c.delete(f"/api/deliverable/{did}", headers=_team_auth()).status_code == 403
     assert c.delete(f"/api/deliverable/{did}", headers=auth()).status_code == 200
+
+
+def test_standalone_tasks_scoped_to_owner_for_non_admin(team_member_client):
+    """Standalone tasks (no workstream) have no team assignment to gate them —
+    they leaked ALL founders' loose fundraising tasks to team. A non-admin keeps
+    only standalone tasks they own or created (Strada leak, 2026-07-15)."""
+    c = team_member_client
+    # founder's loose task — team must NOT see it
+    foreign = c.post(
+        "/api/task",
+        json={"text": "Feedback Strada on FMIP + Term Sheet", "responsible": "RD"},
+        headers=auth(),
+    ).json()
+    # loose task the admin assigns to Anton (AN in responsible) — team SEES it
+    owned = c.post(
+        "/api/task",
+        json={"text": "Anton loose task", "responsible": "AN"},
+        headers=auth(),
+    ).json()
+    # loose task Anton creates himself — team SEES it
+    mine = c.post(
+        "/api/task", json={"text": "Anton made this"}, headers=_team_auth()
+    ).json()
+    # shared owner string 'RD, AN' — team SEES it (is an owner)
+    shared = c.post(
+        "/api/task",
+        json={"text": "shared loose", "responsible": "RD, AN"},
+        headers=auth(),
+    ).json()
+
+    team_ids = {
+        t["id"]
+        for t in c.get("/api/state", headers=_team_auth()).json()["standalone_tasks"]
+    }
+    assert foreign["id"] not in team_ids
+    assert owned["id"] in team_ids
+    assert mine["id"] in team_ids
+    assert shared["id"] in team_ids
+
+    admin_ids = {
+        t["id"] for t in c.get("/api/state", headers=auth()).json()["standalone_tasks"]
+    }
+    assert {foreign["id"], owned["id"], mine["id"]} <= admin_ids  # admin sees all
+
+
+def test_standalone_scrub_applies_to_export(team_member_client):
+    c = team_member_client
+    c.post(
+        "/api/task",
+        json={"text": "SECRET Strada loose export", "responsible": "RD"},
+        headers=auth(),
+    )
+    md = c.get("/api/export.md?scope=all", headers=_team_auth()).text
+    assert "SECRET Strada loose export" not in md
+    admin_md = c.get("/api/export.md?scope=all", headers=auth()).text
+    assert "SECRET Strada loose export" in admin_md
 
 
 def test_non_admin_progress_counts_match_visible_tasks(team_member_client):

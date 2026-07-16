@@ -68,7 +68,10 @@ function CalendarView() {
     setConnecting(false);
   }
 
+  // two-step: first click arms the inline confirm, only the confirm writes
+  const [disconnectArmed, setDisconnectArmed] = React.useState(false);
   async function handleDisconnect() {
+    setDisconnectArmed(false);
     try {
       await api.calendarConnect("");
       setData(await api.calendarEvents(scope, weekStart, 7));
@@ -120,7 +123,7 @@ function CalendarView() {
       return (
         <div className="card cal-setup-card">
           <div className="cal-setup-title"><Icon name="calendar" size={18} /> Connect your calendar</div>
-          <p className="cal-setup-body">Enter your Microsoft 365 UPN (email) to link your calendar.</p>
+          <p className="cal-setup-body">Enter your work email (@repuro.de) to link your calendar. Your events become visible to your team in Calendar + Meeting views — events marked private stay masked.</p>
           <form className="cal-connect-form" onSubmit={handleConnect}>
             <input
               className="cal-connect-input"
@@ -205,6 +208,7 @@ function CalendarView() {
       {showConnectForm && (
         <div className="card cal-connect-nudge">
           <span className="cal-setup-title">Connect your calendar to see your events</span>
+          <p className="cal-setup-body" style={{margin: "4px 0 0"}}>Your events become visible to your team in Calendar + Meeting views — events marked private stay masked.</p>
           <form className="cal-connect-form" onSubmit={handleConnect} style={{marginTop: 8}}>
             <input
               className="cal-connect-input"
@@ -222,10 +226,18 @@ function CalendarView() {
         </div>
       )}
 
-      {/* Disconnect link for connected user */}
+      {/* Disconnect link for connected user — armed confirm, no one-click unlink */}
       {data && data.status === "ok" && myConnected && myConnected.connected && (
         <div className="cal-disconnect-row">
-          <button className="cal-disconnect-btn" onClick={handleDisconnect} title="Unlink your calendar">Disconnect calendar</button>
+          {!disconnectArmed ? (
+            <button className="cal-disconnect-btn" onClick={() => setDisconnectArmed(true)} title="Unlink your calendar">Disconnect calendar</button>
+          ) : (
+            <span className="cal-disconnect-confirm">
+              Removes your calendar from the team view.
+              <button className="btn reject" style={{fontSize: 11, padding: "3px 10px"}} onClick={handleDisconnect}>Disconnect</button>
+              <button className="btn" style={{fontSize: 11, padding: "3px 10px"}} onClick={() => setDisconnectArmed(false)}>Cancel</button>
+            </span>
+          )}
         </div>
       )}
 

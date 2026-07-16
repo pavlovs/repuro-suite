@@ -53,7 +53,7 @@ function AdminView() {
 function AdminUsersSection({ data, reload, adminFetch }) {
   var formState = React.useState(false);
   var showForm = formState[0], setShowForm = formState[1];
-  var fieldState = React.useState({ id: "", name: "", initials: "", login: "", teams: [] });
+  var fieldState = React.useState({ id: "", name: "", initials: "", login: "", calendar_upn: "", teams: [] });
   var f = fieldState[0], setF = fieldState[1];
   var busyState = React.useState(false);
   var busy = busyState[0], setBusy = busyState[1];
@@ -70,6 +70,7 @@ function AdminUsersSection({ data, reload, adminFetch }) {
         name: f.name.trim(),
         initials: f.initials.trim() || undefined,
         login: f.login.trim() || undefined,
+        calendar_upn: f.calendar_upn.trim() || undefined,
         teams: f.teams,
       }),
     })
@@ -82,7 +83,7 @@ function AdminUsersSection({ data, reload, adminFetch }) {
       .then(function(d) {
         if (!d) return;
         setNewToken(d.token);
-        setF({ id: "", name: "", initials: "", login: "", teams: [] });
+        setF({ id: "", name: "", initials: "", login: "", calendar_upn: "", teams: [] });
         setShowForm(false);
         reload();
       });
@@ -107,7 +108,7 @@ function AdminUsersSection({ data, reload, adminFetch }) {
 
       {showForm && (
         <div style={{ marginBottom: 12, padding: "12px 14px", border: "1px solid var(--line)", borderRadius: 8, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "flex-end" }}>
-          {[["ID", "id", "e.g. hj"], ["Name", "name", "Full name"], ["Initials", "initials", "HJ"], ["Login (Caddy user)", "login", "heiko"]].map(function(x) {
+          {[["ID", "id", "e.g. hj"], ["Name", "name", "Full name"], ["Initials", "initials", "HJ"], ["Login (Caddy user)", "login", "heiko"], ["Work email (calendar)", "calendar_upn", "name@repuro.de"]].map(function(x) {
             return (
               <label key={x[1]} style={{ display: "flex", flexDirection: "column", gap: 3, fontSize: 11, color: "var(--ink-2)" }}>
                 {x[0]}
@@ -143,7 +144,7 @@ function AdminUsersSection({ data, reload, adminFetch }) {
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
         <thead>
           <tr style={{ borderBottom: "1px solid var(--line-2)" }}>
-            {["ID", "Name", "Initials", "Role", "Login", "Teams"].map(function(h) {
+            {["ID", "Name", "Initials", "Role", "Login", "Work email (calendar)", "Teams"].map(function(h) {
               return <th key={h} style={{ textAlign: "left", padding: "4px 8px", color: "var(--muted)", fontWeight: 600 }}>{h}</th>;
             })}
           </tr>
@@ -157,6 +158,9 @@ function AdminUsersSection({ data, reload, adminFetch }) {
                 <td style={{ padding: "5px 8px", color: "var(--muted)" }}>{u.initials || "—"}</td>
                 <td style={{ padding: "5px 8px", color: "var(--muted)" }}>{u.role}</td>
                 <td style={{ padding: "5px 8px", fontFamily: "monospace", fontSize: 11, color: "var(--muted)" }}>{u.login || "—"}</td>
+                <td style={{ padding: "4px 8px" }}>
+                  <AdminUserEmailCell u={u} adminFetch={adminFetch} reload={reload} />
+                </td>
                 <td style={{ padding: "5px 8px" }}>
                   {u.teams.length ? u.teams.join(", ") : <span style={{ color: "var(--faint)" }}>none</span>}
                 </td>
@@ -166,6 +170,55 @@ function AdminUsersSection({ data, reload, adminFetch }) {
         </tbody>
       </table>
     </section>
+  );
+}
+
+/* Work-email cell — admin sets a user's calendar identity (@repuro.de).
+   Having an email set = calendar connected; the user does nothing themselves. */
+function AdminUserEmailCell({ u, adminFetch, reload }) {
+  var valState = React.useState(u.calendar_upn || "");
+  var val = valState[0], setVal = valState[1];
+  var busyState = React.useState(false);
+  var busy = busyState[0], setBusy = busyState[1];
+  React.useEffect(function() { setVal(u.calendar_upn || ""); }, [u.calendar_upn]);
+
+  if (u.role !== "human") return <span style={{ color: "var(--faint)" }}>—</span>;
+
+  var dirty = val.trim() !== (u.calendar_upn || "");
+
+  function save() {
+    setBusy(true);
+    adminFetch("/api/admin/user/" + u.id, {
+      method: "PATCH",
+      body: JSON.stringify({ calendar_upn: val.trim() }),
+    }).then(function(r) {
+      setBusy(false);
+      if (!r.ok) {
+        r.text().then(function(t) {
+          showToast(t.indexOf("unknown_upn") >= 0 ? "Mailbox not found — check the address" : "Error: " + t.slice(0, 120), "err");
+        });
+        return;
+      }
+      showToast(val.trim() ? "Calendar connected for " + u.name : "Calendar disconnected for " + u.name);
+      reload();
+    });
+  }
+
+  return (
+    <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+      <input
+        style={{ padding: "4px 7px", border: "1px solid var(--line)", borderRadius: 5, font: "11px monospace", width: 190 }}
+        placeholder="name@repuro.de"
+        value={val}
+        onChange={function(e) { setVal(e.target.value); }}
+        onKeyDown={function(e) { if (e.key === "Enter" && dirty && !busy) save(); }}
+      />
+      {dirty && (
+        <button className="btn" style={{ fontSize: 11, padding: "3px 10px" }} disabled={busy} onClick={save}>
+          {busy ? "…" : "Save"}
+        </button>
+      )}
+    </span>
   );
 }
 

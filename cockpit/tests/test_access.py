@@ -652,6 +652,96 @@ def test_non_admin_cannot_patch_users(team_member_client):
 
 
 # ---------------------------------------------------------------------------
+# Admin-managed work email (calendar_upn) — connection is provisioning,
+# not per-user opt-in: having the email set = calendar connected.
+# ---------------------------------------------------------------------------
+
+
+def test_admin_patch_user_calendar_upn_set_and_clear(team_member_client, monkeypatch):
+    c = team_member_client
+    monkeypatch.setattr("src.calendar_graph.probe_upn", lambda upn: (True, "ok"))
+    r = c.patch(
+        "/api/admin/user/anton",
+        json={"calendar_upn": "anton.werlitz@repuro.de"},
+        headers=auth(),
+    )
+    assert r.status_code == 200, r.text
+    ov = c.get("/api/admin/overview", headers=auth()).json()
+    anton = next(u for u in ov["users"] if u["id"] == "anton")
+    assert anton["calendar_upn"] == "anton.werlitz@repuro.de"
+    r = c.patch("/api/admin/user/anton", json={"calendar_upn": ""}, headers=auth())
+    assert r.status_code == 200
+    ov = c.get("/api/admin/overview", headers=auth()).json()
+    anton = next(u for u in ov["users"] if u["id"] == "anton")
+    assert anton["calendar_upn"] is None
+
+
+def test_admin_patch_user_calendar_upn_unknown_mailbox_rejected(
+    team_member_client, monkeypatch
+):
+    monkeypatch.setattr(
+        "src.calendar_graph.probe_upn", lambda upn: (False, "unknown_upn")
+    )
+    r = team_member_client.patch(
+        "/api/admin/user/anton",
+        json={"calendar_upn": "ghost@repuro.de"},
+        headers=auth(),
+    )
+    assert r.status_code == 422
+
+
+def test_admin_patch_user_calendar_upn_saved_when_unverifiable(
+    team_member_client, monkeypatch
+):
+    """Graph env missing must NOT block storing the address — the account
+    carries its email; the calendar stays inert until the backend works."""
+    monkeypatch.setattr(
+        "src.calendar_graph.probe_upn", lambda upn: (False, "not_configured")
+    )
+    r = team_member_client.patch(
+        "/api/admin/user/anton",
+        json={"calendar_upn": "anton.werlitz@repuro.de"},
+        headers=auth(),
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_admin_patch_user_calendar_upn_bad_format_rejected(team_member_client):
+    r = team_member_client.patch(
+        "/api/admin/user/anton",
+        json={"calendar_upn": "not-an-email"},
+        headers=auth(),
+    )
+    assert r.status_code == 422
+
+
+def test_non_admin_cannot_set_calendar_upn_via_admin(team_member_client):
+    r = team_member_client.patch(
+        "/api/admin/user/anton",
+        json={"calendar_upn": "anton.werlitz@repuro.de"},
+        headers=_team_auth(),
+    )
+    assert r.status_code == 403
+
+
+def test_admin_create_user_with_calendar_upn(client, monkeypatch):
+    monkeypatch.setattr("src.calendar_graph.probe_upn", lambda upn: (True, "ok"))
+    r = client.post(
+        "/api/admin/user",
+        json={
+            "id": "flo",
+            "name": "Florian Fischer",
+            "calendar_upn": "florian.fischer@repuro.de",
+        },
+        headers=auth(),
+    )
+    assert r.status_code == 201, r.text
+    ov = client.get("/api/admin/overview", headers=auth()).json()
+    flo = next(u for u in ov["users"] if u["id"] == "flo")
+    assert flo["calendar_upn"] == "florian.fischer@repuro.de"
+
+
+# ---------------------------------------------------------------------------
 # Side-door privacy (codex 2026-07-15): export, activity, per-task routes,
 # learning decide — every path must enforce the same lane privacy as /api/state
 # ---------------------------------------------------------------------------

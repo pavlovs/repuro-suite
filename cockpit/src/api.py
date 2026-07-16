@@ -2633,6 +2633,19 @@ def _require_admin(p: dict) -> None:
         raise HTTPException(403, "admin access required")
 
 
+def _check_calendar_upn(upn: str) -> None:
+    """Admin-managed work email (= calendar identity). Reject only what Graph
+    positively rejects (bad format / unknown mailbox / probe error); when
+    verification is unavailable (env not configured, consent missing) the
+    address is stored anyway — the calendar stays inert until the backend
+    works, but the account must still carry its email."""
+    if not calendar_graph.UPN_RE.match(upn):
+        raise HTTPException(422, "unknown_upn")
+    ok, reason = calendar_graph.probe_upn(upn)
+    if not ok and reason not in ("not_configured", "consent_missing"):
+        raise HTTPException(422, reason)
+
+
 @app.post("/api/admin/user", status_code=201)
 def admin_create_user(payload: dict = Body(...), p=Depends(human_only)):
     _require_admin(p)
@@ -2648,6 +2661,9 @@ def admin_create_user(payload: dict = Body(...), p=Depends(human_only)):
     if role not in ("human", "agent"):
         raise HTTPException(422, "role must be 'human' or 'agent'")
     represents = (payload.get("represents") or "").strip() or None
+    calendar_upn = (payload.get("calendar_upn") or "").strip() or None
+    if calendar_upn:
+        _check_calendar_upn(calendar_upn)
     conn = db.get_conn()
     if (
         represents
@@ -2667,8 +2683,8 @@ def admin_create_user(payload: dict = Body(...), p=Depends(human_only)):
     token_hash = hashlib.sha256(token.encode()).hexdigest()
     with db.WRITE_LOCK:
         conn.execute(
-            "INSERT INTO users (id, name, initials, role, token_hash, login, all_teams, represents) "
-            "VALUES (?,?,?,?,?,?,?,?)",
+            "INSERT INTO users (id, name, initials, role, token_hash, login, all_teams, represents, calendar_upn) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
             (
                 uid,
                 name,
@@ -2678,6 +2694,7 @@ def admin_create_user(payload: dict = Body(...), p=Depends(human_only)):
                 login_val,
                 all_teams_val,
                 represents,
+                calendar_upn,
             ),
         )
         for tid in teams:
@@ -2695,7 +2712,7 @@ def admin_overview(p=Depends(human_only)):
     _require_admin(p)
     conn = db.get_conn()
     users_rows = conn.execute(
-        "SELECT id, name, initials, role, login, all_teams, profile FROM users ORDER BY id"
+        "SELECT id, name, initials, role, login, all_teams, profile, calendar_upn FROM users ORDER BY id"
     ).fetchall()
     members_rows = conn.execute("SELECT team_id, user_id FROM team_members").fetchall()
     teams_rows = conn.execute(
@@ -2718,6 +2735,7 @@ def admin_overview(p=Depends(human_only)):
             "login": r["login"],
             "all_teams": bool(r["all_teams"]),
             "teams": user_teams.get(r["id"], []),
+            "calendar_upn": r["calendar_upn"],
         }
         for r in users_rows
     ]
@@ -2853,6 +2871,12 @@ def admin_patch_user(uid: str, payload: dict = Body(...), p=Depends(human_only))
     conn = db.get_conn()
     if not conn.execute("SELECT 1 FROM users WHERE id=?", (uid,)).fetchone():
         raise HTTPException(404, f"user {uid!r} not found")
+    # validate before taking the write lock — the probe is a network call
+    cal_upn = None
+    if "calendar_upn" in payload:
+        cal_upn = (payload["calendar_upn"] or "").strip() or None
+        if cal_upn:
+            _check_calendar_upn(cal_upn)
     with db.WRITE_LOCK:
         if "name" in payload:
             if not (payload["name"] or "").strip():
@@ -2887,6 +2911,8 @@ def admin_patch_user(uid: str, payload: dict = Body(...), p=Depends(human_only))
                     "INSERT OR IGNORE INTO team_members (team_id, user_id) VALUES (?,?)",
                     (tid, uid),
                 )
+        if "calendar_upn" in payload:
+            conn.execute("UPDATE users SET calendar_upn=? WHERE id=?", (cal_upn, uid))
         db.audit(
             conn,
             p["id"],
@@ -2894,7 +2920,14 @@ def admin_patch_user(uid: str, payload: dict = Body(...), p=Depends(human_only))
             uid,
             after={
                 k: payload[k]
-                for k in ("name", "initials", "login", "all_teams", "teams")
+                for k in (
+                    "name",
+                    "initials",
+                    "login",
+                    "all_teams",
+                    "teams",
+                    "calendar_upn",
+                )
                 if k in payload
             },
         )

@@ -56,5 +56,8 @@ No event create/edit, no free-slot search, no ICS adapter (seam only), no Google
 - Hardening: UPN regex (`calendar_graph.UPN_RE`) enforced on connect + URL-quoted in every Graph path; `days` clamped 1..31; invalid `start` → 422; events endpoint probes on empty result so `consent_missing` surfaces post-deploy.
 - FAKE mode assigns demo profiles by upn char-sum so me/team scopes stay consistent for the same user.
 
+## Design change (2026-07-16, Roman) — admin-managed connection replaces opt-in
+The v1 "opt-in privacy model" (§Architecture) is REVERSED: Roman's expectation is one-time setup — every account carries its @repuro.de work email and is thereby calendar-connected; teammates do nothing themselves. Implemented: `calendar_upn` settable via `POST/PATCH /api/admin/user` (probe-validated: reject only positive Graph rejections — bad format / unknown mailbox; not_configured / consent_missing store anyway), exposed in `/api/admin/overview`, editable per user in the Admin view ("Work email (calendar)" column) and at user creation. Self-service `POST /api/calendar/connect` stays as fallback. Private-event masking unchanged. Same session: topbar person-switch button row → `PersonSwitch` dropdown (scales past 3 people; type-ahead ≥8) and filter-bar person seg → select.
+
 ## Verification gate (before "done")
 Babel-compile full JSX bundle → pytest → restart :8099 with `COCKPIT_CALENDAR_FAKE=1` → e2e screenshots → READ screenshots as a fresh user → fix → repeat until a round is clean. Live Graph path is **not verifiable** until admin consent — state this explicitly at handoff.

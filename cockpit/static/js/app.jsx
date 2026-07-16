@@ -80,11 +80,15 @@ function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setF
           </select>
         </label>
         {layout !== "deliverables" && (
-          <div className="seg">
-            {[["", "Everyone"]].concat(meFirst(Object.keys(PEOPLE)).map((p) => [p, PEOPLE[p].name])).map(([v, l]) => (
-              <button key={v} className={filters.person === v ? "on" : ""} onClick={() => setFilters({ ...filters, person: v })}>{l}</button>
-            ))}
-          </div>
+          <label className="filter-ws">
+            <span className="filter-ws-lbl">Person</span>
+            <select value={filters.person} onChange={(e) => setFilters({ ...filters, person: e.target.value })}>
+              <option value="">Everyone</option>
+              {meFirst(Object.keys(PEOPLE)).map((p) => (
+                <option key={p} value={p}>{PEOPLE[p].full || PEOPLE[p].name}</option>
+              ))}
+            </select>
+          </label>
         )}
         {layout !== "deliverables" && (
           <div className="seg">
@@ -135,6 +139,53 @@ function tabFromHash() {
     return first;
   }
   return tab;
+}
+
+/* Admin "view as" lens — compact dropdown so it scales to any team size
+   (the old N-button row broke past ~3 people). Type-ahead appears at ≥8. */
+function PersonSwitch({ person, pick }) {
+  const [open, setOpen] = React.useState(false);
+  const [q, setQ] = React.useState("");
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onEsc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onEsc); };
+  }, [open]);
+  const ids = meFirst(Object.keys(PEOPLE));
+  const needle = q.trim().toLowerCase();
+  const shown = needle
+    ? ids.filter((p) => (((PEOPLE[p].full || "") + " " + (PEOPLE[p].name || "") + " " + p).toLowerCase().indexOf(needle) >= 0))
+    : ids;
+  const cur = PEOPLE[person] || {};
+  return (
+    <div className="person-switch" ref={ref}>
+      <button className="ps-trigger" onClick={() => { setOpen((o) => !o); setQ(""); }} title="View the cockpit as…">
+        <span className="ps-lbl">View as</span>
+        <Avatar id={person} size={18} />
+        <span>{cur.name || person}</span>
+        <span className={"caret" + (open ? " open" : "")}><Icon name="chevron" size={12} /></span>
+      </button>
+      {open && (
+        <div className="ps-menu">
+          {ids.length >= 8 && (
+            <input className="ps-search" autoFocus placeholder="Find person…" value={q} onChange={(e) => setQ(e.target.value)} />
+          )}
+          {shown.map((p) => (
+            <button key={p} className={"ps-item" + (person === p ? " on" : "")} onClick={() => { pick(p); setOpen(false); }}>
+              <Avatar id={p} size={20} />
+              <span className="ps-nm">{PEOPLE[p].full || PEOPLE[p].name}</span>
+              {p === ME && <span className="ps-me">me</span>}
+            </button>
+          ))}
+          {!shown.length && <div className="ps-empty">No match</div>}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function App() {
@@ -254,15 +305,7 @@ function App() {
           <button className="search as-btn" onClick={() => setPalette(true)} title="Search (Ctrl/⌘ K)">
             <Icon name="search" size={15} /><span className="search-ph">Search tasks, deals…</span><span className="pal-kbd">{navigator.platform.indexOf("Mac") >= 0 ? "⌘" : "Ctrl+"}K</span>
           </button>
-          {showPerson && (
-            <div className="person-switch">
-              {meFirst(Object.keys(PEOPLE)).map((p) => (
-                <button key={p} className={person === p ? "on" : ""} onClick={() => pickPerson(p)}>
-                  <Avatar id={p} size={18} />{PEOPLE[p].name}
-                </button>
-              ))}
-            </div>
-          )}
+          {showPerson && <PersonSwitch person={person} pick={pickPerson} />}
           {(tab === "table" || tab === "timeline") && filterCount !== null && (
             <button className={"tb-filter tb-undo" + (filterCount > 0 ? " active" : "")} onClick={() => setFiltersOpen((o) => !o)} title="Filter">
               <Icon name="filter" size={14} /> Filter{filterCount > 0 ? " (" + filterCount + ")" : ""}

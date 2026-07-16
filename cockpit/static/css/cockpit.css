@@ -133,18 +133,14 @@ button { font-family: inherit; cursor: pointer; }
 .btn.reject:hover { background: #fcc8d7; }
 .btn.sm { padding: 6px 10px; font-size: 11.5px; border-radius: 7px; }
 
-/* person-switch — admin view-as lens as a compact dropdown (scales to any headcount) */
-.person-switch { position: relative; }
-.person-switch .ps-trigger { display: flex; align-items: center; gap: 7px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 6px 11px; font-size: 12px; font-weight: 700; color: var(--ink); }
-.person-switch .ps-trigger:hover { border-color: var(--cyan-light); }
-.person-switch .ps-lbl { font-size: 10.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+/* ps-menu — shared searchable person dropdown (used by the Meeting "+ Add" picker) */
 .ps-menu { position: absolute; top: calc(100% + 6px); right: 0; min-width: 220px; max-height: 340px; overflow-y: auto; background: #fff; border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow-pop); padding: 5px; z-index: 90; }
+.mtg-add .ps-menu { right: auto; left: 0; }
 .ps-menu .ps-search { width: 100%; box-sizing: border-box; margin-bottom: 5px; padding: 6px 9px; border: 1px solid var(--line); border-radius: 7px; font: 12px var(--font); }
 .ps-menu .ps-item { display: flex; align-items: center; gap: 8px; width: 100%; border: none; background: transparent; border-radius: 7px; padding: 6px 8px; font-size: 12.5px; font-weight: 600; color: var(--ink-2); text-align: left; }
 .ps-menu .ps-item:hover { background: var(--surface-2); }
 .ps-menu .ps-item.on { background: var(--brand-50, #ecfeff); color: var(--ink); }
 .ps-menu .ps-nm { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ps-menu .ps-me { font-size: 10px; font-weight: 700; color: var(--muted); background: var(--surface-2); border-radius: 5px; padding: 1px 5px; }
 .ps-menu .ps-empty { padding: 8px; font-size: 12px; color: var(--faint); }
 
 .main { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; }

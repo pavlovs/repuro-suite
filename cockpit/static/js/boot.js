@@ -764,15 +764,13 @@
       perms: (state.principal && state.principal.perms) || {},
       isAdmin: !!(state.principal && state.principal.is_admin),
     };
-    /* The logged-in identity drives the person lens. Non-admins are ALWAYS
-       themselves (no Roman/Flo flip for a team member); admins default to
-       themselves but keep a person switch chosen earlier this session. */
+    /* Identity = login for EVERYONE. cockpit_person is only an identity echo
+       (ME fallback, playbook `responsible`) — the admin "view as" switch was
+       removed 2026-07-16, so it is always the principal's own initials. */
     var pr = state.principal || {};
     var myInitials = pr.initials || (pr.id ? pr.id.toUpperCase().slice(0, 2) : null);
     if (myInitials && pr.role === "human") {
-      var stored = sessionStorage.getItem("cockpit_person");
-      var validStored = stored && window.COCKPIT_DATA.PEOPLE[stored];
-      if (!pr.is_admin || !validStored) sessionStorage.setItem("cockpit_person", myInitials);
+      sessionStorage.setItem("cockpit_person", myInitials);
     }
 
     var sources = await Promise.all(JSX_FILES.map(function (f) {

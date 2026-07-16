@@ -1,5 +1,45 @@
 /* ===== My Week — computed daily/weekly recommendation + shared lane ===== */
 
+/* "+ Add" person picker for the meeting — searchable dropdown (shares the
+   .ps-menu styles); disabled at the 3-person cap instead of silently evicting. */
+function MtgAddPerson({ selected, onAdd }) {
+  const [open, setOpen] = React.useState(false);
+  const [q, setQ] = React.useState("");
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onEsc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onEsc); };
+  }, [open]);
+  const full = selected.length >= 3;
+  const needle = q.trim().toLowerCase();
+  const candidates = meFirst(Object.keys(PEOPLE)).filter((p) => !selected.includes(p))
+    .filter((p) => !needle || (((PEOPLE[p].full || "") + " " + (PEOPLE[p].name || "") + " " + p).toLowerCase().indexOf(needle) >= 0));
+  return (
+    <div className="mtg-add" ref={ref}>
+      <button className="mtg-add-btn" disabled={full}
+        title={full ? "Max 3 in a meeting — remove someone first" : "Add a person to this meeting"}
+        onClick={() => { setOpen((o) => !o); setQ(""); }}>+ Add</button>
+      {open && !full && (
+        <div className="ps-menu">
+          {candidates.length >= 8 && (
+            <input className="ps-search" autoFocus placeholder="Find person…" value={q} onChange={(e) => setQ(e.target.value)} />
+          )}
+          {candidates.map((p) => (
+            <button key={p} className="ps-item" onClick={() => { onAdd(p); setOpen(false); }}>
+              <Avatar id={p} size={20} /><span className="ps-nm">{PEOPLE[p].full || PEOPLE[p].name}</span>
+            </button>
+          ))}
+          {!candidates.length && <div className="ps-empty">No match</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* --- Weekly Meeting prep view — agenda-structured, both people, decision-first --- */
 function MeetingView({ mutate, openTask }) {
   const [mode, setMode] = React.useState("daily");
@@ -11,19 +51,17 @@ function MeetingView({ mutate, openTask }) {
   const ALL_PEOPLE = meFirst(Object.keys(PEOPLE));
   const [mtgSel, setMtgSel] = React.useState(() => {
     let saved = null;
-    try { saved = JSON.parse(sessionStorage.getItem("cockpit_mtg_people") || "null"); } catch (_) {}
+    // localStorage so the weekly meeting keeps its people across browser restarts
+    // (was sessionStorage → re-picking every session; old key read once as migration)
+    try { saved = JSON.parse(localStorage.getItem("cockpit_mtg_people") || sessionStorage.getItem("cockpit_mtg_people") || "null"); } catch (_) {}
     const valid = Array.isArray(saved) ? saved.filter((p) => PEOPLE[p]) : null;
     return valid && valid.length ? valid.slice(0, 3) : ALL_PEOPLE.slice(0, 3);
   });
-  const toggleMtg = (p) => setMtgSel((sel) => {
-    let next;
-    if (sel.includes(p)) next = sel.filter((x) => x !== p);
-    else if (sel.length >= 3) next = [...sel.slice(1), p]; // keep max 3, drop oldest
-    else next = [...sel, p];
-    if (!next.length) next = [p]; // never empty
-    sessionStorage.setItem("cockpit_mtg_people", JSON.stringify(next));
-    return next;
-  });
+  const saveMtg = (next) => { try { localStorage.setItem("cockpit_mtg_people", JSON.stringify(next)); } catch (_) {} return next; };
+  // no silent eviction: adding past the cap is refused (the + Add button disables),
+  // removing below 1 is refused (last chip has no ✕)
+  const removeMtg = (p) => setMtgSel((sel) => (sel.length > 1 ? saveMtg(sel.filter((x) => x !== p)) : sel));
+  const addMtg = (p) => setMtgSel((sel) => (sel.includes(p) || sel.length >= 3 ? sel : saveMtg([...sel, p])));
   // render in the canonical me-first order, restricted to the picked set
   const MTG_PEOPLE = ALL_PEOPLE.filter((p) => mtgSel.includes(p));
   const mtgColsCls = "wk-cols wk-cols-" + Math.min(MTG_PEOPLE.length, 3);
@@ -137,14 +175,18 @@ function MeetingView({ mutate, openTask }) {
           <button className={mode === "weekly" ? "on" : ""} onClick={() => setMode("weekly")}>Weekly</button>
         </div>
         {ALL_PEOPLE.length > 3 && (
-          <div className="mtg-pick" title="Choose up to 3 people for this meeting">
+          <div className="mtg-pick" title="Up to 3 people in this meeting">
             <span className="mtg-pick-lbl">In this meeting</span>
-            {ALL_PEOPLE.map((p) => (
-              <button key={p} className={"mtg-pick-chip" + (mtgSel.includes(p) ? " on" : "")}
-                onClick={() => toggleMtg(p)} title={PEOPLE[p].full}>
+            {MTG_PEOPLE.map((p) => (
+              <span key={p} className="mtg-pick-chip on" title={PEOPLE[p].full}>
                 <Avatar id={p} size={16} />{PEOPLE[p].name}
-              </button>
+                {mtgSel.length > 1 && (
+                  <button className="mtg-chip-x" title={"Remove " + PEOPLE[p].name + " from this meeting"}
+                    onClick={() => removeMtg(p)}>×</button>
+                )}
+              </span>
             ))}
+            <MtgAddPerson selected={mtgSel} onAdd={addMtg} />
           </div>
         )}
         <div className="ws-toolbar-sp" />

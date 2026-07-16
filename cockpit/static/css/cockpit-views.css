@@ -47,6 +47,7 @@
 .cal-disconnect-row { display: flex; justify-content: flex-end; }
 .cal-disconnect-btn { border: none; background: none; font-size: 12px; color: var(--muted); cursor: pointer; padding: 2px 0; }
 .cal-disconnect-btn:hover { color: var(--rose); }
+.cal-disconnect-confirm { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); }
 
 /* Calendar agenda rows in week-view right column */
 .cal-agenda-row { display: flex; align-items: center; gap: 8px; }
@@ -254,13 +255,20 @@
 .mtg-sec-h { display: flex; align-items: center; gap: 8px; padding: 12px 18px 10px; font-size: 13px; font-weight: 700; color: var(--ink); }
 .mtg-sec-h .icon { color: var(--brand); }
 .mtg-sec-h.attn .icon { color: var(--rose); }
-/* meeting participant picker — max 3 columns; appears only past 3 people */
+/* meeting participant picker — max 3 columns; appears only past 3 people.
+   Only the SELECTED people render as chips (✕ removes); adding goes through
+   the "+ Add" dropdown — no all-people chip row, no silent eviction. */
 .mtg-pick { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .mtg-pick-lbl { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-right: 2px; }
-.mtg-pick-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 4px; border: 1px solid var(--line-2); border-radius: 999px; background: #fff; font-size: 12px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
-.mtg-pick-chip:hover { border-color: var(--brand); }
+.mtg-pick-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 4px; border: 1px solid var(--line-2); border-radius: 999px; background: #fff; font-size: 12px; font-weight: 600; color: var(--ink-2); }
 .mtg-pick-chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
 .mtg-pick-chip.on .avatar { box-shadow: 0 0 0 1.5px #fff; }
+.mtg-chip-x { border: none; background: transparent; color: inherit; opacity: .65; font-size: 13px; line-height: 1; padding: 0 0 0 2px; cursor: pointer; }
+.mtg-chip-x:hover { opacity: 1; }
+.mtg-add { position: relative; }
+.mtg-add-btn { display: inline-flex; align-items: center; padding: 3px 10px; border: 1px dashed var(--line); border-radius: 999px; background: transparent; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.mtg-add-btn:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+.mtg-add-btn:disabled { opacity: .45; cursor: not-allowed; }
 .mtg-sec-label { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-2); margin: 16px 0 8px 2px; }
 .mtg-sec-label .icon { color: var(--brand); }
 

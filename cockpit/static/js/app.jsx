@@ -141,57 +141,9 @@ function tabFromHash() {
   return tab;
 }
 
-/* Admin "view as" lens — compact dropdown so it scales to any team size
-   (the old N-button row broke past ~3 people). Type-ahead appears at ≥8. */
-function PersonSwitch({ person, pick }) {
-  const [open, setOpen] = React.useState(false);
-  const [q, setQ] = React.useState("");
-  const ref = React.useRef(null);
-  React.useEffect(() => {
-    if (!open) return;
-    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    const onEsc = (e) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onEsc);
-    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onEsc); };
-  }, [open]);
-  const ids = meFirst(Object.keys(PEOPLE));
-  const needle = q.trim().toLowerCase();
-  const shown = needle
-    ? ids.filter((p) => (((PEOPLE[p].full || "") + " " + (PEOPLE[p].name || "") + " " + p).toLowerCase().indexOf(needle) >= 0))
-    : ids;
-  const cur = PEOPLE[person] || {};
-  return (
-    <div className="person-switch" ref={ref}>
-      <button className="ps-trigger" onClick={() => { setOpen((o) => !o); setQ(""); }} title="View the cockpit as…">
-        <span className="ps-lbl">View as</span>
-        <Avatar id={person} size={18} />
-        <span>{cur.name || person}</span>
-        <span className={"caret" + (open ? " open" : "")}><Icon name="chevron" size={12} /></span>
-      </button>
-      {open && (
-        <div className="ps-menu">
-          {ids.length >= 8 && (
-            <input className="ps-search" autoFocus placeholder="Find person…" value={q} onChange={(e) => setQ(e.target.value)} />
-          )}
-          {shown.map((p) => (
-            <button key={p} className={"ps-item" + (person === p ? " on" : "")} onClick={() => { pick(p); setOpen(false); }}>
-              <Avatar id={p} size={20} />
-              <span className="ps-nm">{PEOPLE[p].full || PEOPLE[p].name}</span>
-              {p === ME && <span className="ps-me">me</span>}
-            </button>
-          ))}
-          {!shown.length && <div className="ps-empty">No match</div>}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [tab, setTabState] = React.useState(tabFromHash);
-  const [person, setPerson] = React.useState(sessionStorage.getItem("cockpit_person") || ME);
   const [drawer, setDrawer] = React.useState(null);
   const [delivDrawer, setDelivDrawer] = React.useState(null);
   const [palette, setPalette] = React.useState(false);
@@ -235,7 +187,6 @@ function App() {
       window.removeEventListener("hashchange", onHashChange);
     };
   }, [setTab]);
-  const pickPerson = (p) => { sessionStorage.setItem("cockpit_person", p); setPerson(p); };
 
   const live = TASKS.filter((x) => x.status !== "done");
   const chaseN = live.filter((x) => chaseDue(x)).length;
@@ -243,10 +194,10 @@ function App() {
   const badge = { week: chaseN, agents: verdictN };
 
   const cur = NAV.find((n) => n.id === tab) || (tab === "admin" ? NAV_ADMIN : NAV[0]);
-  /* The person switch is an admin lens (view the cockpit as someone else).
-     Non-admins ARE their person — no switch, no Roman/Flo flip. */
-  const showPerson = tab === "overview" && window.COCKPIT && window.COCKPIT.isAdmin && Object.keys(PEOPLE).length > 1;
-  const meKey = PEOPLE[ME] ? ME : person;
+  /* Everyone — admins included — sees their OWN cockpit. The old person-switch
+     ("view as") was a v1 relic; removed 2026-07-16 (Roman: no world needs it —
+     teammate workload lives in Meeting columns + the Workstreams person filter). */
+  const meKey = ME;
 
   const canWriteWorkstreams = window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw"));
 
@@ -305,7 +256,6 @@ function App() {
           <button className="search as-btn" onClick={() => setPalette(true)} title="Search (Ctrl/⌘ K)">
             <Icon name="search" size={15} /><span className="search-ph">Search tasks, deals…</span><span className="pal-kbd">{navigator.platform.indexOf("Mac") >= 0 ? "⌘" : "Ctrl+"}K</span>
           </button>
-          {showPerson && <PersonSwitch person={person} pick={pickPerson} />}
           {(tab === "table" || tab === "timeline") && filterCount !== null && (
             <button className={"tb-filter tb-undo" + (filterCount > 0 ? " active" : "")} onClick={() => setFiltersOpen((o) => !o)} title="Filter">
               <Icon name="filter" size={14} /> Filter{filterCount > 0 ? " (" + filterCount + ")" : ""}
@@ -321,12 +271,12 @@ function App() {
 
         <main className="main">
           <div className={"view" + (tab === "timeline" || tab === "table" || tab === "week" ? " view-wide" : "")}>
-            {tab === "overview" && <OverviewView person={person} onJump={setTab} openTask={openTask} mutate={mutate} />}
+            {tab === "overview" && <OverviewView person={ME} onJump={setTab} openTask={openTask} mutate={mutate} />}
             {tab === "week" && <MeetingView mutate={mutate} openTask={openTask} />}
             {tab === "calendar" && <CalendarView />}
-            {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} openDeliv={openDeliv} person={person} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}
+            {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} openDeliv={openDeliv} person={ME} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}
             {tab === "timeline" && <TimelineView openTask={openTask} openDeliv={openDeliv} mutate={mutate} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}
-            {tab === "agents" && <AgentsView openTask={openTask} person={person} />}
+            {tab === "agents" && <AgentsView openTask={openTask} person={ME} />}
             {tab === "admin" && <AdminView />}
           </div>
         </main>

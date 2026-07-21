@@ -573,6 +573,12 @@ def assemble_state(conn, me=None):
             "name": r["name"],
             "target_date": r["target_date"],
             "start_date": r["start_date"] if "start_date" in r.keys() else None,
+            "hard_deadline": bool(r["hard_deadline"])
+            if "hard_deadline" in r.keys()
+            else False,
+            "is_milestone": bool(r["is_milestone"])
+            if "is_milestone" in r.keys()
+            else False,
             "deal": r["deal"],
             "status": r["status"],
             "comment": r["comment"],
@@ -1358,6 +1364,8 @@ def patch_deliverable(did: str, payload: dict = Body(...), p=Depends(principal))
             "comment",
             "staging",
             "workstream_id",
+            "hard_deadline",
+            "is_milestone",
         },
         {"status": models.DELIV_STATUSES},
     )

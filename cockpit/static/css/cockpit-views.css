@@ -599,3 +599,26 @@
   .ag-rev-left { padding-right: 0; padding-bottom: 14px; }
   .ag-rev-right { flex: 1; max-width: 100%; border-left: none; border-top: 1px solid var(--line); padding-left: 0; padding-top: 14px; }
 }
+
+/* ===== Hard deadline (t-517) ===== */
+.gantt-diamond.hard-deadline { background: #e11d48 !important; width: 12px; height: 12px; margin-left: -6px; margin-top: -6px; }
+.gantt-target-lbl.hard-deadline-lbl { color: #e11d48; font-weight: 700; }
+.deliv-due.hard-deadline-due { color: #e11d48; font-weight: 700; background: #fff1f2; border-color: #fecdd3; }
+.loi-item.hard-deadline-item { border-left: 3px solid #e11d48; }
+
+/* Milestone line (t-517) */
+.gantt-milestone-line {
+  position: absolute; top: 0; bottom: 0; width: 2px;
+  background: #7c3aed; opacity: 0.6; pointer-events: none; z-index: 2;
+}
+.gantt-milestone-line:hover { opacity: 1; cursor: default; }
+
+/* Prereq badge (t-517) */
+.gantt-prereq-badge {
+  font-size: 10px; color: #94a3b8; background: #f1f5f9;
+  border: 1px solid #e2e8f0; border-radius: 4px; padding: 0 4px; margin-left: 4px;
+}
+
+/* Legend keys (t-517) */
+.hard-deadline-key { display: inline-block; width: 12px; height: 12px; background: #e11d48; transform: rotate(45deg); margin-right: 4px; }
+.milestone-line-key { display: inline-block; width: 2px; height: 14px; background: #7c3aed; margin-right: 6px; }

@@ -201,7 +201,7 @@ function MeetingView({ mutate, openTask }) {
             const days = daysUntil(d.target);
             const cls = days <= 7 ? "urgent" : days <= 14 ? "soon" : "";
             return (
-              <div key={d.id} className={"loi-item " + cls}>
+              <div key={d.id} className={"loi-item " + cls + (d.hardDeadline ? " hard-deadline-item" : "")}>
                 <span className="loi-code">{d.deal.codename}</span>
                 <span className="loi-ms">{shortName(d)}</span>
                 <span className="loi-days">{days}d</span>
@@ -277,7 +277,9 @@ function MeetingView({ mutate, openTask }) {
                               <span className="wk-deliv-prog">
                                 <span className="prog-bar" style={{width:60}}><span style={{ width: pct + "%", background: d.wsObj ? d.wsObj.color : "#94a3b8" }} /></span>
                               </span>
-                              {d.target && <span className={"deliv-due" + (daysLeft < 0 ? " over" : daysLeft <= 7 ? " soon" : "")}>{fdate(d.target)}</span>}
+                              {d.target && <span className={"deliv-due" + (d.hardDeadline ? " hard-deadline-due" : "") + (daysLeft < 0 ? " over" : daysLeft <= 7 ? " soon" : "")}>
+                                {d.hardDeadline && daysLeft >= 0 ? "T-" + daysLeft + " Tage · " : ""}{fdate(d.target)}
+                              </span>}
                             </div>
                             {d.myTasks.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} showWs={false} />)}
                           </div>
@@ -720,7 +722,9 @@ function WeekView({ person, mutate, openTask, embedded }) {
                   <span className="wk-deliv-prog">
                     <span className="prog-bar" style={{width:50}}><span style={{ width: (d.s.total ? d.s.done / d.s.total * 100 : 0) + "%", background: d.ws ? d.ws.color : "var(--brand)" }} /></span>
                   </span>
-                  <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")}>{fdate(d.target)}</span>
+                  <span className={"deliv-due" + (d.hardDeadline ? " hard-deadline-due" : "") + (du < 0 ? " over" : du <= 7 ? " soon" : "")}>
+                    {d.hardDeadline && du >= 0 ? "T-" + du + " Tage · " : ""}{fdate(d.target)}
+                  </span>
                 </div>
                 {isOpen && (
                   <div style={{marginTop:4}}>

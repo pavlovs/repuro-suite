@@ -109,6 +109,14 @@ function TimelineView({ openTask, openDeliv, mutate, filtersOpen, setFiltersOpen
             <div className="gantt-body" style={{ position: "relative" }}>
               {months.map((m, i) => <div key={i} className="gantt-vline" style={{ left: LABELW + i * MW }} />)}
               <div className="gantt-today" style={{ left: LABELW + xClamped(todayDate) }}><span className="gantt-today-lbl">today</span></div>
+              {/* Milestone vertical lines */}
+              {DELIVERABLES.filter(d => d.isMilestone && d.target && inWindow(d.target)).map(d => (
+                <div key={"ms-" + d.id}
+                  className="gantt-milestone-line"
+                  style={{ left: LABELW + xClamped(d.target) }}
+                  title={"Milestone: " + d.name + " — " + fdateShort(d.target)}
+                />
+              ))}
 
               {SPACES.map((space) => {
                 const allSpaceWs = (wsPerSpace[space.id] || []);
@@ -206,11 +214,23 @@ function TimelineView({ openTask, openDeliv, mutate, filtersOpen, setFiltersOpen
                                         title={c.items.length + " tasks due here:\n" + c.items.map((t) => "• " + t.text + " (" + fdate(t.due) + ")").join("\n")}
                                         onClick={(e) => { e.stopPropagation(); toggle(d.id); }}>{c.items.length}</div>
                                     ); })}
-                                    {d.target && inWindow(d.target) && <div className="gantt-diamond" style={{ left: x2, background: RDOT[s.readiness] }}
-                                      title={d.name + " target: " + fdateShort(d.target)} />}
-                                    {d.target && inWindow(d.target) && <div className={"gantt-target-lbl" + (du < 0 ? " over" : du <= 7 ? " soon" : "")} style={{ left: Math.min(x2 + 12, totalW - 48) }}>
-                                      {du < 0 ? Math.abs(du) + "d over" : du === 0 ? "today" : du <= 14 ? du + "d" : ""}
-                                    </div>}
+                                    {d.target && inWindow(d.target) && (
+                                      <div
+                                        className={"gantt-diamond" + (d.hardDeadline ? " hard-deadline" : "")}
+                                        style={{ left: x2, background: d.hardDeadline ? "#e11d48" : RDOT[s.readiness] }}
+                                        title={d.name + " target: " + fdateShort(d.target) + (d.hardDeadline ? " [HART]" : "")}
+                                      />
+                                    )}
+                                    {d.target && inWindow(d.target) && (
+                                      <div
+                                        className={"gantt-target-lbl" + (d.hardDeadline ? " hard-deadline-lbl" : "") + (du < 0 ? " over" : du <= 7 ? " soon" : "")}
+                                        style={{ left: Math.min(x2 + 12, totalW - 60) }}
+                                      >
+                                        {d.hardDeadline
+                                          ? (du < 0 ? Math.abs(du) + "d über" : du === 0 ? "heute" : "T-" + du + " Tage")
+                                          : (du < 0 ? Math.abs(du) + "d over" : du === 0 ? "today" : du <= 14 ? du + "d" : "")}
+                                      </div>
+                                    )}
                                   </React.Fragment>
                                 );
                               })()}
@@ -228,6 +248,11 @@ function TimelineView({ openTask, openDeliv, mutate, filtersOpen, setFiltersOpen
                                 <span className="rdot" data-level={t.status === "done" ? "green" : readiness(t)} style={{ width: 7, height: 7 }} />
                                 <span className={"gantt-subname" + (t.status === "done" ? " done" : "")}>{t.text}</span>
                                 <OwnerStack owners={t.owners} size={16} />
+                                {t.prereqs && t.prereqs.length > 0 && (
+                                  <span className="gantt-prereq-badge" title={"Needs: " + t.prereqs.join(", ")}>
+                                    ← {t.prereqs.join(", ")}
+                                  </span>
+                                )}
                               </div>
                               <div className="gantt-track" style={{ width: totalW }}>
                                 {t.due && inWindow(t.due) && <div className="gantt-subdot" style={{ left: xClamped(t.due), background: taskColor(t) }} onClick={() => openTask(t.id)}
@@ -259,6 +284,8 @@ function TimelineView({ openTask, openDeliv, mutate, filtersOpen, setFiltersOpen
           <span><span className="diamond-key" /> Target date</span>
           <span><span className="tick-key" /> Task due</span>
           <span><span className="gantt-today-key" /> Today</span>
+          <span><span className="hard-deadline-key" /> Hard deadline</span>
+          <span><span className="milestone-line-key" /> Milestone</span>
         </div>
       </div>
     </div>

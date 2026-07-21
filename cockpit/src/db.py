@@ -9,7 +9,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 14
+SCHEMA_VERSION = 15
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -222,7 +222,9 @@ CREATE TABLE deliverables (
   source TEXT,
   deal TEXT,
   version INTEGER NOT NULL DEFAULT 1,
-  start_date TEXT
+  start_date TEXT,
+  hard_deadline INTEGER NOT NULL DEFAULT 0,
+  is_milestone INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE tasks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -479,6 +481,14 @@ MIGRATIONS = {
     ],
     14: [
         lambda c: _add_column_if_missing(c, "users", "calendar_upn", "TEXT"),
+    ],
+    15: [
+        lambda c: _add_column_if_missing(
+            c, "deliverables", "hard_deadline", "INTEGER NOT NULL DEFAULT 0"
+        ),
+        lambda c: _add_column_if_missing(
+            c, "deliverables", "is_milestone", "INTEGER NOT NULL DEFAULT 0"
+        ),
     ],
 }
 

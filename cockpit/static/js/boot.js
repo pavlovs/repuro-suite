@@ -240,6 +240,8 @@
             displayNum: wsNum + "." + delivNum,
             status: d.status || "open",
             startDate: d.start_date || null,
+            hardDeadline: !!d.hard_deadline,
+            isMilestone: !!d.is_milestone,
             deal: dealCode ? { codename: dealCode, stage: w.deal_stage || stageOf[dealCode] || "?" } : null,
           });
           liveTasks.forEach(function (t) { pushTask(mapTask(t, d.id)); });

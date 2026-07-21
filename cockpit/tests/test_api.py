@@ -1189,6 +1189,70 @@ def test_migration_v3_to_v4(tmp_path):
 
 
 # ---- drag-reorder persists ---------------------------------------------------
+def test_hard_deadline_patch_and_state(client):
+    ws = make_ws(client)
+    d_id = make_deliv(client, ws, target_date="2026-08-01")
+    state = client.get("/api/state", headers=auth()).json()
+    d_from_state = next(
+        d
+        for s in state["spaces"]
+        for w in s["workstreams"]
+        for d in w["deliverables"]
+        if d["id"] == d_id
+    )
+    v = d_from_state["version"]
+    assert d_from_state["hard_deadline"] is False  # default
+
+    r = client.patch(
+        f"/api/deliverable/{d_id}",
+        json={"version": v, "hard_deadline": True},
+        headers=auth(),
+    )
+    assert r.status_code == 200, r.text
+
+    state2 = client.get("/api/state", headers=auth()).json()
+    d2 = next(
+        d
+        for s in state2["spaces"]
+        for w in s["workstreams"]
+        for d in w["deliverables"]
+        if d["id"] == d_id
+    )
+    assert d2["hard_deadline"] is True
+
+
+def test_is_milestone_patch_and_state(client):
+    ws = make_ws(client)
+    d_id = make_deliv(client, ws, target_date="2026-09-03")
+    state = client.get("/api/state", headers=auth()).json()
+    d_from_state = next(
+        d
+        for s in state["spaces"]
+        for w in s["workstreams"]
+        for d in w["deliverables"]
+        if d["id"] == d_id
+    )
+    v = d_from_state["version"]
+    assert d_from_state["is_milestone"] is False
+
+    r = client.patch(
+        f"/api/deliverable/{d_id}",
+        json={"version": v, "is_milestone": True},
+        headers=auth(),
+    )
+    assert r.status_code == 200, r.text
+
+    state2 = client.get("/api/state", headers=auth()).json()
+    d2 = next(
+        d
+        for s in state2["spaces"]
+        for w in s["workstreams"]
+        for d in w["deliverables"]
+        if d["id"] == d_id
+    )
+    assert d2["is_milestone"] is True
+
+
 def test_task_reorder_reflects_state_order(client):
     """PATCH /api/tasks/reorder persists new sort_order; /api/state returns tasks
     in the requested order (sort_order is the primary sort key in assemble_state)."""

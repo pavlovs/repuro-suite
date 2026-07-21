@@ -252,7 +252,7 @@ function TableView({ mutate, openTask, openDeliv, filters }) {
                             {!readOnly && <button className="rep-act rep-act--add" title="add task"
                               onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />}
                             <span className="deliv-sp" />
-                            {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")}>{du < 0 ? "overdue " : "due "}{fdate(d.target)}</span>}
+                            {d.target && <span className={"deliv-due" + (d.hardDeadline ? " hard-deadline-due" : "") + (du < 0 ? " over" : du <= 7 ? " soon" : "")}>{du < 0 ? "overdue " : "due "}{fdate(d.target)}</span>}
                           </div>
                           {(open[d.id] !== false) && (
                             <div className="deliv-body">
@@ -339,7 +339,7 @@ function DeliverableView({ mutate, openTask, openDeliv, filters }) {
                       onClick={(e) => { e.stopPropagation(); openDeliv && openDeliv(d.id); }} />
                     {!readOnly && <button className="rep-act rep-act--add" title="add task to this deliverable"
                       onClick={(e) => { e.stopPropagation(); window.dispatchEvent(new CustomEvent("cockpit:quickadd", { detail: { d: d.id } })); }} />}
-                    {d.target && <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")} style={{ fontSize: 11 }}>{fdate(d.target)}</span>}
+                    {d.target && <span className={"deliv-due" + (d.hardDeadline ? " hard-deadline-due" : "") + (du < 0 ? " over" : du <= 7 ? " soon" : "")} style={{ fontSize: 11 }}>{fdate(d.target)}</span>}
                   </div>
                   {isOpen && (
                     <div style={{ marginTop: 4 }}>

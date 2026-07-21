@@ -12,7 +12,7 @@ Claude reads this when `/suite-fix` is invoked.
 ## Bugs // Improvements (open)
 
 *(none — all clear as of 2026-07-08)*
-
+- [ ] When I click dealroom in the dealroom view it navigates bak to the suite instead of back to the dealroom view (/deals/)
 
 
 ---
@@ -22,7 +22,7 @@ Claude reads this when `/suite-fix` is invoked.
 - [ ] [ARCH][high] DEALRoom: child tables keyed by free-text `domain` strand rows on rename — read-only check found REAL orphans in `deal_documents/deal_valuations/deal_questions` (domains `wolf`, `cat`, `blackbird`; Mouse→Everto clean). Migration SQL drafted, NOT executed — **approve cleanup?** (`dealroom/src/db.py`)
 - [x] [ARCH][medium] DEALRoom: wrong DB path silently creates+seeds a fresh DB — wired `DEALROOM_REQUIRE_DB=1` in fly.toml 2026-06-26
 - [x] [ARCH][medium] Suite: `investor.db` omitted from Litestream — fixed 2026-07-07 (v2.1.22): investor.db added to litestream.yml + entrypoint restore-on-empty guard for all four DBs
-- [ ] [ARCH][low] / Infra (deferred — architecture change): `entrypoint.sh` boot-time `sed` injection of `COCKPIT_BASE_PATH` is fragile. Replace with a `/config.js` endpoint that returns `window.COCKPIT_BASE="/cockpit"` so HTML files become immutable. (`suite/entrypoint.sh`)
+- [ ] [ARCH][low] / Infra (deferred — architecture change): `entrypoint.sh` boot-time `sed` injection of `COCKPIT_BASE_PATH` is fragile. Replace with a config.js endpoint (does not exist yet) that returns `window.COCKPIT_BASE="/cockpit"` so HTML files become immutable. (`suite/entrypoint.sh`)
 - [ ] [UX][low] ALLEX: blocking `alert()` fallbacks — no toast system exists; would need a new feedback primitive (`lead-pipeline/src/pipeline/templates/dashboard.html`)
 
 ---
@@ -42,6 +42,7 @@ Claude reads this when `/suite-fix` is invoked.
 ## Resolved
 Deployed fixes are pruned on each `/suite-fix` run. See git history of this file for the full log.
 
+- [x] (Anton) Save failed: `{"detail":"input_question required when input_from is set"}` when setting "Input required from Roman" in the task drawer — chicken-and-egg: the drawer saved `inputFrom` immediately while `inputQuestion` was still empty (the Question field only renders after that save succeeds). Fixed 2026-07-21: selecting a person now opens the question modal first and saves both fields in one PATCH (`task-drawer.jsx`); defect-class sweep also guards clearing the question while inputFrom is set (toast, no 422); quick-add already guarded.
 - [x] MOUSE onepager into online Dealroom — pushed 2026-07-08 via flyctl SSH (onepager fields + 16 commercial + 40 customer rows + 19 missing financials; prod-only rows preserved; prod DB backed up first). Verified rendering live on /deals/?deal=Mouse. NOTE: flyctl SSH was never broken — the trailing "handle is invalid" is a cosmetic Windows console teardown error AFTER successful output.
 
 Cockpit fix batch — fixed + deployed + click-verified live 2026-07-08 (v2.1.25):

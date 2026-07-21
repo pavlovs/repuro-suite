@@ -175,7 +175,13 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
             <select className="dm-select" value={task.inputFrom || ""}
               onChange={(e) => {
                 const v = e.target.value || null;
-                api.save(task, { inputFrom: v, inputQuestion: v ? task.inputQuestion : null });
+                // server rejects inputFrom without a question — collect it in one save
+                if (v && !(task.inputQuestion || "").trim()) {
+                  showModal("What's needed from " + (PEOPLE[v] ? PEOPLE[v].name : v) + "?", [{placeholder: "e.g. confirm budget, approve draft"}]).then((q) => {
+                    if (!q || !q.trim()) return;
+                    api.save(task, { inputFrom: v, inputQuestion: q.trim() });
+                  });
+                } else api.save(task, { inputFrom: v, inputQuestion: v ? task.inputQuestion : null });
               }}>
               <option value="">— none —</option>
               {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p] ? PEOPLE[p].name : p}</option>)}
@@ -185,7 +191,11 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
             <div><span className="dm-k">Question</span><span className="dm-v">
               <FieldInput className="dm-date" style={{width:"100%"}} value={task.inputQuestion} readOnly={readOnly}
                 placeholder="what's needed from them"
-                onSave={(v) => api.save(task, { inputQuestion: v })} />
+                onSave={(v) => {
+                  // server rejects an empty question while inputFrom is set
+                  if (!(v || "").trim()) return showToast("Question required while input is requested — clear 'Input from' instead", "err");
+                  api.save(task, { inputQuestion: v.trim() });
+                }} />
             </span></div>
           )}
         </div>

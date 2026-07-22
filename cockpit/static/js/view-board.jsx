@@ -36,11 +36,12 @@ function BoardView({ grouping, mutate, openTask, filters }) {
   filters = filters || {};
 
   let pool = TASKS;
+  if (filters.workstream) pool = pool.filter((t) => (wsOf(t) || {}).id === filters.workstream);
   if (filters.person) pool = pool.filter((t) => (t.owners || []).includes(filters.person));
   if (filters.readiness) pool = pool.filter((t) => readiness(t) === filters.readiness);
 
   const columns = grouping === "workstream"
-    ? SPACES.flatMap((s) => (wsPerSpace[s.id] || []).filter((w) => w.visibility !== "hidden").map((w) => ({ id: w.id, label: w.name, color: w.color, space: s.name, tasks: pool.filter((t) => (wsOf(t) || {}).id === w.id) })))
+    ? SPACES.flatMap((s) => (wsPerSpace[s.id] || []).filter((w) => w.visibility !== "hidden" && (!filters.workstream || w.id === filters.workstream)).map((w) => ({ id: w.id, label: w.name, color: w.color, space: s.name, tasks: pool.filter((t) => (wsOf(t) || {}).id === w.id) })))
     : STATUS_ORDER.map((s) => ({ id: s, label: STATUS_LABEL[s], tasks: pool.filter((t) => t.status === s) }));
 
   const canDrag = grouping === "status";

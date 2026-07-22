@@ -85,6 +85,7 @@ def test_owner_state_all_modules_not_read_only(client):
         "timeline",
         "agents",
         "relations",
+        "calendar",
     }
     assert p["profile"] == "owner"
     assert p["is_admin"] is True
@@ -463,8 +464,15 @@ def _seed_user(cockpit_db, uid, token, profile=None, login=None, teams=()):
     cockpit_db.execute(
         "INSERT INTO users (id, name, initials, role, token_hash, profile, login) "
         "VALUES (?,?,?,?,?,?,?)",
-        (uid, uid.upper(), uid[:2].upper(), "human",
-         hashlib.sha256(token.encode()).hexdigest(), profile, login),
+        (
+            uid,
+            uid.upper(),
+            uid[:2].upper(),
+            "human",
+            hashlib.sha256(token.encode()).hexdigest(),
+            profile,
+            login,
+        ),
     )
     for tid in teams:
         cockpit_db.execute(
@@ -497,6 +505,531 @@ def test_teamless_legacy_owner_still_fail_open(cockpit_db, client):
     state = client.get("/api/state", headers=hdrs).json()
     assert state["principal"]["read_only"] is False
     assert "workstreams" in state["principal"]["perms"]
+
+
+# ---------------------------------------------------------------------------
+# Multi-user personal cockpit (2026-07-15): users/lanes payload, per-user agent
+# scoping, lane-scoped learnings, agent-user provisioning
+# ---------------------------------------------------------------------------
+
+TEAMMEMBER_TOKEN = "test-token-anton"
+
+
+def _team_auth():
+    return {"Authorization": f"Bearer {TEAMMEMBER_TOKEN}"}
+
+
+@pytest.fixture()
+def team_member_client(cockpit_db, client):
+    """Non-admin team member (anton) in a crew team with workstreams+agents rw."""
+    cockpit_db.execute(
+        "INSERT INTO teams (id, name, permissions) VALUES ('crew','Crew',"
+        '\'{"overview":"ro","week":"rw","workstreams":"rw","agents":"rw"}\')'
+    )
+    cockpit_db.commit()
+    _seed_user(cockpit_db, "anton", TEAMMEMBER_TOKEN, login="anton", teams=("crew",))
+    return client
+
+
+def _agent_task(client, headers, text="agent job"):
+    r = client.post(
+        "/api/task",
+        json={
+            "text": text,
+            "execution": "agent_supervised",
+            "acceptance_criteria": "done when done",
+        },
+        headers=headers,
+    )
+    assert r.status_code == 201, r.text
+    return r.json()
+
+
+def _all_task_ids(state):
+    ids = {t["id"] for t in state.get("standalone_tasks", [])}
+    for s in state.get("spaces", []):
+        for w in s.get("workstreams", []):
+            for d in w.get("deliverables", []):
+                ids |= {t["id"] for t in d.get("tasks", [])}
+    return ids
+
+
+def test_state_contains_users_and_lanes(client):
+    state = client.get("/api/state", headers=auth()).json()
+    users = {u["id"]: u for u in state["users"]}
+    assert "rd" in users and users["rd"]["initials"] == "RD"
+    assert all(u["id"] != "rc-agent" for u in state["users"])  # humans only
+    assert state["lanes"] == {"rd": "RC"}
+
+
+def test_non_admin_sees_only_own_agent_tasks(team_member_client):
+    c = team_member_client
+    foreign = _agent_task(c, auth(), "rd's agent job")
+    own = _agent_task(c, _team_auth(), "anton's agent job")
+    # a non-agent standalone task the team member owns is NOT removed by the
+    # agent scrub (control: the agent scrub is agent-specific)
+    plain = c.post(
+        "/api/task", json={"text": "anton plain", "responsible": "AN"}, headers=auth()
+    )
+    assert plain.status_code == 201
+
+    member_ids = _all_task_ids(c.get("/api/state", headers=_team_auth()).json())
+    assert own["id"] in member_ids
+    assert foreign["id"] not in member_ids
+    assert plain.json()["id"] in member_ids  # team's own non-agent task stays
+
+    admin_ids = _all_task_ids(c.get("/api/state", headers=auth()).json())
+    assert foreign["id"] in admin_ids and own["id"] in admin_ids
+
+
+def test_non_admin_learnings_scoped_to_own_lane(cockpit_db, team_member_client):
+    c = team_member_client
+    for lane in ("rd", "anton", None):
+        cockpit_db.execute(
+            "INSERT INTO learnings (lane, text, status, created_at) "
+            "VALUES (?,?, 'candidate', '2026-07-15T00:00:00Z')",
+            (lane, f"lesson for {lane or 'all'}"),
+        )
+    cockpit_db.commit()
+    member = c.get("/api/state", headers=_team_auth()).json()
+    assert {l["lane"] for l in member["learnings"]} == {"anton"}
+    admin = c.get("/api/state", headers=auth()).json()
+    assert {l["lane"] for l in admin["learnings"]} == {"rd", "anton", None}
+
+
+def test_admin_can_create_agent_user_with_lane(team_member_client):
+    c = team_member_client
+    r = c.post(
+        "/api/admin/user",
+        json={
+            "id": "ac-agent",
+            "name": "Anton's Claude",
+            "initials": "AC",
+            "role": "agent",
+            "represents": "anton",
+        },
+        headers=auth(),
+    )
+    assert r.status_code == 201, r.text
+    state = c.get("/api/state", headers=auth()).json()
+    assert state["lanes"]["anton"] == "AC"
+    # the new agent token drains anton's lane
+    own = _agent_task(c, _team_auth(), "anton lane job")
+    q = c.get(
+        "/api/agent/queue",
+        headers={"Authorization": f"Bearer {r.json()['token']}"},
+    ).json()
+    assert [t["id"] for t in q["queue"]] == [own["id"]]
+
+
+def test_admin_create_user_rejects_unknown_represents(client):
+    r = client.post(
+        "/api/admin/user",
+        json={"id": "x-agent", "name": "X", "role": "agent", "represents": "ghost"},
+        headers=auth(),
+    )
+    assert r.status_code == 422
+
+
+def test_admin_patch_user_name_initials(team_member_client):
+    c = team_member_client
+    r = c.patch(
+        "/api/admin/user/anton",
+        json={"name": "Anton Neu", "initials": "AN"},
+        headers=auth(),
+    )
+    assert r.status_code == 200
+    ov = c.get("/api/admin/overview", headers=auth()).json()
+    anton = next(u for u in ov["users"] if u["id"] == "anton")
+    assert anton["name"] == "Anton Neu" and anton["initials"] == "AN"
+
+
+def test_non_admin_cannot_patch_users(team_member_client):
+    r = team_member_client.patch(
+        "/api/admin/user/anton", json={"name": "Hax"}, headers=_team_auth()
+    )
+    assert r.status_code == 403
+
+
+# ---------------------------------------------------------------------------
+# Admin-managed work email (calendar_upn) — connection is provisioning,
+# not per-user opt-in: having the email set = calendar connected.
+# ---------------------------------------------------------------------------
+
+
+def test_admin_patch_user_calendar_upn_set_and_clear(team_member_client, monkeypatch):
+    c = team_member_client
+    monkeypatch.setattr("src.calendar_graph.probe_upn", lambda upn: (True, "ok"))
+    r = c.patch(
+        "/api/admin/user/anton",
+        json={"calendar_upn": "anton.werlitz@repuro.de"},
+        headers=auth(),
+    )
+    assert r.status_code == 200, r.text
+    ov = c.get("/api/admin/overview", headers=auth()).json()
+    anton = next(u for u in ov["users"] if u["id"] == "anton")
+    assert anton["calendar_upn"] == "anton.werlitz@repuro.de"
+    r = c.patch("/api/admin/user/anton", json={"calendar_upn": ""}, headers=auth())
+    assert r.status_code == 200
+    ov = c.get("/api/admin/overview", headers=auth()).json()
+    anton = next(u for u in ov["users"] if u["id"] == "anton")
+    assert anton["calendar_upn"] is None
+
+
+def test_admin_patch_user_calendar_upn_unknown_mailbox_rejected(
+    team_member_client, monkeypatch
+):
+    monkeypatch.setattr(
+        "src.calendar_graph.probe_upn", lambda upn: (False, "unknown_upn")
+    )
+    r = team_member_client.patch(
+        "/api/admin/user/anton",
+        json={"calendar_upn": "ghost@repuro.de"},
+        headers=auth(),
+    )
+    assert r.status_code == 422
+
+
+def test_admin_patch_user_calendar_upn_saved_when_unverifiable(
+    team_member_client, monkeypatch
+):
+    """Graph env missing must NOT block storing the address — the account
+    carries its email; the calendar stays inert until the backend works."""
+    monkeypatch.setattr(
+        "src.calendar_graph.probe_upn", lambda upn: (False, "not_configured")
+    )
+    r = team_member_client.patch(
+        "/api/admin/user/anton",
+        json={"calendar_upn": "anton.werlitz@repuro.de"},
+        headers=auth(),
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_admin_patch_user_calendar_upn_bad_format_rejected(team_member_client):
+    r = team_member_client.patch(
+        "/api/admin/user/anton",
+        json={"calendar_upn": "not-an-email"},
+        headers=auth(),
+    )
+    assert r.status_code == 422
+
+
+def test_non_admin_cannot_set_calendar_upn_via_admin(team_member_client):
+    r = team_member_client.patch(
+        "/api/admin/user/anton",
+        json={"calendar_upn": "anton.werlitz@repuro.de"},
+        headers=_team_auth(),
+    )
+    assert r.status_code == 403
+
+
+def test_admin_create_user_with_calendar_upn(client, monkeypatch):
+    monkeypatch.setattr("src.calendar_graph.probe_upn", lambda upn: (True, "ok"))
+    r = client.post(
+        "/api/admin/user",
+        json={
+            "id": "flo",
+            "name": "Florian Fischer",
+            "calendar_upn": "florian.fischer@repuro.de",
+        },
+        headers=auth(),
+    )
+    assert r.status_code == 201, r.text
+    ov = client.get("/api/admin/overview", headers=auth()).json()
+    flo = next(u for u in ov["users"] if u["id"] == "flo")
+    assert flo["calendar_upn"] == "florian.fischer@repuro.de"
+
+
+# ---------------------------------------------------------------------------
+# Side-door privacy (codex 2026-07-15): export, activity, per-task routes,
+# learning decide — every path must enforce the same lane privacy as /api/state
+# ---------------------------------------------------------------------------
+
+
+def test_export_md_scrubs_foreign_agent_tasks(team_member_client):
+    c = team_member_client
+    _agent_task(c, auth(), "SECRET rd agent job")
+    own = _agent_task(c, _team_auth(), "anton export job")
+    md = c.get("/api/export.md?scope=all", headers=_team_auth()).text
+    assert "SECRET rd agent job" not in md
+    assert "anton export job" in md
+    admin_md = c.get("/api/export.md?scope=all", headers=auth()).text
+    assert "SECRET rd agent job" in admin_md and own["id"] in admin_md
+
+
+def test_activity_hides_foreign_agent_entries(team_member_client):
+    c = team_member_client
+    foreign = _agent_task(c, auth(), "SECRET rd activity job")
+    own = _agent_task(c, _team_auth(), "anton activity job")
+    entries = c.get("/api/activity", headers=_team_auth()).json()["entries"]
+    assert all(e["entity"] != foreign["id"] for e in entries)
+    assert any(e["entity"] == own["id"] for e in entries)
+    admin_entries = c.get("/api/activity", headers=auth()).json()["entries"]
+    assert any(e["entity"] == foreign["id"] for e in admin_entries)
+
+
+def test_non_admin_cannot_touch_foreign_agent_task(team_member_client):
+    c = team_member_client
+    foreign = _agent_task(c, auth(), "rd guarded job")
+    # PATCH
+    r = c.patch(
+        f"/api/task/{foreign['id']}",
+        json={"version": foreign["version"], "text": "hax"},
+        headers=_team_auth(),
+    )
+    assert r.status_code == 403
+    # DELETE
+    assert (
+        c.delete(f"/api/task/{foreign['id']}", headers=_team_auth()).status_code == 403
+    )
+    # verdicts on an in-review foreign task
+    r = c.patch(
+        f"/api/task/{foreign['id']}",
+        json={"version": foreign["version"], "status": "in_review"},
+        headers=auth(),
+    )
+    assert r.status_code == 200
+    for action, body in (
+        ("approve", {}),
+        ("reject", {}),
+        ("request-changes", {"feedback": "nope"}),
+    ):
+        r = c.post(
+            f"/api/task/{foreign['id']}/{action}", json=body, headers=_team_auth()
+        )
+        assert r.status_code == 403, action
+    # own agent task stays fully workable
+    own = _agent_task(c, _team_auth(), "anton workable job")
+    r = c.patch(
+        f"/api/task/{own['id']}",
+        json={"version": own["version"], "text": "anton edited"},
+        headers=_team_auth(),
+    )
+    assert r.status_code == 200
+
+
+def test_non_admin_learning_decide_lane_gated(cockpit_db, team_member_client):
+    c = team_member_client
+    for lane in ("rd", "anton", None):
+        cockpit_db.execute(
+            "INSERT INTO learnings (lane, text, status, created_at) "
+            "VALUES (?,?, 'candidate', '2026-07-15T00:00:00Z')",
+            (lane, f"decide test {lane or 'global'}"),
+        )
+    cockpit_db.commit()
+    ids = {
+        r["lane"]: r["id"]
+        for r in cockpit_db.execute(
+            "SELECT id, lane FROM learnings WHERE text LIKE 'decide test %'"
+        )
+    }
+    deny_rd = c.post(
+        f"/api/learning/{ids['rd']}/decide",
+        json={"action": "dismiss"},
+        headers=_team_auth(),
+    )
+    assert deny_rd.status_code == 403
+    deny_global = c.post(
+        f"/api/learning/{ids[None]}/decide",
+        json={"action": "dismiss"},
+        headers=_team_auth(),
+    )
+    assert deny_global.status_code == 403
+    own = c.post(
+        f"/api/learning/{ids['anton']}/decide",
+        json={"action": "promote"},
+        headers=_team_auth(),
+    )
+    assert own.status_code == 200
+    admin = c.post(
+        f"/api/learning/{ids['rd']}/decide",
+        json={"action": "dismiss"},
+        headers=auth(),
+    )
+    assert admin.status_code == 200
+
+
+def test_non_admin_reorder_and_import_cannot_touch_foreign_agent(team_member_client):
+    c = team_member_client
+    foreign = _agent_task(c, auth(), "rd reorder/import guard")
+    own = c.post("/api/task", json={"text": "anton plain"}, headers=_team_auth()).json()
+    # reorder including a foreign agent task -> 403
+    r = c.patch(
+        "/api/tasks/reorder",
+        json={"task_ids": [own["id"], foreign["id"]]},
+        headers=_team_auth(),
+    )
+    assert r.status_code == 403
+    # reorder of only own tasks -> ok
+    r = c.patch(
+        "/api/tasks/reorder", json={"task_ids": [own["id"]]}, headers=_team_auth()
+    )
+    assert r.status_code == 200
+    # md import targeting the foreign task -> 403
+    md = f"## task-update\n- id: {foreign['id']} | version: {foreign['version']} | text: hax\n"
+    r = c.post(
+        "/api/import",
+        content=md,
+        headers={**_team_auth(), "Content-Type": "text/markdown"},
+    )
+    assert r.status_code == 403
+
+
+def test_non_admin_cannot_upload_preview_to_foreign_agent(team_member_client):
+    c = team_member_client
+    foreign = _agent_task(c, auth(), "rd preview guard")
+    r = c.post(
+        f"/api/task/{foreign['id']}/upload-preview",
+        files={"file": ("x.md", b"secret", "text/markdown")},
+        headers=_team_auth(),
+    )
+    assert r.status_code == 403
+
+
+def test_activity_redacts_deleted_task_body_for_non_admin(team_member_client):
+    c = team_member_client
+    foreign = _agent_task(c, auth(), "SECRET deleted agent body")
+    assert c.delete(f"/api/task/{foreign['id']}", headers=auth()).status_code == 200
+    # non-admin: EVERY audit entry for the deleted foreign task carries no body
+    entries = c.get("/api/activity", headers=_team_auth()).json()["entries"]
+    mine = [e for e in entries if e["entity"] == foreign["id"]]
+    for e in mine:
+        assert e.get("before") is None and e.get("after") is None
+    # admin: the body survives somewhere (create.after or delete.before)
+    admin_entries = c.get("/api/activity", headers=auth()).json()["entries"]
+    admin_mine = [e for e in admin_entries if e["entity"] == foreign["id"]]
+    assert any(e.get("before") or e.get("after") for e in admin_mine)
+
+
+def test_non_admin_delete_cannot_sideeffect_foreign_agent(team_member_client):
+    c = team_member_client
+    # (1) deleting an own task that a foreign agent task depends on -> blocked
+    gate = c.post("/api/task", json={"text": "anton gate"}, headers=_team_auth()).json()
+    dep = c.post(
+        "/api/task",
+        json={
+            "text": "rd agent depends on anton",
+            "execution": "agent_supervised",
+            "acceptance_criteria": "x",
+            "prereqs": [{"ref": gate["id"], "hardness": "hard"}],
+        },
+        headers=auth(),
+    )
+    assert dep.status_code == 201
+    assert c.delete(f"/api/task/{gate['id']}", headers=_team_auth()).status_code == 403
+    # admin can (strips the ref)
+    assert c.delete(f"/api/task/{gate['id']}", headers=auth()).status_code == 200
+
+    # (2) deleting a shared deliverable that holds a foreign agent task -> blocked
+    wid = _make_ws(c, name="Shared deliv WS")
+    did = c.post(
+        "/api/deliverable",
+        json={"workstream_id": wid, "name": "shared deliv"},
+        headers=_team_auth(),
+    ).json()["id"]
+    c.post(
+        "/api/task",
+        json={
+            "text": "rd agent under shared deliv",
+            "deliverable_id": did,
+            "execution": "agent_supervised",
+            "acceptance_criteria": "x",
+        },
+        headers=auth(),
+    )
+    assert c.delete(f"/api/deliverable/{did}", headers=_team_auth()).status_code == 403
+    assert c.delete(f"/api/deliverable/{did}", headers=auth()).status_code == 200
+
+
+def test_standalone_tasks_scoped_to_owner_for_non_admin(team_member_client):
+    """Standalone tasks (no workstream) have no team assignment to gate them —
+    they leaked ALL founders' loose fundraising tasks to team. A non-admin keeps
+    only standalone tasks they own or created (Strada leak, 2026-07-15)."""
+    c = team_member_client
+    # founder's loose task — team must NOT see it
+    foreign = c.post(
+        "/api/task",
+        json={"text": "Feedback Strada on FMIP + Term Sheet", "responsible": "RD"},
+        headers=auth(),
+    ).json()
+    # loose task the admin assigns to Anton (AN in responsible) — team SEES it
+    owned = c.post(
+        "/api/task",
+        json={"text": "Anton loose task", "responsible": "AN"},
+        headers=auth(),
+    ).json()
+    # loose task Anton creates himself — team SEES it
+    mine = c.post(
+        "/api/task", json={"text": "Anton made this"}, headers=_team_auth()
+    ).json()
+    # shared owner string 'RD, AN' — team SEES it (is an owner)
+    shared = c.post(
+        "/api/task",
+        json={"text": "shared loose", "responsible": "RD, AN"},
+        headers=auth(),
+    ).json()
+
+    team_ids = {
+        t["id"]
+        for t in c.get("/api/state", headers=_team_auth()).json()["standalone_tasks"]
+    }
+    assert foreign["id"] not in team_ids
+    assert owned["id"] in team_ids
+    assert mine["id"] in team_ids
+    assert shared["id"] in team_ids
+
+    admin_ids = {
+        t["id"] for t in c.get("/api/state", headers=auth()).json()["standalone_tasks"]
+    }
+    assert {foreign["id"], owned["id"], mine["id"]} <= admin_ids  # admin sees all
+
+
+def test_standalone_scrub_applies_to_export(team_member_client):
+    c = team_member_client
+    c.post(
+        "/api/task",
+        json={"text": "SECRET Strada loose export", "responsible": "RD"},
+        headers=auth(),
+    )
+    md = c.get("/api/export.md?scope=all", headers=_team_auth()).text
+    assert "SECRET Strada loose export" not in md
+    admin_md = c.get("/api/export.md?scope=all", headers=auth()).text
+    assert "SECRET Strada loose export" in admin_md
+
+
+def test_non_admin_progress_counts_match_visible_tasks(team_member_client):
+    c = team_member_client
+    wid = _make_ws(c, name="Progress WS")
+    r = c.post(
+        "/api/deliverable",
+        json={"workstream_id": wid, "name": "Progress deliv"},
+        headers=auth(),
+    )
+    did = r.json()["id"]
+    c.post(
+        "/api/task", json={"text": "plain child", "deliverable_id": did}, headers=auth()
+    )
+    r = c.post(
+        "/api/task",
+        json={
+            "text": "rd agent child",
+            "deliverable_id": did,
+            "execution": "agent_supervised",
+            "acceptance_criteria": "x",
+        },
+        headers=auth(),
+    )
+    assert r.status_code == 201
+    st = c.get("/api/state", headers=_team_auth()).json()
+    deliv = next(
+        d
+        for s in st["spaces"]
+        for w in s["workstreams"]
+        for d in w["deliverables"]
+        if d["id"] == did
+    )
+    assert deliv["computed"]["progress"]["total"] == len(deliv["tasks"]) == 1
 
 
 def test_module_gate_bounds_state_payload(cockpit_db, client):

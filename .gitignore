@@ -45,6 +45,10 @@ venv/
 *.gif
 *.emf
 
+# Served UI assets — must be tracked or deploys from a clean worktree ship
+# without them (investor topbar logos vanished after the 15.07. deploy)
+!boardroom/static/img/*.png
+
 # OS / editor
 .DS_Store
 desktop.ini

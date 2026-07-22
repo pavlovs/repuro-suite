@@ -1,14 +1,74 @@
 /* ===== My Week — computed daily/weekly recommendation + shared lane ===== */
 
+/* "+ Add" person picker for the meeting — searchable dropdown (shares the
+   .ps-menu styles); disabled at the 3-person cap instead of silently evicting. */
+function MtgAddPerson({ selected, onAdd }) {
+  const [open, setOpen] = React.useState(false);
+  const [q, setQ] = React.useState("");
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onEsc = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onEsc);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onEsc); };
+  }, [open]);
+  const full = selected.length >= 3;
+  const needle = q.trim().toLowerCase();
+  const candidates = meFirst(Object.keys(PEOPLE)).filter((p) => !selected.includes(p))
+    .filter((p) => !needle || (((PEOPLE[p].full || "") + " " + (PEOPLE[p].name || "") + " " + p).toLowerCase().indexOf(needle) >= 0));
+  return (
+    <div className="mtg-add" ref={ref}>
+      <button className="mtg-add-btn" disabled={full}
+        title={full ? "Max 3 in a meeting — remove someone first" : "Add a person to this meeting"}
+        onClick={() => { setOpen((o) => !o); setQ(""); }}>+ Add</button>
+      {open && !full && (
+        <div className="ps-menu">
+          {candidates.length >= 8 && (
+            <input className="ps-search" autoFocus placeholder="Find person…" value={q} onChange={(e) => setQ(e.target.value)} />
+          )}
+          {candidates.map((p) => (
+            <button key={p} className="ps-item" onClick={() => { onAdd(p); setOpen(false); }}>
+              <Avatar id={p} size={20} /><span className="ps-nm">{PEOPLE[p].full || PEOPLE[p].name}</span>
+            </button>
+          ))}
+          {!candidates.length && <div className="ps-empty">No match</div>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* --- Weekly Meeting prep view — agenda-structured, both people, decision-first --- */
 function MeetingView({ mutate, openTask }) {
   const [mode, setMode] = React.useState("daily");
   const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
-  const live = TASKS.filter((t) => t.status !== "done");
+  const live = TASKS.filter((t) => t.status !== "done" && t.execution !== "agent");
+  /* Meeting is a focused 1:1 / small-group surface — MAX 3 columns. With a
+     bigger team, pick who's in THIS meeting (persisted per browser). Team-wide
+     review lives in Workstreams (filter by workstream there), not here. */
+  const ALL_PEOPLE = meFirst(Object.keys(PEOPLE));
+  const [mtgSel, setMtgSel] = React.useState(() => {
+    let saved = null;
+    // localStorage so the weekly meeting keeps its people across browser restarts
+    // (was sessionStorage → re-picking every session; old key read once as migration)
+    try { saved = JSON.parse(localStorage.getItem("cockpit_mtg_people") || sessionStorage.getItem("cockpit_mtg_people") || "null"); } catch (_) {}
+    const valid = Array.isArray(saved) ? saved.filter((p) => PEOPLE[p]) : null;
+    return valid && valid.length ? valid.slice(0, 3) : ALL_PEOPLE.slice(0, 3);
+  });
+  const saveMtg = (next) => { try { localStorage.setItem("cockpit_mtg_people", JSON.stringify(next)); } catch (_) {} return next; };
+  // no silent eviction: adding past the cap is refused (the + Add button disables),
+  // removing below 1 is refused (last chip has no ✕)
+  const removeMtg = (p) => setMtgSel((sel) => (sel.length > 1 ? saveMtg(sel.filter((x) => x !== p)) : sel));
+  const addMtg = (p) => setMtgSel((sel) => (sel.includes(p) || sel.length >= 3 ? sel : saveMtg([...sel, p])));
+  // render in the canonical me-first order, restricted to the picked set
+  const MTG_PEOPLE = ALL_PEOPLE.filter((p) => mtgSel.includes(p));
+  const mtgColsCls = "wk-cols wk-cols-" + Math.min(MTG_PEOPLE.length, 3);
 
   // Deadlines — next upcoming milestone per active deal
   const activeStages = new Set(["loi_signed", "dd", "indicative_offer", "valuation_rfi"]);
-  const hasOpenWork = (d) => TASKS.some((t) => t.d === d.id && t.status !== "done");
+  const hasOpenWork = (d) => TASKS.some((t) => t.d === d.id && t.status !== "done" && t.execution !== "agent");
   const nextByDeal = {};
   DELIVERABLES
     .filter((d) => d.deal && d.target && daysUntil(d.target) >= 0 && activeStages.has(d.deal.stage) && hasOpenWork(d))
@@ -32,11 +92,11 @@ function MeetingView({ mutate, openTask }) {
   const dow = lastMon.getDay();
   lastMon.setDate(lastMon.getDate() - (dow === 0 ? 6 : dow - 1));
   if (dow === 1) lastMon.setDate(lastMon.getDate() - 7);
-  const lastMonISO = lastMon.toISOString().slice(0, 10);
-  const recentDone = TASKS.filter((t) => t.status === "done" && t.doneAt && t.doneAt >= lastMonISO)
+  const lastMonISO = localISO(lastMon); // NOT toISOString — UTC shift breaks local dates east of UTC
+  const recentDone = TASKS.filter((t) => t.status === "done" && t.execution !== "agent" && t.doneAt && t.doneAt >= lastMonISO)
     .sort((a, b) => (b.doneAt || "").localeCompare(a.doneAt || ""));
-  const rdDone = recentDone.filter((t) => (t.owners || []).includes("RD"));
-  const ffDone = recentDone.filter((t) => (t.owners || []).includes("FF"));
+  const doneBy = {};
+  MTG_PEOPLE.forEach((p) => { doneBy[p] = recentDone.filter((t) => (t.owners || []).includes(p)); });
 
   // ---- Section 2: Decisions & waiting — only what needs a person to act (issue 30) ----
   // Roman's rule: show Decisions needed + Waiting on external ONLY. NOT plain overdue,
@@ -45,9 +105,9 @@ function MeetingView({ mutate, openTask }) {
   const claim = (list) => { const out = list.filter((t) => !seen.has(t.id)); out.forEach((t) => seen.add(t.id)); return out; };
   // Decisions needed: ONLY a real decision (approval gate) or a task explicitly requesting someone's input.
   // NOT execution==="together" — that's just collaborative work and dumped the whole todo list here.
-  const decisions = claim(live.filter((t) => t.inputFrom || t.kind === "approval"));
+  const decisions = claim(live.filter((t) => t.inputFrom || t.kind === "approval").sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; }));
   // Waiting on external: the ball is with a counterparty / advisor / investor
-  const waiting = claim(live.filter((t) => t.status === "waiting"));
+  const waiting = claim(live.filter((t) => t.status === "waiting").sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; }));
   const attentionN = decisions.length + waiting.length;
 
   // ---- Section 3: This week per person (by deliverable) ----
@@ -62,14 +122,14 @@ function MeetingView({ mutate, openTask }) {
     for (const dId of delivIds) {
       const d = byDeliv[dId];
       if (!d) continue;
-      const myTasks = myActive.filter((t) => t.d === dId);
+      const myTasks = myActive.filter((t) => t.d === dId).sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; });
       // Issue 27: in the weekly view only surface deliverables that have a subtask due within the coming 7 days
       if (!myTasks.some((t) => t.due && daysUntil(t.due) <= 7)) continue;
       const allTasks = TASKS.filter((t) => t.d === dId);
       const doneCount = allTasks.filter((t) => t.status === "done").length;
       delivs.push({ ...d, total: allTasks.length, done: doneCount, myTasks, wsObj: byWs[d.ws] });
     }
-    const standalone = myActive.filter((t) => !t.d);
+    const standalone = myActive.filter((t) => !t.d).sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; });
     return { delivs, standalone };
   }
 
@@ -82,13 +142,16 @@ function MeetingView({ mutate, openTask }) {
     return Object.entries(map);
   }
 
-  const rd = personFocus("RD"), ff = personFocus("FF");
+  const focusBy = {};
+  MTG_PEOPLE.forEach((p) => { focusBy[p] = personFocus(p); });
 
   // Daily mode data
-  const dueTodayRD = live.filter((t) => (t.owners || []).includes("RD") && t.due && daysUntil(t.due) <= 0 && t.status !== "waiting");
-  const dueTodayFF = live.filter((t) => (t.owners || []).includes("FF") && t.due && daysUntil(t.due) <= 0 && t.status !== "waiting");
+  const dueTodayBy = {};
+  MTG_PEOPLE.forEach((p) => {
+    dueTodayBy[p] = live.filter((t) => (t.owners || []).includes(p) && t.due && daysUntil(t.due) <= 0 && t.status !== "waiting").sort((a, b) => a.due.localeCompare(b.due));
+  });
   const delivsDueToday = DELIVERABLES
-    .filter((d) => d.target && daysUntil(d.target) <= 0 && TASKS.some((t) => t.d === d.id && t.status !== "done"))
+    .filter((d) => d.target && daysUntil(d.target) <= 0 && TASKS.some((t) => t.d === d.id && t.status !== "done" && t.execution !== "agent"))
     .map((d) => ({ ...d, s: delivStats(d), wsObj: byWs[d.ws] }))
     .sort((a, b) => a.target.localeCompare(b.target));
 
@@ -111,6 +174,21 @@ function MeetingView({ mutate, openTask }) {
           <button className={mode === "daily" ? "on" : ""} onClick={() => setMode("daily")}>Daily</button>
           <button className={mode === "weekly" ? "on" : ""} onClick={() => setMode("weekly")}>Weekly</button>
         </div>
+        {ALL_PEOPLE.length > 3 && (
+          <div className="mtg-pick" title="Up to 3 people in this meeting">
+            <span className="mtg-pick-lbl">In this meeting</span>
+            {MTG_PEOPLE.map((p) => (
+              <span key={p} className="mtg-pick-chip on" title={PEOPLE[p].full}>
+                <Avatar id={p} size={16} />{PEOPLE[p].name}
+                {mtgSel.length > 1 && (
+                  <button className="mtg-chip-x" title={"Remove " + PEOPLE[p].name + " from this meeting"}
+                    onClick={() => removeMtg(p)}>×</button>
+                )}
+              </span>
+            ))}
+            <MtgAddPerson selected={mtgSel} onAdd={addMtg} />
+          </div>
+        )}
         <div className="ws-toolbar-sp" />
         <span className="ws-toolbar-note">{mode === "weekly" ? "Week " + weekNum + " · " : ""}{todayDate.toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long" })}</span>
       </div>
@@ -123,7 +201,7 @@ function MeetingView({ mutate, openTask }) {
             const days = daysUntil(d.target);
             const cls = days <= 7 ? "urgent" : days <= 14 ? "soon" : "";
             return (
-              <div key={d.id} className={"loi-item " + cls}>
+              <div key={d.id} className={"loi-item " + cls + (d.hardDeadline ? " hard-deadline-item" : "")}>
                 <span className="loi-code">{d.deal.codename}</span>
                 <span className="loi-ms">{shortName(d)}</span>
                 <span className="loi-days">{days}d</span>
@@ -138,8 +216,8 @@ function MeetingView({ mutate, openTask }) {
       {mode === "daily" && (
         <React.Fragment>
           <div className="mtg-sec-label"><Icon name="week" size={14} /> Due Today</div>
-          <div className="wk-cols wk-cols-2">
-            {[["RD", dueTodayRD], ["FF", dueTodayFF]].map(([p, tasks]) => (
+          <div className={mtgColsCls}>
+            {MTG_PEOPLE.map((p) => [p, dueTodayBy[p]]).map(([p, tasks]) => (
               <div key={p} className="card wk-col">
                 <div className="wk-h"><Avatar id={p} size={18} /> {PEOPLE[p].name}<span className="wk-n">{tasks.length}</span></div>
                 {tasks.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} />)}
@@ -173,8 +251,8 @@ function MeetingView({ mutate, openTask }) {
       {mode === "weekly" && (
         <React.Fragment>
           <div className="mtg-sec-label"><Icon name="week" size={14} /> This week's focus</div>
-          <div className="wk-cols wk-cols-2">
-            {[["RD", rd], ["FF", ff]].map(([p, data]) => {
+          <div className={mtgColsCls}>
+            {MTG_PEOPLE.map((p) => [p, focusBy[p]]).map(([p, data]) => {
               const groups = groupByWs(data.delivs);
               const taskCount = data.delivs.reduce((n, d) => n + d.myTasks.length, 0) + data.standalone.length;
               return (
@@ -199,7 +277,9 @@ function MeetingView({ mutate, openTask }) {
                               <span className="wk-deliv-prog">
                                 <span className="prog-bar" style={{width:60}}><span style={{ width: pct + "%", background: d.wsObj ? d.wsObj.color : "#94a3b8" }} /></span>
                               </span>
-                              {d.target && <span className={"deliv-due" + (daysLeft < 0 ? " over" : daysLeft <= 7 ? " soon" : "")}>{fdate(d.target)}</span>}
+                              {d.target && <span className={"deliv-due" + (d.hardDeadline ? " hard-deadline-due" : "") + (daysLeft < 0 ? " over" : daysLeft <= 7 ? " soon" : "")}>
+                                {d.hardDeadline && daysLeft >= 0 ? "T-" + daysLeft + " Tage · " : ""}{fdate(d.target)}
+                              </span>}
                             </div>
                             {d.myTasks.map((t) => <WeekRow key={t.id} t={t} mutate={mutate} openTask={openTask} showWs={false} />)}
                           </div>
@@ -267,7 +347,7 @@ function MeetingView({ mutate, openTask }) {
           </div>
           <div id="mtg-done-body" style={{display:"none"}}>
             <div className="mtg-done-cols">
-              {[["RD", rdDone], ["FF", ffDone]].map(([p, items]) => items.length > 0 && (
+              {MTG_PEOPLE.map((p) => [p, doneBy[p]]).map(([p, items]) => items.length > 0 && (
                 <div key={p} className="mtg-done-col">
                   <div className="mtg-done-person"><Avatar id={p} size={16} /> {PEOPLE[p].name}</div>
                   {items.map((t) => (
@@ -417,44 +497,34 @@ function WeekRow({ t, mutate, openTask, showWs = true, showDate = true, dragHand
   );
 }
 
-/* ---- AgentQueue: 1-2 suggested agent tasks for My Week ---- */
+/* ---- AgentQueue: agent tasks waiting on the viewer — in_review or blocked with a question.
+   TASKS is already scoped server-side: non-admins only ever receive their own
+   agent workflows here. Hidden entirely without the agents module. ---- */
 function AgentQueue({ openTask }) {
-  const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
-  const candidates = TASKS
+  const hasAgents = window.COCKPIT && (window.COCKPIT.modules || []).includes("agents");
+  const needsMe = TASKS
     .filter((t) =>
       t.execution === "agent" &&
-      t.status !== "done" &&
-      readiness(t) !== "red"
+      (t.status === "in_review" || t.statusRaw === "blocked")
     )
-    .sort((a, b) => {
-      const pa = PRIORITY_ORDER[a.priority] ?? 1;
-      const pb = PRIORITY_ORDER[b.priority] ?? 1;
-      if (pa !== pb) return pa - pb;
-      if (a.due && b.due) return a.due.localeCompare(b.due);
-      if (a.due) return -1;
-      if (b.due) return 1;
-      return 0;
-    })
-    .slice(0, 2);
+    .slice(0, 5);
 
-  if (!candidates.length) return null;
+  if (!hasAgents || !needsMe.length) return null;
 
   return (
     <div className="card" style={{marginTop:12}}>
       <div className="wk-h">
-        <Icon name="bolt" size={14} /> Agent Queue<span className="wk-n">{candidates.length}</span>
+        <Icon name="bolt" size={14} /> Agents — waiting on you<span className="wk-n">{needsMe.length}</span>
       </div>
-      {candidates.map((t) => {
-        const ws = wsOf(t);
-        const du = t.due ? daysUntil(t.due) : null;
+      {needsMe.map((t) => {
+        const isBlocked = t.statusRaw === "blocked";
         return (
           <div key={t.id} className="wkrow tc-click" onClick={() => openTask && openTask(t.id)}>
-            <span className="rdot" data-level={readiness(t)} style={{width:8,height:8}} />
+            <span className="rdot" data-level={isBlocked ? "amber" : "red"} style={{width:8,height:8}} />
             <div className="wkrow-txt">
               <span className="wkrow-main">{t.text}</span>
-              {ws && <span className="wkrow-sub">{ws.name}</span>}
+              <span className="wkrow-sub">{isBlocked ? "Waiting on your answer" : "Needs review"}</span>
             </div>
-            {t.due && <DueChip t={t} />}
           </div>
         );
       })}
@@ -464,14 +534,14 @@ function AgentQueue({ openTask }) {
 
 function WeekView({ person, mutate, openTask, embedded }) {
   const readOnly = !(window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw")));
-  const live = TASKS.filter((t) => t.status !== "done");
+  const live = TASKS.filter((t) => t.status !== "done" && t.execution !== "agent");
   const mine = live.filter((t) => (t.owners || []).includes(person));
 
   const [pinnedLocal, setPinnedLocal] = React.useState(null);
   const [dueTodayLocal, setDueTodayLocal] = React.useState(null);
   const [upNextLocal, setUpNextLocal] = React.useState(null);
 
-  const pinnedBase = mine.filter((t) => t.pinned && t.status !== "waiting");
+  const pinnedBase = mine.filter((t) => t.pinned && t.status !== "waiting").sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; });
   // Bug 3 fix: no separate Overdue section — overdue tasks roll into Due Today (red badge signals them)
   const dueTodayBase = mine.filter((t) => t.status !== "waiting" && !t.pinned && t.due && daysUntil(t.due) <= 0)
     .sort((a, b) => a.due.localeCompare(b.due));
@@ -494,20 +564,46 @@ function WeekView({ person, mutate, openTask, embedded }) {
   const dayLabel = todayDate.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
 
   const weekDelivs = DELIVERABLES
-    .filter((d) => d.target && daysUntil(d.target) <= 10 && TASKS.some((t) => t.d === d.id && t.status !== "done"))
+    .filter((d) => d.target && daysUntil(d.target) <= 10 && TASKS.some((t) => t.d === d.id && t.status !== "done" && t.execution !== "agent"))
     .map((d) => ({ ...d, s: delivStats(d), ws: byWs[d.ws] }))
     .sort((a, b) => a.target.localeCompare(b.target));
 
   // Decisions & waiting (issue 30): decisions needed + items waiting on someone external.
   // NOT tasks blocked by the other person / a prerequisite — that's just sequencing.
   // ONLY a real decision (approval gate) or a task explicitly requesting input — NOT execution==="together".
-  const decisions = live.filter((t) => t.inputFrom || t.kind === "approval");
-  const waitingShared = live.filter((t) => t.status === "waiting" && !decisions.includes(t)); // dedup: a task shows under one group only
+  const decisions = live.filter((t) => t.inputFrom || t.kind === "approval").sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; });
+  const waitingShared = live.filter((t) => t.status === "waiting" && !decisions.includes(t)).sort((a, b) => { if (a.due && b.due) return a.due.localeCompare(b.due); if (a.due) return -1; if (b.due) return 1; return 0; }); // dedup: a task shows under one group only
   const sharedN = decisions.length + waitingShared.length;
   // Switchable right column (Roman's request): only ever 2 boxes side by side — Due Today | one of Tomorrow/Personal/Blocked
   const personalOpen = (typeof PERSONAL !== "undefined" ? PERSONAL : []).filter((t) => t.status !== "done");
   const [rightTab, setRightTab] = React.useState("tomorrow");
   const [delivOpen, setDelivOpen] = React.useState({});
+  const [calBadge, setCalBadge] = React.useState(0);
+  const [calAgenda, setCalAgenda] = React.useState(null);
+  const calFetched = React.useRef(false);
+  React.useEffect(() => {
+    if (rightTab !== "calendar" || calFetched.current) return;
+    calFetched.current = true;
+    var today = localISO(todayDate);
+    api.calendarEvents("team", today, 2)
+      .then(function(d) {
+        if (d && d.events) {
+          // keep only the two days the agenda groups render — badge must match the list;
+          // all-day spans count on every covered day (Graph end date is exclusive)
+          var tomorrow = addDays(today, 1);
+          var covers = function(e, day) {
+            var s = (e.start || "").slice(0, 10);
+            if (!e.all_day) return s === day;
+            var en = (e.end || "").slice(0, 10);
+            return en > s ? (day >= s && day < en) : day === s;
+          };
+          var evs = d.events.filter(function(e) { return covers(e, today) || covers(e, tomorrow); });
+          setCalBadge(evs.length);
+          setCalAgenda(evs);
+        }
+      })
+      .catch(function() { calFetched.current = false; }); // retry on next tab visit instead of loading forever
+  }, [rightTab]);
 
   return (
     <div className="wk">
@@ -529,7 +625,7 @@ function WeekView({ person, mutate, openTask, embedded }) {
         <div className="card wk-col">
           <div className="wk-h wk-h--seg">
             <div className="seg wk-rseg">
-              {[["tomorrow", "Tomorrow", upNext.length], ["personal", "Personal", personalOpen.length], ["blocked", "Blocked", sharedN]].map((opt) => (
+              {[["tomorrow", "Tomorrow", upNext.length], ["personal", "Personal", personalOpen.length], ["blocked", "Blocked", sharedN], ["calendar", "Calendar", calBadge]].map((opt) => (
                 <button key={opt[0]} className={rightTab === opt[0] ? "on" : ""} onClick={() => setRightTab(opt[0])}>
                   {opt[1]}{opt[2] > 0 && <span className="wk-n">{opt[2]}</span>}
                 </button>
@@ -572,6 +668,37 @@ function WeekView({ person, mutate, openTask, embedded }) {
               {!sharedN && <div className="empty">nothing blocked — no decisions or waits</div>}
             </React.Fragment>
           )}
+
+          {rightTab === "calendar" && (
+            <React.Fragment>
+              {!calAgenda && <div className="empty">Loading…</div>}
+              {calAgenda && calAgenda.length === 0 && <div className="empty">No meetings today or tomorrow</div>}
+              {calAgenda && (() => {
+                var today = localISO(todayDate);
+                var tomorrow = addDays(today, 1);
+                var groups = [[today, "Today"], [tomorrow, "Tomorrow"]];
+                return groups.map(function(g) {
+                  var evs = calAgenda.filter(function(e) { return (e.start || "").startsWith(g[0]); });
+                  if (!evs.length) return null;
+                  return (
+                    <React.Fragment key={g[0]}>
+                      <div className="wk-grp">{g[1]}</div>
+                      {evs.map(function(ev, i) {
+                        var time = (ev.start || "").match(/T(\d{2}:\d{2})/);
+                        return (
+                          <div key={i} className="wkrow cal-agenda-row">
+                            <span className="cal-agenda-time">{time ? time[1] : "—"}</span>
+                            <span className="wkrow-main" style={{flex:1}}>{ev.subject}</span>
+                            {ev.user && <span className="avatar" style={{width:18,height:18,fontSize:7.5,background:"#0891B2",flexShrink:0}}>{ev.user.initials}</span>}
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                });
+              })()}
+            </React.Fragment>
+          )}
         </div>
       </div>
 
@@ -581,7 +708,7 @@ function WeekView({ person, mutate, openTask, embedded }) {
           {weekDelivs.map((d) => {
             const du = daysUntil(d.target);
             const isOpen = !!delivOpen[d.id];
-            const openTasks = TASKS.filter((t) => t.d === d.id && t.status !== "done");
+            const openTasks = TASKS.filter((t) => t.d === d.id && t.status !== "done" && t.execution !== "agent");
             return (
               <div key={d.id} className="wk-deliv-block">
                 <div className="wk-deliv-head" style={{cursor:"pointer"}} onClick={() => setDelivOpen((o) => ({...o, [d.id]: !isOpen}))}>
@@ -595,7 +722,9 @@ function WeekView({ person, mutate, openTask, embedded }) {
                   <span className="wk-deliv-prog">
                     <span className="prog-bar" style={{width:50}}><span style={{ width: (d.s.total ? d.s.done / d.s.total * 100 : 0) + "%", background: d.ws ? d.ws.color : "var(--brand)" }} /></span>
                   </span>
-                  <span className={"deliv-due" + (du < 0 ? " over" : du <= 7 ? " soon" : "")}>{fdate(d.target)}</span>
+                  <span className={"deliv-due" + (d.hardDeadline ? " hard-deadline-due" : "") + (du < 0 ? " over" : du <= 7 ? " soon" : "")}>
+                    {d.hardDeadline && du >= 0 ? "T-" + du + " Tage · " : ""}{fdate(d.target)}
+                  </span>
                 </div>
                 {isOpen && (
                   <div style={{marginTop:4}}>

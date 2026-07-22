@@ -1,7 +1,57 @@
 /* ============================================================
-   Repuro Cockpit — view styles (overview / board / week / table / relations / timeline)
+   Repuro Cockpit — view styles (overview / board / week / table / relations / timeline / calendar)
    ============================================================ */
 .warn { color: #92670a; } .bad { color: var(--rose); }
+
+/* ============================ CALENDAR ============================ */
+.cal-root { display: flex; flex-direction: column; gap: 12px; }
+.cal-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 4px; }
+.cal-week-nav { display: flex; align-items: center; gap: 2px; }
+.cal-nav-btn { border: 1px solid var(--line); background: var(--surface); border-radius: 7px; padding: 5px 10px; font-size: 13px; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.cal-nav-btn:hover { color: var(--brand); border-color: var(--brand); }
+.cal-today-btn { padding: 5px 12px; }
+.cal-week-label { font-size: 12px; color: var(--muted); font-weight: 600; }
+.cal-legend { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.cal-legend-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--ink-2); font-weight: 600; }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.cal-col { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 6px; min-height: 120px; }
+.cal-col--today { border-color: var(--brand); background: var(--cyan-50, #ecfeff); }
+.cal-col-hd { display: flex; align-items: baseline; gap: 5px; margin-bottom: 6px; padding-bottom: 5px; border-bottom: 1px solid var(--line-2); }
+.cal-day-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+.cal-day-num { font-size: 15px; font-weight: 700; color: var(--ink-2); }
+.cal-day-num--today { color: var(--brand); }
+.cal-col-empty { min-height: 40px; }
+
+.cal-ev { display: flex; flex-direction: column; gap: 2px; padding: 4px 5px; border-radius: 5px; background: var(--surface-2); border-left: 3px solid var(--brand); margin-bottom: 4px; font-size: 11px; }
+.cal-ev--allday { flex-direction: row; align-items: center; gap: 4px; border-left-color: var(--purple, #7C3AED); background: var(--purple-50, #f5f3ff); }
+.cal-ev--private { border-left-color: var(--ink-2); background: var(--line-2, #f1f5f9); opacity: 0.8; }
+.cal-ev--free { border-left-color: var(--line); opacity: 0.65; }
+.cal-ev-time { font-size: 10px; font-weight: 700; color: var(--muted); }
+.cal-ev-body { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.cal-ev-title { font-weight: 600; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-ev-loc { font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-ev-join { font-size: 10px; font-weight: 700; color: var(--brand); text-decoration: none; }
+.cal-ev-join:hover { text-decoration: underline; }
+.cal-lock { font-size: 10px; margin-right: 2px; }
+
+.cal-setup-card { padding: var(--card-pad); }
+.cal-setup-title { font-size: 14px; font-weight: 700; color: var(--ink); display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+.cal-setup-body { font-size: 13px; color: var(--ink-2); margin: 0 0 10px; }
+.cal-setup-steps { font-size: 13px; color: var(--ink-2); padding-left: 18px; margin: 0; line-height: 1.8; }
+.cal-connect-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cal-connect-input { border: 1px solid var(--line); border-radius: 7px; padding: 7px 10px; font-size: 13px; color: var(--ink); background: var(--surface); min-width: 240px; }
+.cal-connect-input:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(8,145,178,.12); }
+.cal-connect-err { font-size: 12px; color: var(--rose); margin-top: 6px; }
+.cal-connect-nudge { padding: var(--card-pad); }
+.cal-disconnect-row { display: flex; justify-content: flex-end; }
+.cal-disconnect-btn { border: none; background: none; font-size: 12px; color: var(--muted); cursor: pointer; padding: 2px 0; }
+.cal-disconnect-btn:hover { color: var(--rose); }
+.cal-disconnect-confirm { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); }
+
+/* Calendar agenda rows in week-view right column */
+.cal-agenda-row { display: flex; align-items: center; gap: 8px; }
+.cal-agenda-time { font-size: 11px; font-weight: 700; color: var(--muted); min-width: 36px; flex-shrink: 0; }
 
 /* shared segmented control */
 .seg { display: inline-flex; gap: 2px; background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
@@ -205,13 +255,27 @@
 .mtg-sec-h { display: flex; align-items: center; gap: 8px; padding: 12px 18px 10px; font-size: 13px; font-weight: 700; color: var(--ink); }
 .mtg-sec-h .icon { color: var(--brand); }
 .mtg-sec-h.attn .icon { color: var(--rose); }
+/* meeting participant picker — max 3 columns; appears only past 3 people.
+   Only the SELECTED people render as chips (✕ removes); adding goes through
+   the "+ Add" dropdown — no all-people chip row, no silent eviction. */
+.mtg-pick { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.mtg-pick-lbl { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .4px; margin-right: 2px; }
+.mtg-pick-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 4px; border: 1px solid var(--line-2); border-radius: 999px; background: #fff; font-size: 12px; font-weight: 600; color: var(--ink-2); }
+.mtg-pick-chip.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+.mtg-pick-chip.on .avatar { box-shadow: 0 0 0 1.5px #fff; }
+.mtg-chip-x { border: none; background: transparent; color: inherit; opacity: .65; font-size: 13px; line-height: 1; padding: 0 0 0 2px; cursor: pointer; }
+.mtg-chip-x:hover { opacity: 1; }
+.mtg-add { position: relative; }
+.mtg-add-btn { display: inline-flex; align-items: center; padding: 3px 10px; border: 1px dashed var(--line); border-radius: 999px; background: transparent; font-size: 12px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.mtg-add-btn:hover:not(:disabled) { border-color: var(--brand); color: var(--brand); }
+.mtg-add-btn:disabled { opacity: .45; cursor: not-allowed; }
 .mtg-sec-label { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--ink-2); margin: 16px 0 8px 2px; }
 .mtg-sec-label .icon { color: var(--brand); }
 
-/* meeting v2: completed section */
-.mtg-done-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid var(--line-2); }
+/* meeting v2: completed section — auto-fit so 2 or 3 people both lay out cleanly */
+.mtg-done-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 0; border-top: 1px solid var(--line-2); }
 .mtg-done-col { padding: 8px 18px 12px; }
-.mtg-done-col:first-child { border-right: 1px solid var(--line-2); }
+.mtg-done-col:not(:last-child) { border-right: 1px solid var(--line-2); }
 .mtg-done-person { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--ink-2); margin-bottom: 6px; padding-top: 4px; }
 .mtg-done-row { display: flex; align-items: center; gap: 6px; padding: 4px 0; font-size: 12px; color: var(--muted); cursor: pointer; }
 .mtg-done-row:hover { color: var(--ink); }
@@ -261,6 +325,8 @@
 .ws-stage[data-active="true"] { color: var(--brand-700); background: var(--cyan-50); border: 1px solid var(--cyan-light); }
 .ws-stage[data-active="false"] { color: var(--muted); background: var(--surface); border: 1px solid var(--line); }
 .deliv { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--ws); border-radius: var(--radius); margin-bottom: 8px; margin-left: 14px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); overflow: hidden; }
+.deliv.done { opacity: .55; border-left-color: var(--line); }
+.deliv.done:hover { opacity: .9; }
 .deliv-h { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; background: transparent; }
 .deliv-h:hover { background: var(--surface-2); }
 .caret { color: var(--faint); display: grid; place-items: center; transition: transform .15s; }
@@ -533,3 +599,26 @@
   .ag-rev-left { padding-right: 0; padding-bottom: 14px; }
   .ag-rev-right { flex: 1; max-width: 100%; border-left: none; border-top: 1px solid var(--line); padding-left: 0; padding-top: 14px; }
 }
+
+/* ===== Hard deadline (t-517) ===== */
+.gantt-diamond.hard-deadline { background: #e11d48 !important; width: 12px; height: 12px; margin-left: -6px; margin-top: -6px; }
+.gantt-target-lbl.hard-deadline-lbl { color: #e11d48; font-weight: 700; }
+.deliv-due.hard-deadline-due { color: #e11d48; font-weight: 700; background: #fff1f2; border-color: #fecdd3; }
+.loi-item.hard-deadline-item { border-left: 3px solid #e11d48; }
+
+/* Milestone line (t-517) */
+.gantt-milestone-line {
+  position: absolute; top: 0; bottom: 0; width: 2px;
+  background: #7c3aed; opacity: 0.6; pointer-events: none; z-index: 2;
+}
+.gantt-milestone-line:hover { opacity: 1; cursor: default; }
+
+/* Prereq badge (t-517) */
+.gantt-prereq-badge {
+  font-size: 10px; color: #94a3b8; background: #f1f5f9;
+  border: 1px solid #e2e8f0; border-radius: 4px; padding: 0 4px; margin-left: 4px;
+}
+
+/* Legend keys (t-517) */
+.hard-deadline-key { display: inline-block; width: 12px; height: 12px; background: #e11d48; transform: rotate(45deg); margin-right: 4px; }
+.milestone-line-key { display: inline-block; width: 2px; height: 14px; background: #7c3aed; margin-right: 6px; }

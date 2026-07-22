@@ -10,7 +10,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -78,7 +78,7 @@ def open_readonly(path):
 DDL = """
 CREATE TABLE publications (
   id           INTEGER PRIMARY KEY AUTOINCREMENT,
-  kind         TEXT NOT NULL CHECK(kind IN ('weekly_update','board_pack')),
+  kind         TEXT NOT NULL CHECK(kind IN ('weekly_update','board_pack','investor_view')),
   ref          TEXT NOT NULL,
   title        TEXT,
   status       TEXT NOT NULL CHECK(status IN ('draft','approved','published','archived')),
@@ -129,8 +129,45 @@ def _migrate(conn, from_v):
             "  updated_at TEXT NOT NULL"
             ")"
         )
+    if from_v < 3:
+        _migrate_v2_to_v3(conn)
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
     conn.commit()
+
+
+def _migrate_v2_to_v3(conn):
+    """Add 'investor_view' to publications.kind CHECK constraint.
+    SQLite cannot ALTER CHECK constraints, so recreate the table."""
+    conn.execute(
+        "CREATE TABLE publications_v3 ("
+        "  id INTEGER PRIMARY KEY AUTOINCREMENT,"
+        "  kind TEXT NOT NULL CHECK(kind IN ('weekly_update','board_pack','investor_view')),"
+        "  ref TEXT NOT NULL,"
+        "  title TEXT,"
+        "  status TEXT NOT NULL CHECK(status IN ('draft','approved','published','archived')),"
+        "  body TEXT NOT NULL DEFAULT '{}',"
+        "  created_at TEXT NOT NULL,"
+        "  approved_at TEXT,"
+        "  approved_by TEXT,"
+        "  published_at TEXT,"
+        "  version INTEGER NOT NULL DEFAULT 1"
+        ")"
+    )
+    conn.execute("INSERT INTO publications_v3 SELECT * FROM publications")
+    conn.execute("DROP TABLE publications")
+    conn.execute("ALTER TABLE publications_v3 RENAME TO publications")
+    conn.execute(
+        "CREATE UNIQUE INDEX ux_pub_one_published_per_kind "
+        "ON publications(kind) WHERE status = 'published'"
+    )
+    max_id = conn.execute("SELECT COALESCE(MAX(id), 0) FROM publications").fetchone()[0]
+    conn.execute(
+        "DELETE FROM sqlite_sequence WHERE name IN ('publications', 'publications_v3')"
+    )
+    conn.execute(
+        "INSERT INTO sqlite_sequence (name, seq) VALUES ('publications', ?)",
+        (max_id,),
+    )
 
 
 def init_db(conn=None):

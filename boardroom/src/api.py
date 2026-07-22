@@ -9,6 +9,7 @@ import logging
 import os
 import re
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.responses import HTMLResponse
@@ -548,8 +549,175 @@ def _assemble_page() -> str:
 
 
 @app.get("/")
-def index():
-    return HTMLResponse(_assemble_page())
+def index(
+    week: str | None = Query(default=None),
+    x_remote_user: str | None = Header(default=None),
+):
+    is_investor = x_remote_user == "investor"
+
+    if week:  # legacy ?week= links; dated path URLs are canonical
+        iso = _iso_from_ref(week)
+        if not iso:
+            raise HTTPException(404, "no investor view for that week")
+        return _serve_archived_week(iso, is_investor)
+
+    if is_investor:
+        return _serve_published_view(True)
+
+    return HTMLResponse(_inject_draft_toolbar(_assemble_page()))
+
+
+@app.get("/{ref_date}")
+def week_page(ref_date: str, x_remote_user: str | None = Header(default=None)):
+    """Dated static snapshot URL: /260702 (external: /investor/260702).
+    Published weeks live here forever; only 6-digit refs match."""
+    if not re.fullmatch(r"\d{6}", ref_date):
+        raise HTTPException(404, "not found")
+    iso = _iso_from_ref(ref_date)
+    return _serve_archived_week(iso, x_remote_user == "investor")
+
+
+# ACT1 slot visibility (templates/sections/act1-thisweek.html): edit ids are
+# '<slot>-title' / '<slot>-body' / '<slot>-comment' / '<slot>-rec'; spare slots
+# start hidden and are revealed via the '__slots__' inline edit ({slot: 1|0}).
+_SLOT_EDIT_RE = re.compile(r"^((?:tile|dec)-\d+)-")
+_DEFAULT_HIDDEN_SLOTS = {
+    "tile-5",
+    "tile-6",
+    "tile-7",
+    "tile-8",
+    "dec-3",
+    "dec-4",
+    "dec-5",
+    "dec-6",
+}
+
+
+def _strip_hidden_slot_edits(inline_edits: dict) -> dict:
+    """Publish-time privacy: content typed into a slot that is HIDDEN at publish
+    must not ship to the investor inside the frozen edits (it would be recoverable
+    from page source even though the UI hides the slot). The '__slots__' visibility
+    map itself stays; only content edits of hidden slots are dropped. The draft's
+    inline_edits rows are untouched — undo/re-add before publish keeps content."""
+    try:
+        slots = json.loads(inline_edits.get("__slots__", "{}"))
+        if not isinstance(slots, dict):
+            slots = {}
+    except ValueError:
+        slots = {}
+
+    def _hidden(slot: str) -> bool:
+        v = slots.get(slot)
+        if v is None:
+            return slot in _DEFAULT_HIDDEN_SLOTS
+        # Fail closed: the map is admin-supplied free-form JSON, so anything
+        # other than an explicit 1/true (e.g. "0", "false", garbage) is hidden.
+        return v is not True and v != 1
+
+    out = {}
+    for k, v in inline_edits.items():
+        m = _SLOT_EDIT_RE.match(k)
+        if m and _hidden(m.group(1)):
+            continue
+        out[k] = v
+    return out
+
+
+@app.post("/api/investor-view/publish")
+def publish_investor_view(p=Depends(admin_only)):
+    """Freeze the current draft as this week's static snapshot: templates +
+    inline edits → published investor_view at its dated URL. Archives the
+    previous published week and runs the denylist scan. Inline edits are
+    frozen into the snapshot AND KEPT in the live draft (Roman 10-07: publish
+    must never scrub the draft back to bare templates — the 10 Jul publish
+    silently dropped all of the 09 Jul edits). Stale-edit hygiene when a
+    template content refresh ships is the weekly workflow's job, not an
+    automatic scrub."""
+    html = _assemble_page()
+
+    rows = db.get_conn().execute("SELECT edit_id, content FROM inline_edits").fetchall()
+    inline_edits = _strip_hidden_slot_edits({r["edit_id"]: r["content"] for r in rows})
+
+    body = {"html": html, "inline_edits": inline_edits}
+
+    hard = gates.scan_other_investors(body)
+    if hard:
+        raise HTTPException(409, {"hard_violations": hard})
+
+    now = db.now_iso()
+    ref = now[:10]
+
+    with db.WRITE_LOCK:
+        conn = db.get_conn()
+        conn.execute(
+            "UPDATE publications SET status='archived' "
+            "WHERE kind='investor_view' AND status='published'"
+        )
+        cur = conn.execute(
+            "INSERT INTO publications "
+            "(kind, ref, title, status, body, created_at, published_at, version) "
+            "VALUES ('investor_view', ?, 'Investor View', 'published', ?, ?, ?, 1)",
+            (ref, json.dumps(body), now, now),
+        )
+        conn.commit()
+        pub_id = cur.lastrowid
+
+    _audit(
+        p["id"],
+        "publish_investor_view",
+        f"pub:{pub_id}",
+        None,
+        {"ref": ref, "status": "published", "inline_edits_kept": len(inline_edits)},
+    )
+    return {
+        "id": pub_id,
+        "status": "published",
+        "ref": ref,
+        "url": _yymmdd(ref),
+        "published_at": now,
+        "inline_edits_kept": len(inline_edits),
+    }
+
+
+@app.post("/api/investor-view/unpublish")
+def unpublish_investor_view(p=Depends(admin_only)):
+    """Archive the published investor_view. Investor sees holding page."""
+    with db.WRITE_LOCK:
+        conn = db.get_conn()
+        row = conn.execute(
+            "SELECT id FROM publications "
+            "WHERE kind='investor_view' AND status='published'"
+        ).fetchone()
+        if not row:
+            raise HTTPException(404, "no published investor view")
+        conn.execute(
+            "UPDATE publications SET status='archived' WHERE id=?",
+            (row["id"],),
+        )
+        conn.commit()
+    _audit(
+        p["id"],
+        "unpublish_investor_view",
+        f"pub:{row['id']}",
+        {"status": "published"},
+        {"status": "archived"},
+    )
+    return {"ok": True, "id": row["id"], "status": "archived"}
+
+
+@app.get("/api/investor-view/weeks")
+def investor_view_weeks(p=Depends(principal)):
+    """Published/archived investor_view history for week switching."""
+    rows = (
+        db.get_conn()
+        .execute(
+            "SELECT id, ref, status, published_at FROM publications "
+            "WHERE kind='investor_view' AND status IN ('published','archived') "
+            "ORDER BY published_at DESC"
+        )
+        .fetchall()
+    )
+    return {"weeks": [dict(r) for r in rows]}
 
 
 # ---------------------------------------------------------------------------
@@ -653,3 +821,219 @@ def _investor_pub(row):
     out = {k: row[k] for k in _INVESTOR_FIELDS}
     out["body"] = _parse_body(row)
     return out
+
+
+# ---------------------------------------------------------------------------
+# Investor-view draft/publish helpers
+#
+# URL model (Roman, 08-07): published weeks are STATIC snapshots at dated URLs
+# (/investor/260702); the draft at / is DYNAMIC (assembled per request) and
+# becomes the next dated snapshot on publish. The week switcher is the SAME
+# for admin and investor — only the "home" option differs (draft vs latest).
+
+_MONTHS = (
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+)
+
+
+def _iso_from_ref(ref: str) -> str | None:
+    """Accept '260702' (URL form) or '2026-07-02' (DB form) → ISO, else None.
+    Calendar-validated so a malformed ref fails closed (404) instead of
+    crashing label rendering downstream."""
+    if re.fullmatch(r"\d{6}", ref):
+        iso = "20%s-%s-%s" % (ref[:2], ref[2:4], ref[4:6])
+    elif re.fullmatch(r"\d{4}-\d{2}-\d{2}", ref):
+        iso = ref
+    else:
+        return None
+    try:
+        datetime.strptime(iso, "%Y-%m-%d")
+    except ValueError:
+        return None
+    return iso
+
+
+def _yymmdd(iso: str) -> str:
+    return iso[2:4] + iso[5:7] + iso[8:10]
+
+
+def _ref_label(iso: str) -> str:
+    """Investor-facing label: '2026-07-02' → '02 Jul 2026'. Falls back to the
+    raw ref if a stored value is not a valid date (manual DB writes) — a bad
+    row must never 500 the page."""
+    try:
+        y, m, d = iso.split("-")
+        return "%s %s %s" % (d, _MONTHS[int(m) - 1], y)
+    except (ValueError, IndexError):
+        return iso
+
+
+# Relative targets: './260702' resolves under /investor/ behind Caddy; a
+# root-absolute '/?week=' would land on the suite landing page.
+_ARCHIVE_JS = (
+    "if(!this.value)return;"
+    "if(this.value==='__home'){location='./'}else{location='./'+this.value}"
+)
+
+
+def _archive_select_html(is_investor: bool, light_bg: bool = False) -> str:
+    """Compact 'Archive' dropdown that lives INSIDE the existing blue topline —
+    NEVER an additional bar (Roman 08-07: the page already has a topline; the
+    current week is labelled by the topline date itself, so no duplication).
+    Same control for both roles; only the home option differs."""
+    home = "Latest published" if is_investor else "Current draft"
+    opts = [
+        '<option value="" disabled selected hidden>Archive</option>',
+        '<option value="__home" style="color:#111">%s</option>' % home,
+    ]
+    rows = (
+        db.get_conn()
+        .execute(
+            "SELECT ref, status FROM publications "
+            "WHERE kind='investor_view' AND status IN ('published','archived') "
+            "ORDER BY published_at DESC"
+        )
+        .fetchall()
+    )
+    seen = set()
+    for r in rows:
+        if r["ref"] in seen:
+            continue
+        seen.add(r["ref"])
+        live = " (live)" if r["status"] == "published" else ""
+        opts.append(
+            '<option value="%s" style="color:#111">%s%s</option>'
+            % (_yymmdd(r["ref"]), _ref_label(r["ref"]), live)
+        )
+    style = (
+        "color:#0f172a;background:#f8fafc;border:1px solid #cbd5e1;"
+        if light_bg
+        else "color:#fff;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);"
+    )
+    return (
+        '<select id="wk-archive" onchange="' + _ARCHIVE_JS + '" '
+        'style="' + style + "border-radius:6px;padding:4px 10px;"
+        'font-size:12px;cursor:pointer;font-family:inherit">'
+        + "".join(opts)
+        + "</select>"
+    )
+
+
+def _draft_controls_html() -> str:
+    """Admin draft chrome = ONE Publish button, nothing else (Roman 08-07:
+    no chips, no extra buttons — EDIT MODE badge already marks the draft and
+    the Archive '(live)' option already shows what investors see). Unpublish
+    stays API-only: POST /api/investor-view/unpublish."""
+    return (
+        '<div id="iv-draft" style="display:flex;align-items:center">'
+        '<button onclick="_pubIV()" style="background:#fff;color:#0891B2;border:none;'
+        'padding:5px 14px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">Publish</button>'
+        "</div>"
+        "<script>"
+        "function _pubIV(){if(!confirm('Publish to investors? This freezes the current draft (incl. inline edits) as this week\\'s version. Your edits stay in the draft.'))return;"
+        "fetch('api/investor-view/publish',{method:'POST',credentials:'include'})"
+        ".then(function(r){return r.json()}).then(function(d){"
+        "if(d.status==='published'){alert('Published');location.reload()}"
+        "else alert('Error: '+(d.detail||JSON.stringify(d)))"
+        "}).catch(function(e){alert('Error: '+e)})}"
+        "</script>"
+    )
+
+
+def _inject_topline(html: str, controls: str) -> str:
+    """Insert controls INTO the existing blue topline, LEFT of the .meta block.
+    The meta ('Investor View / Weekly call · date') keeps its far-right anchor
+    (Roman 08-07 review 2: date stays right, Archive sits left of it); the
+    controls wrapper takes over meta's auto left-margin."""
+    wrapper = (
+        '<div id="iv-controls" style="margin-left:auto;display:flex;'
+        'align-items:center;gap:8px">' + controls + "</div>"
+        "<style>.topbar .meta{margin-left:0}</style>"
+    )
+    out, n = re.subn(
+        r'<div class="meta">',
+        lambda m: wrapper + m.group(0),
+        html,
+        count=1,
+    )
+    return out if n else html
+
+
+def _holding_page(is_investor: bool) -> str:
+    """No published week: message + the standard Archive control (no topline
+    exists on this minimal page, so the select sits under the message)."""
+    return (
+        "<!DOCTYPE html><html><head><title>Investor View</title></head>"
+        '<body style="font-family:system-ui;display:flex;flex-direction:column;'
+        'align-items:center;justify-content:center;height:100vh;margin:0;color:#64748b">'
+        "<h2>No published content available</h2>"
+        '<div style="margin-top:12px">'
+        + _archive_select_html(is_investor, light_bg=True)
+        + "</div></body></html>"
+    )
+
+
+def _serve_published_view(is_investor: bool = True):
+    """Serve the latest published week (static snapshot) with the week switcher."""
+    row = (
+        db.get_conn()
+        .execute(
+            "SELECT ref, body FROM publications "
+            "WHERE kind='investor_view' AND status='published' "
+            "ORDER BY published_at DESC LIMIT 1"
+        )
+        .fetchone()
+    )
+    if not row:
+        return HTMLResponse(_holding_page(is_investor))
+    body = json.loads(row["body"])
+    html = _inject_published_script(body["html"], body.get("inline_edits", {}))
+    return HTMLResponse(_inject_topline(html, _archive_select_html(is_investor)))
+
+
+def _serve_archived_week(week_iso: str, is_investor: bool = True):
+    """Serve a specific week's static snapshot (published or archived)."""
+    row = (
+        db.get_conn()
+        .execute(
+            "SELECT body FROM publications "
+            "WHERE kind='investor_view' AND ref=? "
+            "AND status IN ('published','archived') "
+            "ORDER BY published_at DESC LIMIT 1",
+            (week_iso,),
+        )
+        .fetchone()
+    )
+    if not row:
+        raise HTTPException(404, "no investor view for that week")
+    body = json.loads(row["body"])
+    html = _inject_published_script(body["html"], body.get("inline_edits", {}))
+    return HTMLResponse(_inject_topline(html, _archive_select_html(is_investor)))
+
+
+def _inject_published_script(html: str, edits: dict) -> str:
+    """Inject frozen-edit globals before </head> so shell-bottom.html JS uses them."""
+    script = (
+        "<script>window.__INVESTOR_VIEW_PUBLISHED=true;"
+        "window.__FROZEN_EDITS="
+        + json.dumps(edits, ensure_ascii=False)
+        + ";</script>\n"
+    )
+    return html.replace("</head>", script + "</head>", 1)
+
+
+def _inject_draft_toolbar(html: str) -> str:
+    """Admin draft chrome: DRAFT chip + Publish/Unpublish + Archive select,
+    all INSIDE the existing blue topline (no injected bars)."""
+    return _inject_topline(html, _draft_controls_html() + _archive_select_html(False))

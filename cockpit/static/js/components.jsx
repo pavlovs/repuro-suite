@@ -3,6 +3,13 @@ const { TODAY, PEOPLE, EXT, SPACES, WORKSTREAMS, DELIVERABLES, TASKS, STAGE_LABE
 const PERSONAL = window.COCKPIT_DATA.PERSONAL || [];
 const PRINCIPAL = window.COCKPIT_DATA.PRINCIPAL || null;
 const LEARNINGS = window.COCKPIT_DATA.LEARNINGS || [];
+const LANES = window.COCKPIT_DATA.LANES || {}; // user id -> agent lane label (rd -> RC)
+/* The logged-in person's initials — every "me" default in the views. Falls back
+   to RD only for legacy tokens that predate principal payloads. */
+const ME = (PRINCIPAL && PRINCIPAL.initials) || sessionStorage.getItem("cockpit_person") || "RD";
+function meFirst(keys) {
+  return keys.slice().sort((a, b) => (a === ME ? -1 : b === ME ? 1 : 0));
+}
 const byPersonal = Object.fromEntries(PERSONAL.map((t) => [t.id, t]));
 const byLearning = Object.fromEntries(LEARNINGS.map((l) => [l.id, l]));
 
@@ -20,9 +27,16 @@ function daysUntil(iso) {
   if (!iso) return null;
   return Math.round((new Date(iso + "T00:00:00") - todayDate) / 86400000);
 }
+// Format a Date as local YYYY-MM-DD. NEVER toISOString().slice(0,10) on a
+// local-midnight Date: it converts to UTC first, so east of UTC (Berlin) it
+// returns the PREVIOUS day — made +1d a silent no-op.
+function localISO(d) {
+  const p = (x) => String(x).padStart(2, "0");
+  return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+}
 function addDays(iso, n) {
   const d = new Date(iso + "T00:00:00"); d.setDate(d.getDate() + n);
-  return d.toISOString().slice(0, 10);
+  return localISO(d);
 }
 function fdate(iso) {
   if (!iso) return "";
@@ -177,6 +191,7 @@ function Icon({ name, size = 16 }) {
     ops: "M12 9a3 3 0 1 0 .01 0M19 12l1.5-1-1.5-2.6-1.8.6a6 6 0 0 0-1.7-1l-.3-1.9h-3l-.3 1.9a6 6 0 0 0-1.7 1l-1.8-.6L5 9l1.5 1a6 6 0 0 0 0 2L5 13l1.5 2.6 1.8-.6a6 6 0 0 0 1.7 1l.3 1.9h3l.3-1.9a6 6 0 0 0 1.7-1l1.8.6L19 13l-1.5-1a6 6 0 0 0 0-2z",
     pin: "M9 4h6l-1 6 3 3H7l3-3z M12 16v4",
     link: "M9 15l6-6M10 7l1-1a4 4 0 0 1 6 6l-1 1M14 17l-1 1a4 4 0 0 1-6-6l1-1",
+    calendar: "M4 5h16v16H4zM4 9h16M9 3v4M15 3v4M8 13h3M8 17h3",
   }[name] || "";
   return (
     <svg className="icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -192,7 +207,7 @@ WORKSTREAMS.forEach((w) => { if (wsPerSpace[w.space]) wsPerSpace[w.space].push(w
 
 Object.assign(window, {
   TODAY, PEOPLE, EXT, SPACES, WORKSTREAMS, DELIVERABLES, TASKS, PERSONAL, PRINCIPAL, STAGE_LABEL,
-  LEARNINGS, byLearning,
+  LEARNINGS, byLearning, LANES, ME, meFirst,
   todayDate, byTask, byDeliv, byWs, bySpace, byPersonal, wsPerSpace,
   daysUntil, addDays, fdate, fdateShort, readiness, blockingPrereqs, risks, recommendation, chaseDue,
   delivOf, wsOf, dealOf, STATUS_LABEL, STATUS_ORDER, DEPENDENTS,

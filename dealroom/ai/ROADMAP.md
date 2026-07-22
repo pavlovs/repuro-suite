@@ -1,8 +1,43 @@
 # DEALROOM — Roadmap
 
-Last updated: 2026-06-10.
+Last updated: 2026-07-11 (v2 local build).
 Scope: NDA exchange → closing (full deal lifecycle since Schema v2).
 ALLEX has authority over pipeline stage — DEALROOM reads, does not write back (for now).
+
+---
+
+## v2 REBUILD (SPEC-DEALROOM-V2.md) — built locally 2026-07-10/13
+
+All six milestones + suite tie-in built + tested in `v2/` (39 tests green; plans
+`ai/PLAN-DR-V2-M1.md` / `-M2` / `-M3` / `-M4-M5` / `-M7-SUITE-TIE`). Local sandbox
+on :8082 (`python -m v2.server --port 8082`), DB `data/dealroom_v2.db` (rebuildable
+via `python -m v2.migrate_v1`; v1 read-only). v1 code untouched and still serving prod.
+
+**UI rebuild after 13.07 rejection** (screens ship one at a time, sign-off each;
+old M3–M5 surfaces unregistered): Screen 1 = Portfolio (v1 port, e69bbe6).
+**Screen 2 = Offer & Negotiation (13.07, this block)**: standalone v1-language
+page `/deal/{code}/negotiation` (owner-only), spec `ai/SPEC-OFFER-NEGOTIATION-TAB.md`.
+Data layer: `negotiation_offers` + `negotiation_offer_terms` (bucket-based offer
+history per LOI structure) + `negotiation_positions.their_position/prio` — added
+to v1 via `negotiate_ops.py migrate` (new `offer` subcommand, 31 tool tests),
+carried by migrate_v1. Populated for Cat/Lion/Fox/Mantis/Mouse/Aqua from source
+docs (signed LOI PDFs, offer PDFs, negotiation rounds, deals.md; every event
+source-cited). NOTE: Fox deal_terms seed corrected against the signed LOI
+(1.000 Sofort + ca. 150 Co-Med + 750 EO gestaffelt = 1.900; deals.md prose
+"1.6 + 0.3 EO" contradicts the signed doc — Roman to update deals.md).
+Screen-2 tests: `v2/tests/test_ui_negotiation.py` (6).
+
+**Suite tie (M7, 13.07)**: deal page reads Cockpit (read-only) for the deal's
+open deliverables + tasks ("Execution — Cockpit" section, deep-linked) and shows
+Investor-Room visibility (named live-deal vs anonymised funnel) computed with
+boardroom's own stage buckets. Negotiation tie = M5. `cockpit.db` path is
+`COCKPIT_DB` on Fly / sibling locally; absent DB degrades cleanly.
+
+**Open before Fly cutover (needs Roman):**
+1. Confirm stage-correction diffs (Fox/Mantis→due_diligence, Lion→indicative_offer, Swordfish→Aqua revived) — applied in the local sandbox only.
+2. Confirm kill list §10 (v2 DB simply doesn't carry the dead tables; v1 untouched; deal_data_v1_archive exported to `data/archive/`).
+3. Sign-off on the sandbox UI (DEV-FIRST), then cutover: one-time migration against Fly volume, supervisord command → `python -m v2.server --port 8082`, `DEALROOM_TRUSTED_PROXY=1`, boardroom/cockpit repointed (their queries already pass against v2 — tested), retire deploy-time DB snapshot.
+4. Deferred to cutover phase: COM/xlsx extraction adapters push via HTTP (v1 `extract` keeps working locally until then; DR-BUG-020/022/025 move with that work); data-room scanner paths for live seller shares (`data/scanner_paths.json`); scheduled scan via RepuroAgentLoop.
 
 ---
 
@@ -36,6 +71,7 @@ ALLEX has authority over pipeline stage — DEALROOM reads, does not write back 
 | DR-M15 | Investor Report | Export cockpit data as shareable investor update (recipient-aware filtering). Thin layer on DR-M9 | ⬜ |
 | DR-M17 | Outside-In Canvas + `/deal-update` | Per-target strategic canvas via WebSearch + Opus → static HTML | 🔒 Deferred |
 | DR-M25 | Commercial DD Module | `deal_invoices` fact table, databook ingest + 106-check tie-out gate; analyses rendered INSIDE the IC-memo sections (segments→Business Model, cohorts/churn→Customers & Suppliers, findings→DD). Spec: `PLAN-DR-M25-CDD.md` | ✅ |
+| DR-M26 | Deal State Pack (session entry) | `tools/deal_state_pack.py` + `tools/dd_item.py` + `state/<codename>-pack.md`; `deal_dd_items` ledger + `last_verified_at`; `[CODENAME]` prompt-hook injection + `/deal-brief` skill. Interim pre-v2 — generator becomes the v2 M2 scanner; ledger migrates as-is; write path re-points to Fly API at v2 M1 (2026-07-10) | ✅ |
 
 Status: ⬜ = not started, 🔄 = in progress, ✅ = complete
 

@@ -109,7 +109,7 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
 
         <div className="drawer-meta">
           <div><span className="dm-k">Owner</span><span className="dm-v dm-edit">
-            {!readOnly && ["RD", "FF"].map((p) => (
+            {!readOnly && meFirst(Object.keys(PEOPLE)).map((p) => (
               <button key={p} className={"own-toggle" + ((task.owners || []).includes(p) ? " on" : "")}
                 title={(task.owners || []).includes(p) ? "remove " + PEOPLE[p].name : "add " + PEOPLE[p].name}
                 onClick={() => {
@@ -118,7 +118,7 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
                   api.save(task, { owners });
                 }}><Avatar id={p} size={20} /></button>
             ))}
-            {task.ownersRaw && !["RD", "FF"].some((p) => (task.ownersRaw || "").includes(p)) &&
+            {task.ownersRaw && !Object.keys(PEOPLE).some((p) => (task.ownersRaw || "").includes(p)) &&
               <span className="dm-ext" title={task.ownersRaw}>{task.ownersRaw}</span>}
           </span></div>
           <div><span className="dm-k">Due</span><span className="dm-v">
@@ -175,17 +175,27 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
             <select className="dm-select" value={task.inputFrom || ""}
               onChange={(e) => {
                 const v = e.target.value || null;
-                api.save(task, { inputFrom: v, inputQuestion: v ? task.inputQuestion : null });
+                // server rejects inputFrom without a question — collect it in one save
+                if (v && !(task.inputQuestion || "").trim()) {
+                  showModal("What's needed from " + (PEOPLE[v] ? PEOPLE[v].name : v) + "?", [{placeholder: "e.g. confirm budget, approve draft"}]).then((q) => {
+                    if (!q || !q.trim()) return;
+                    api.save(task, { inputFrom: v, inputQuestion: q.trim() });
+                  });
+                } else api.save(task, { inputFrom: v, inputQuestion: v ? task.inputQuestion : null });
               }}>
               <option value="">— none —</option>
-              {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p].name}</option>)}
+              {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p] ? PEOPLE[p].name : p}</option>)}
             </select>
           </span></div>}
           {task.inputFrom && (
             <div><span className="dm-k">Question</span><span className="dm-v">
               <FieldInput className="dm-date" style={{width:"100%"}} value={task.inputQuestion} readOnly={readOnly}
                 placeholder="what's needed from them"
-                onSave={(v) => api.save(task, { inputQuestion: v })} />
+                onSave={(v) => {
+                  // server rejects an empty question while inputFrom is set
+                  if (!(v || "").trim()) return showToast("Question required while input is requested — clear 'Input from' instead", "err");
+                  api.save(task, { inputQuestion: v.trim() });
+                }} />
             </span></div>
           )}
         </div>
@@ -206,7 +216,7 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
             ))}
             {preQ.trim() && !preHits.length && (
               <button className="drawer-link-row dm-pre-create" onClick={async () => {
-                const created = await api.create({ text: preQ.trim(), owners: task.owners || ["RD"], d: task.d || "" });
+                const created = await api.create({ text: preQ.trim(), owners: task.owners || [ME], d: task.d || "" });
                 if (created) {
                   api.save(task, { prereqs: [...(task.prereqs || []), created.id] });
                   setAddingPre(false); setPreQ("");
@@ -265,7 +275,8 @@ function DelivDrawer({ deliv, onClose, mutate, openTask }) {
 
   const ws = byWs[deliv.ws];
   const deal = deliv.deal || null;
-  const tasks = TASKS.filter((t) => t.d === deliv.id);
+  const tasks = TASKS.filter((t) => t.d === deliv.id)
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)); // match table view after optimistic reorders
   const openTasks = tasks.filter((t) => t.status !== "done");
   const doneTasks = tasks.filter((t) => t.status === "done");
   const s = delivStats(deliv);

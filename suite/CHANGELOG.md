@@ -4,6 +4,148 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.29 — 2026-07-22
+
+### Cockpit — WS4a: per-task model tier for agent runner
+- **`model` field on tasks** (sonnet/haiku/opus/fable, DEFAULT sonnet): the
+  runner reads `task.model` and spawns the executing subagent on that tier.
+  `sonnet` = default/mechanical; `haiku` = bulk fan-out; `opus`/`fable` =
+  deal-judgment (analysis/negotiation/legal/investor-grade).
+- Server validates on enqueue (422 on unknown tier); queue endpoint returns
+  `model` field per task; migration 16 (additive ALTER TABLE ADD COLUMN).
+- Plugin: `cockpit_client.py add --model <tier>` argument; loop.md + run.md
+  updated with model-aware execution routing (plugin v0.7.0 — distribution
+  pending per convention).
+- SPEC-agentic-workflow.md §3a updated; cockpit CLAUDE.md schema docs updated.
+
+---
+
+## v2.1.28 — 2026-07-15
+
+### Cockpit — multi-user personal cockpit (Anton onboarding)
+- **Identity = login**: sidebar shows the logged-in principal; non-admins are
+  always themselves — the Roman/Flo person flip is gone for team members.
+  Person switch (view-as lens) is now admin-only.
+- **People directory**: `/api/state` carries `users` + `lanes`; every owner
+  picker, person column and meeting column renders from it (me-first).
+  Onboarding a member = data rows, no code change.
+- **Agent privacy, server-enforced**: non-admin humans receive only the agent
+  workflows they created + their own lane's learnings. Admins keep the full
+  picture; Agents-view lane bar is admin-only and data-driven.
+- **Meeting view multi-user**: N person columns from the viewer's team-visible
+  scope (daily standup surface for Roman/Flo/Anton).
+- Admin API: `POST /api/admin/user` accepts `role=agent` + `represents`
+  (new runner lanes); `PATCH /api/admin/user/{uid}` supports name/initials.
+- Data (post-deploy): `team` user → Anton (AN); team perms +`week` +`agents`;
+  agent user `ac-agent` (represents `team`) for Anton's runner lane.
+- Deployed from `prod/team-login-2026-07-15` (a4c4e1d) — dev's un-signed-off
+  calendar module stays out of prod.
+
+---
+
+## v2.1.27 + team-login — 2026-07-15 (config-only cherry-pick deploy)
+
+Deployed from `prod/team-login-2026-07-15` (= v109 commit 36b19cc + cherry-pick
+b8d1a4f) — NOT a dev merge; all post-07-08 dev work (calendar module, dealroom
+v2, boardroom ACT1) remains unshipped pending sign-off.
+
+### Suite (Caddy)
+- **`team` basic-auth user** (`AUTH_TEAM_HASH` Fly secret) — third suite login
+  for team@repuro.de. Cockpit principal `team` via teams layer: workstreams rw
+  (M&A + Standalone only; Holding workstreams assigned to `md` = hidden),
+  overview/timeline ro, allex rw, dealroom ro. New space `s-3 Standalone`.
+- **Security**: `/allex/` + `/deals/` reverse_proxy now overwrite
+  `X-Remote-User` (client-set header could impersonate an owner once a backend
+  trusts it — dealroom v2 owner-gating). `team` is 403'd from `/investor/` at
+  the proxy (boardroom serves the admin draft view to any non-investor
+  identity — needs a proper fix before a 4th login).
+- Incident note: first attempt deployed from master (v2.1.24) and transiently
+  rolled back the investor-room week lifecycle for ~25 min (00:30 CET);
+  repaired by the cherry-pick deploy above. Root cause: prod had been deployed
+  from dev on 07-08 (v107–v109) without merging master — master is stale.
+
+## v2.1.27 — 2026-07-08
+
+### Investor Room — week lifecycle v2 (Roman's model: static dated weeks + dynamic draft)
+- **Dated snapshot URLs**: published weeks live at `/investor/<YYMMDD>`
+  (`/investor/260702`); `GET /{ref_date}` route, legacy `?week=` still works.
+- **Universal week switcher** — SAME control for investor and admin on all
+  published/archived/holding views (server-rendered, English date labels,
+  `(live)` marker); investors self-serve navigate the archive. Holding page
+  now carries the switcher instead of dead-ending.
+- **Week-scoped inline edits**: publish freezes edits into the snapshot and
+  CLEARS the live table — next week's draft starts clean from templates
+  (kills the 02/07-edits-override-07/07 bug class).
+- **Draft toolbar**: shows "Investors see: <week|NOTHING (holding page)>";
+  switcher options server-rendered; navigation made RELATIVE (`./260702`) —
+  the old `location='/?week='` landed on the suite landing page behind the
+  `/investor` Caddy prefix.
+- Tests: +8 lifecycle tests (40 green in test_investor_view.py).
+- Prod data: cleared the 4 stale 02-Jul inline edits from the live draft
+  (preserved inside the 2026-07-02 publication).
+
+## v2.1.26 — 2026-07-08
+
+### Investor Room — draft/publish workflow + 07-Jul weekly content (aef2c61)
+- Auth-aware `GET /`: admin sees the live draft with a toolbar
+  (publish/unpublish/week selector); the investor user sees the published
+  snapshot or a holding page. Publish snapshots templates + inline edits
+  into a publication row (denylist scan, auto-archive of the previous week);
+  frozen edits injected as `__FROZEN_EDITS` — published pages make no live
+  API calls. Schema v3 migration; 33 new tests.
+- Weekly content 07 Jul 2026 (Fox/Mantis DD status, Mouse LOI, decisions).
+- Volume check before this deploy: investor.db live with data
+  (WAL-persisted inline edits), served by prod, litestream-replicated since
+  v2.1.22 — investor mode needed no infra change, code ships with the image.
+
+### Suite — Research module (static)
+- `/research/` static route (Caddy `file_server`, no-cache) serving
+  `suite/static/research/` — first artifact: Com2Med ownership map.
+  Behind suite basic auth; investor user remains confined to `/investor/*`.
+- Landing page card added.
+
+## v2.1.25 — 2026-07-08
+
+### Cockpit — meeting/overview content rules + interaction bug fixes (suite-fix batch)
+- **Meeting/Week views exclude agent tasks** (`execution === "agent"`): agent
+  work lives in the Agents view; Meeting daily/weekly and My Week person lists
+  show human tasks only.
+- **Agent Queue respec** → "Agents — waiting on you": shows only agent tasks
+  in review or blocked with a question (up to 5), instead of suggested queue
+  candidates. Blocked = amber "Waiting on your answer", in review = red
+  "Needs review".
+- **Date-ascending sort** in Meeting + My Week lists (decisions, waiting,
+  due-today, per-deliverable and standalone tasks): earlier dates on top,
+  undated last.
+- **+1d silent failure fixed — two root causes**: (1) `addDays()` formatted
+  via `toISOString()` (UTC): east of UTC the +1 day collapsed back to the
+  same date — a deterministic no-op in Berlin; now formats local
+  (`localISO`, also applied to the last-Monday cutoff in Meeting).
+  (2) Stale-version 409 after reorders (reorder bumps every task's version
+  server-side) reverted the bump silently; quick actions (due bump,
+  checkmark, waiting chips) now retry once with the server's current version
+  read from the 409 body (`detail.current.version` — wire shape verified
+  live). Rich editor saves deliberately do NOT auto-retry: that would
+  silently clobber a concurrent edit (Flo/agent) — they keep the conflict
+  toast + reload.
+- **Task reorder sticks**: optimistic `sortOrder` stamping + immediate
+  rerender (no snap-back), rollback to server truth if the reorder PATCH
+  fails, and Table view + deliverable drawer sort all task lists by
+  `sortOrder`. New pytest: reorder persists through `/api/state`.
+- **Agents badge** counts blocked ("waiting on you") agent tasks, not just
+  in_review — matches the new AgentQueue card.
+- **Agent exclusion completed across Meeting/Week internals**: deal deadline
+  bars, "completed since Monday", due-today/next-10-days deliverable pickers
+  no longer count agent-only work (Codex sweep findings).
+- **Done/old deliverables no longer linger**: Timeline hides done/dropped
+  (and all-tasks-done) deliverables; Table view greys them out but keeps them
+  findable for archiving (fixes "DD Kick-off looks weird" class).
+
+### Dealroom — Next (Cockpit) sidebar section
+- New "Next (Cockpit)" section under Process Artifacts surfacing upcoming
+  cockpit deliverables per deal (`sections/next-deliverables.js`); degrades
+  to a quiet note when no same-origin Cockpit API exists (static export).
+
 ## v2.1.24 — 2026-07-07
 
 ### Cockpit — Admin tab fix + frontend contract tests
@@ -60,7 +202,7 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 - dealroom_sync never drops cockpit-owned mirror rows; prod deps pinned (~=).
 
 ### Suite — backup hardening
-- litestream replicates investor.db; entrypoint restores missing DBs from S3
+- litestream replicates the investor DB; entrypoint restores missing DBs from S3
   before replication starts (fresh volume can no longer overwrite backups
   with empty DBs).
 
@@ -195,7 +337,7 @@ injection works on both 2.10 and 2.11. The `caddy:2.10-alpine` pin stays
 ## v2.1.11 — 2026-06-17
 
 ### Infrastructure — Deploy consolidation
-- **Per-module Dockerfiles/fly.tomls removed** — `cockpit/Dockerfile`, `cockpit/fly.toml`, `lead-pipeline/Dockerfile`, `lead-pipeline/fly.toml` deleted; `suite/` is now the single deploy artefact
+- **Per-module Dockerfiles/fly.tomls removed** — per-module Dockerfiles and fly.tomls (cockpit, lead-pipeline) deleted; `suite/` is now the single deploy artefact
 - **MODULES.md** — module registry added to `suite/` documenting ports, routes, DB paths, and adding-a-module convention
 - **Suite landing page** — `suite/static/index.html` replaced with `Repuro Suite.html` (renamed)
 - **lead-pipeline/ai/CHANGELOG.md removed** — changelog consolidated into `suite/CHANGELOG.md`

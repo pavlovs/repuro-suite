@@ -9,7 +9,7 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 16
 WRITE_LOCK = threading.RLock()
 _conn = None
 _conn_path = None
@@ -170,7 +170,8 @@ CREATE TABLE users (
   represents TEXT,
   profile TEXT REFERENCES role_profiles(id),
   all_teams INTEGER NOT NULL DEFAULT 0,
-  login TEXT
+  login TEXT,
+  calendar_upn TEXT
 );
 CREATE TABLE deal_mirror (
   codename TEXT PRIMARY KEY,
@@ -221,7 +222,9 @@ CREATE TABLE deliverables (
   source TEXT,
   deal TEXT,
   version INTEGER NOT NULL DEFAULT 1,
-  start_date TEXT
+  start_date TEXT,
+  hard_deadline INTEGER NOT NULL DEFAULT 0,
+  is_milestone INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE tasks (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -266,7 +269,9 @@ CREATE TABLE tasks (
   start_date TEXT,
   preview_url TEXT,
   review_feedback TEXT,
-  review_round INTEGER NOT NULL DEFAULT 0
+  review_round INTEGER NOT NULL DEFAULT 0,
+  model TEXT NOT NULL DEFAULT 'sonnet'
+    CHECK(model IN ('sonnet','haiku','opus','fable'))
 );
 CREATE TABLE audit_log (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -475,6 +480,31 @@ MIGRATIONS = {
         "UPDATE users SET login = 'florian' WHERE id = 'ff'",
         # rd gets all_teams=1 (god view over workstream assignments)
         "UPDATE users SET all_teams = 1 WHERE id = 'rd'",
+    ],
+    14: [
+        lambda c: _add_column_if_missing(c, "users", "calendar_upn", "TEXT"),
+    ],
+    15: [
+        lambda c: _add_column_if_missing(
+            c, "deliverables", "hard_deadline", "INTEGER NOT NULL DEFAULT 0"
+        ),
+        lambda c: _add_column_if_missing(
+            c, "deliverables", "is_milestone", "INTEGER NOT NULL DEFAULT 0"
+        ),
+    ],
+    16: [
+        # WS4a — per-task model tier for the agent runner (2026-07-22).
+        # Allowed: sonnet (default, bulk/mechanical) | haiku (high-volume fan-out)
+        #          | opus | fable (deal-judgment: analysis/negotiation/legal/investor)
+        # Runner spawns the executing subagent on the stored tier.
+        # DEFAULT 'sonnet' so existing rows and absent field both mean "unchanged behaviour".
+        lambda c: _add_column_if_missing(
+            c,
+            "tasks",
+            "model",
+            "TEXT NOT NULL DEFAULT 'sonnet' "
+            "CHECK(model IN ('sonnet','haiku','opus','fable'))",
+        ),
     ],
 }
 

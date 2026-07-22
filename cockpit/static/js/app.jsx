@@ -24,6 +24,7 @@ function RepuroMark({ size = 30 }) {
 const NAV_ALL = [
   { id: "overview", module: "overview", label: "Cockpit", icon: "cockpit", crumb: "Intelligence overview" },
   { id: "week", module: "week", label: "Meeting", icon: "week", crumb: "Meeting focus" },
+  { id: "calendar", module: "calendar", label: "Calendar", icon: "calendar", crumb: "Your and your team's meetings" },
   { id: "table", module: "workstreams", label: "Workstreams", icon: "table", crumb: "All work — table or board" },
   { id: "timeline", module: "timeline", label: "Timeline", icon: "timeline", crumb: "Milestones & windows" },
   { id: "agents", module: "agents", label: "Agents", icon: "bolt", crumb: "Claude works · you approve" },
@@ -35,14 +36,14 @@ const NAV = NAV_ALL.filter(n => _ckModules.includes(n.module));
 function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setFiltersOpen, setFilterCount }) {
   const [layout, setLayout] = React.useState("table");
   const [grouping, setGrouping] = React.useState("workstream");
-  const [filters, setFilters] = React.useState({ person: "", readiness: "", priority: "", showDone: false });
+  const [filters, setFilters] = React.useState({ workstream: "", person: "", readiness: "", priority: "", showDone: false });
 
-  const activeFilterCount = [filters.person, filters.readiness].filter(f => f !== "").length
+  const activeFilterCount = [filters.workstream, filters.person, filters.readiness].filter(f => f !== "").length
     + (layout === "table" && filters.priority !== "" ? 1 : 0)
     + (layout === "table" && filters.showDone ? 1 : 0);
-  // Issue 29: report active-filter count to the topbar Filter button.
-  // null = no filter body in this layout (Deliverables) → topbar hides the button entirely.
-  React.useEffect(() => { setFilterCount && setFilterCount(layout === "deliverables" ? null : activeFilterCount); }, [activeFilterCount, layout]);
+  // Report active-filter count to the topbar Filter button. Every layout has at
+  // least the workstream filter now, so the button shows in all of them.
+  React.useEffect(() => { setFilterCount && setFilterCount(activeFilterCount); }, [activeFilterCount, layout]);
 
   return (
     <div>
@@ -62,13 +63,34 @@ function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setF
         <div className="ws-toolbar-sp" />
       </div>
 
-      {layout !== "deliverables" && (
-        <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={activeFilterCount} hideToggle>
-          <div className="seg">
-            {[["", "Everyone"], ["RD", "Roman"], ["FF", "Flo"]].map(([v, l]) => (
-              <button key={v} className={filters.person === v ? "on" : ""} onClick={() => setFilters({ ...filters, person: v })}>{l}</button>
-            ))}
-          </div>
+      <FilterBar filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} activeCount={activeFilterCount} hideToggle>
+        <label className="filter-ws">
+          <span className="filter-ws-lbl">Workstream</span>
+          <select value={filters.workstream} onChange={(e) => setFilters({ ...filters, workstream: e.target.value })}>
+            <option value="">All workstreams</option>
+            {SPACES.map((s) => {
+              const list = (wsPerSpace[s.id] || []);
+              if (!list.length) return null;
+              return (
+                <optgroup key={s.id} label={s.name}>
+                  {list.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </optgroup>
+              );
+            })}
+          </select>
+        </label>
+        {layout !== "deliverables" && (
+          <label className="filter-ws">
+            <span className="filter-ws-lbl">Person</span>
+            <select value={filters.person} onChange={(e) => setFilters({ ...filters, person: e.target.value })}>
+              <option value="">Everyone</option>
+              {meFirst(Object.keys(PEOPLE)).map((p) => (
+                <option key={p} value={p}>{PEOPLE[p].full || PEOPLE[p].name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {layout !== "deliverables" && (
           <div className="seg">
             {[["", "Any readiness"], ["red", "Blocked"], ["amber", "Prereqs running"], ["green", "Ready"]].map(([v, l]) => (
               <button key={v} className={filters.readiness === v ? "on" : ""} onClick={() => setFilters({ ...filters, readiness: v })}>
@@ -76,19 +98,19 @@ function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setF
               </button>
             ))}
           </div>
-          {layout === "table" && (
-            <div className="seg">
-              {[["", "Any priority"], ["high", "High"], ["med", "Medium"]].map(([v, l]) => (
-                <button key={v} className={filters.priority === v ? "on" : ""} onClick={() => setFilters({ ...filters, priority: v })}>{l}</button>
-              ))}
-            </div>
-          )}
-          {layout === "table" && <label className="chk-lbl"><input type="checkbox" checked={filters.showDone} onChange={(e) => setFilters({ ...filters, showDone: e.target.checked })} /> show done</label>}
-        </FilterBar>
-      )}
+        )}
+        {layout === "table" && (
+          <div className="seg">
+            {[["", "Any priority"], ["high", "High"], ["med", "Medium"]].map(([v, l]) => (
+              <button key={v} className={filters.priority === v ? "on" : ""} onClick={() => setFilters({ ...filters, priority: v })}>{l}</button>
+            ))}
+          </div>
+        )}
+        {layout === "table" && <label className="chk-lbl"><input type="checkbox" checked={filters.showDone} onChange={(e) => setFilters({ ...filters, showDone: e.target.checked })} /> show done</label>}
+      </FilterBar>
 
       {layout === "deliverables"
-        ? <DeliverableView mutate={mutate} openTask={openTask} openDeliv={openDeliv} />
+        ? <DeliverableView mutate={mutate} openTask={openTask} openDeliv={openDeliv} filters={filters} />
         : layout === "table"
         ? <TableView mutate={mutate} openTask={openTask} openDeliv={openDeliv} filters={filters} />
         : <BoardView grouping={grouping} mutate={mutate} openTask={openTask} filters={filters} />}
@@ -97,8 +119,8 @@ function WorkstreamsTab({ mutate, openTask, openDeliv, person, filtersOpen, setF
 }
 
 /* Hash-based routing: tab id ↔ URL hash */
-const TAB_TO_HASH = { overview: "#cockpit", week: "#week", table: "#workstreams", timeline: "#timeline", agents: "#agents", admin: "#admin" };
-const HASH_TO_TAB = { "#cockpit": "overview", "#week": "week", "#workstreams": "table", "#timeline": "timeline", "#agents": "agents", "#admin": "admin" };
+const TAB_TO_HASH = { overview: "#cockpit", week: "#week", calendar: "#calendar", table: "#workstreams", timeline: "#timeline", agents: "#agents", admin: "#admin" };
+const HASH_TO_TAB = { "#cockpit": "overview", "#week": "week", "#calendar": "calendar", "#workstreams": "table", "#timeline": "timeline", "#agents": "agents", "#admin": "admin" };
 const VALID_TABS = new Set(Object.keys(TAB_TO_HASH));
 /* Admin is not part of NAV (rendered as a separate button), so the hash
    validator must accept it explicitly for admins — otherwise setTab("admin")
@@ -122,7 +144,6 @@ function tabFromHash() {
 function App() {
   const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
   const [tab, setTabState] = React.useState(tabFromHash);
-  const [person, setPerson] = React.useState(sessionStorage.getItem("cockpit_person") || "RD");
   const [drawer, setDrawer] = React.useState(null);
   const [delivDrawer, setDelivDrawer] = React.useState(null);
   const [palette, setPalette] = React.useState(false);
@@ -166,15 +187,17 @@ function App() {
       window.removeEventListener("hashchange", onHashChange);
     };
   }, [setTab]);
-  const pickPerson = (p) => { sessionStorage.setItem("cockpit_person", p); setPerson(p); };
 
   const live = TASKS.filter((x) => x.status !== "done");
   const chaseN = live.filter((x) => chaseDue(x)).length;
-  const verdictN = TASKS.filter((x) => x.execution === "agent" && x.status === "in_review").length;
+  const verdictN = TASKS.filter((x) => x.execution === "agent" && (x.status === "in_review" || x.statusRaw === "blocked")).length;
   const badge = { week: chaseN, agents: verdictN };
 
   const cur = NAV.find((n) => n.id === tab) || (tab === "admin" ? NAV_ADMIN : NAV[0]);
-  const showPerson = tab === "overview";
+  /* Everyone — admins included — sees their OWN cockpit. The old person-switch
+     ("view as") was a v1 relic; removed 2026-07-16 (Roman: no world needs it —
+     teammate workload lives in Meeting columns + the Workstreams person filter). */
+  const meKey = ME;
 
   const canWriteWorkstreams = window.COCKPIT && (window.COCKPIT.isAdmin || (window.COCKPIT.perms && window.COCKPIT.perms.workstreams === "rw"));
 
@@ -215,8 +238,8 @@ function App() {
         <nav className="side-nav"><NavList /></nav>
         <div className="side-foot">
           <div className="side-user">
-            <Avatar id={person} size={30} />
-            <div><div className="nm">{PEOPLE[person].full}</div><div className="rl">{PEOPLE[person].role}</div></div>
+            <Avatar id={meKey} size={30} />
+            <div><div className="nm">{(PEOPLE[meKey] || {}).full || meKey}</div><div className="rl">{(PEOPLE[meKey] || {}).role || ""}</div></div>
           </div>
         </div>
       </aside>
@@ -233,15 +256,6 @@ function App() {
           <button className="search as-btn" onClick={() => setPalette(true)} title="Search (Ctrl/⌘ K)">
             <Icon name="search" size={15} /><span className="search-ph">Search tasks, deals…</span><span className="pal-kbd">{navigator.platform.indexOf("Mac") >= 0 ? "⌘" : "Ctrl+"}K</span>
           </button>
-          {showPerson && (
-            <div className="person-switch">
-              {["RD", "FF"].map((p) => (
-                <button key={p} className={person === p ? "on" : ""} onClick={() => pickPerson(p)}>
-                  <Avatar id={p} size={18} />{PEOPLE[p].name}
-                </button>
-              ))}
-            </div>
-          )}
           {(tab === "table" || tab === "timeline") && filterCount !== null && (
             <button className={"tb-filter tb-undo" + (filterCount > 0 ? " active" : "")} onClick={() => setFiltersOpen((o) => !o)} title="Filter">
               <Icon name="filter" size={14} /> Filter{filterCount > 0 ? " (" + filterCount + ")" : ""}
@@ -257,11 +271,12 @@ function App() {
 
         <main className="main">
           <div className={"view" + (tab === "timeline" || tab === "table" || tab === "week" ? " view-wide" : "")}>
-            {tab === "overview" && <OverviewView person={person} onJump={setTab} openTask={openTask} mutate={mutate} />}
+            {tab === "overview" && <OverviewView person={ME} onJump={setTab} openTask={openTask} mutate={mutate} />}
             {tab === "week" && <MeetingView mutate={mutate} openTask={openTask} />}
-            {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} openDeliv={openDeliv} person={person} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}
+            {tab === "calendar" && <CalendarView />}
+            {tab === "table" && <WorkstreamsTab mutate={mutate} openTask={openTask} openDeliv={openDeliv} person={ME} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}
             {tab === "timeline" && <TimelineView openTask={openTask} openDeliv={openDeliv} mutate={mutate} filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen} setFilterCount={setFilterCount} />}
-            {tab === "agents" && <AgentsView openTask={openTask} person={person} />}
+            {tab === "agents" && <AgentsView openTask={openTask} person={ME} />}
             {tab === "admin" && <AdminView />}
           </div>
         </main>

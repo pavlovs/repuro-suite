@@ -32,7 +32,7 @@ from fastapi.responses import (  # noqa: F401
     StreamingResponse,
 )
 
-from . import compute, db, dealroom_sync, mdio, models
+from . import calendar_graph, compute, db, dealroom_sync, mdio, models
 
 
 # --------------------------------------------------------------------------
@@ -190,6 +190,7 @@ _ALL_COCKPIT_MODS = [
     "timeline",
     "agents",
     "relations",
+    "calendar",
 ]
 
 
@@ -572,6 +573,12 @@ def assemble_state(conn, me=None):
             "name": r["name"],
             "target_date": r["target_date"],
             "start_date": r["start_date"] if "start_date" in r.keys() else None,
+            "hard_deadline": bool(r["hard_deadline"])
+            if "hard_deadline" in r.keys()
+            else False,
+            "is_milestone": bool(r["is_milestone"])
+            if "is_milestone" in r.keys()
+            else False,
             "deal": r["deal"],
             "status": r["status"],
             "comment": r["comment"],
@@ -708,6 +715,7 @@ _TASK_FIELDS = {
     "preview_url",
     "review_feedback",
     "review_round",
+    "model",
 }
 _TASK_ENUMS = {
     "kind": models.KINDS,
@@ -717,6 +725,7 @@ _TASK_ENUMS = {
     "runner": models.RUNNERS,
     "waiting_on_type": models.WAITING_TYPES,
     "input_from": {"RD", "FF"},
+    "model": models.MODEL_TIERS,
 }
 
 
@@ -788,6 +797,17 @@ def _guard_personal(row, principal_id):
     is forbidden. Caller passes a task row and the requesting principal id."""
     if row["kind"] == "personal" and row["created_by"] != principal_id:
         raise HTTPException(403, "personal todo belongs to another user")
+
+
+def _guard_foreign_agent(row, p):
+    """Agent workflows are lane-private: only the creating human or an admin may
+    read or mutate them (codex 2026-07-15 #3 — without this, the /api/state
+    scrub is bypassable via direct task routes). Agent principals pass — the
+    claim/result/block endpoints govern the runner side."""
+    if p.get("role") != "human" or p.get("is_admin"):
+        return
+    if row["execution"] in models.AGENT_EXECUTIONS and row["created_by"] != p["id"]:
+        raise HTTPException(403, "agent task belongs to another user's lane")
 
 
 # Private body fields of a personal todo — never written verbatim into audit_log,
@@ -984,20 +1004,115 @@ def _scrub_state_personal(st, viewer):
     return st
 
 
+def _owner_tokens(responsible):
+    """Split a responsible string ('RD, FF' / 'CFO / RD' / 'FF; Corp Comms') into
+    owner tokens for membership tests."""
+    return {t for t in re.split(r"[,;/\s]+", responsible or "") if t}
+
+
+def _scrub_standalone_tasks(st, p):
+    """Standalone tasks (no workstream) have NO team assignment to gate them, so
+    they bypassed the workstream-visibility filter and reached every principal
+    with the workstreams module — a non-admin saw all of the founders' loose
+    fundraising/investor/escrow tasks (Roman caught 'Feedback Strada on FMIP +
+    Term Sheet' visible to team, 2026-07-15; the codex rounds only covered agent
+    tasks). Scope them like ownership: a non-admin human keeps a standalone task
+    only if they created it or are one of its owners. Tasks under a workstream
+    are already team-filtered upstream; this only touches the loose ones."""
+    initials = p.get("initials")
+    pid = p["id"]
+
+    def keep(t):
+        if t.get("created_by") == pid:
+            return True
+        return bool(initials) and initials in _owner_tokens(t.get("responsible"))
+
+    st["standalone_tasks"] = [t for t in st.get("standalone_tasks", []) if keep(t)]
+    return st
+
+
+def _scrub_foreign_agent_tasks(st, viewer):
+    """Agent workflows are personal: a non-admin human sees only the agent-execution
+    tasks they created themselves. Admins (md team) keep the full agent picture.
+    Same in-place shape as _scrub_state_personal — apply to /api/state for
+    non-admin humans so foreign 'Waiting on you' items never reach the client."""
+
+    def keep(t):
+        return (
+            t.get("execution") not in models.AGENT_EXECUTIONS
+            or t.get("created_by") == viewer
+        )
+
+    st["standalone_tasks"] = [t for t in st.get("standalone_tasks", []) if keep(t)]
+    for space in st.get("spaces", []):
+        for ws in space.get("workstreams", []):
+            for d in ws.get("deliverables", []):
+                d["tasks"] = [t for t in d.get("tasks", []) if keep(t)]
+    return st
+
+
+def _recount_progress(st, today):
+    """Re-derive deliverable rollups from the tasks that SURVIVED scrubbing —
+    otherwise progress counts leak how many hidden (foreign agent/personal)
+    tasks exist, and readiness/risk can be tinted by a hidden task's state
+    (codex 2026-07-15 #5 + r2). Recompute the same way assemble_state does."""
+    for space in st.get("spaces", []):
+        for ws in space.get("workstreams", []):
+            for d in ws.get("deliverables", []):
+                if d.get("staging"):
+                    continue
+                ch = d.get("tasks", [])
+                open_rd = [
+                    c["computed"]["readiness"]
+                    for c in ch
+                    if c["computed"]["readiness"] and c["status"] != "done"
+                ]
+                rollup_rd, rollup_risks = compute.deliverable_rollup(
+                    open_rd, d.get("target_date"), today
+                )
+                d["computed"]["readiness"] = rollup_rd
+                d["computed"]["risks"] = rollup_risks
+                d["computed"]["progress"] = {
+                    "done": sum(1 for c in ch if c["status"] == "done"),
+                    "total": len(ch),
+                }
+    return st
+
+
 @app.get("/api/state")
 def state(p=Depends(principal)):
     conn = db.get_conn()
     s = assemble_state(conn, me=p)
     s["principal"] = p
-    s["learnings"] = [
-        _learning_json(r)
+    # The people directory drives every owner picker / person column in the UI —
+    # a new team member is a users row, never a frontend change.
+    s["users"] = [
+        {"id": r["id"], "name": r["name"], "initials": r["initials"]}
         for r in conn.execute(
-            "SELECT * FROM learnings WHERE status!='dismissed' "
-            "ORDER BY status='candidate' DESC, kind='constraint' DESC, id"
+            "SELECT id, name, initials FROM users WHERE role='human' "
+            "ORDER BY CASE id WHEN 'rd' THEN 0 WHEN 'ff' THEN 1 ELSE 2 END, id"
         )
     ]
+    s["lanes"] = _owner_tag_map(conn)
+    is_admin_human = p["role"] == "human" and p.get("is_admin")
+    learn_sql = (
+        "SELECT * FROM learnings WHERE status!='dismissed' "
+        "ORDER BY status='candidate' DESC, kind='constraint' DESC, id"
+    )
+    if p["role"] == "human" and not is_admin_human:
+        # Non-admin humans get only their own lane's lessons — the founders'
+        # playbook (deal context, global rules) is not theirs to curate or read.
+        s["learnings"] = [
+            _learning_json(r) for r in conn.execute(learn_sql) if r["lane"] == p["id"]
+        ]
+        _scrub_foreign_agent_tasks(s, p["id"])
+        _scrub_standalone_tasks(s, p)
+    else:
+        s["learnings"] = [_learning_json(r) for r in conn.execute(learn_sql)]
     # Server-side privacy: filter personal todos to the authenticated viewer.
     _scrub_state_personal(s, p["id"])
+    if p["role"] == "human" and not is_admin_human:
+        _recount_progress(s, _today())
     return s
 
 
@@ -1084,7 +1199,9 @@ def patch_task(tid: str, payload: dict = Body(...), p=Depends(principal)):
         payload["deliverable_id"] = dnum
     _validate_task_fields(conn, payload)
     with db.WRITE_LOCK:
-        _guard_personal(_get_task(conn, num), p["id"])
+        row = _get_task(conn, num)
+        _guard_personal(row, p["id"])
+        _guard_foreign_agent(row, p)
         _update_task(conn, p["id"], num, payload, expected_version=version)
         conn.commit()
     _broadcast(p["id"])
@@ -1249,6 +1366,8 @@ def patch_deliverable(did: str, payload: dict = Body(...), p=Depends(principal))
             "comment",
             "staging",
             "workstream_id",
+            "hard_deadline",
+            "is_milestone",
         },
         {"status": models.DELIV_STATUSES},
     )
@@ -1266,6 +1385,12 @@ def delete_deliverable(did: str, p=Depends(human_only)):
         raise HTTPException(404, f"{did} not found")
     ref = models.deliv_id(num)
     with db.WRITE_LOCK:
+        # A non-admin must not orphan a FOUNDERS' agent task by deleting the
+        # shared deliverable it hangs under (codex 2026-07-15 r3).
+        for child in conn.execute(
+            "SELECT execution, created_by FROM tasks WHERE deliverable_id=?", (num,)
+        ):
+            _guard_foreign_agent(child, p)
         conn.execute(
             "UPDATE tasks SET deliverable_id=NULL, updated_at=? WHERE deliverable_id=?",
             (db.now_iso(), num),
@@ -1434,6 +1559,8 @@ def agent_queue(scope: str = Query(default="mine"), p=Depends(agent_only)):
                 "review_round": r["review_round"] or 0,
                 "review_feedback": r["review_feedback"],
                 "evidence": r["evidence"],
+                # model tier — runner spawns the subagent on this model
+                "model": r["model"] if "model" in r.keys() else "sonnet",
                 "ready": ready,
                 "blocked_by": blocked_by,
             }
@@ -1566,6 +1693,7 @@ def agent_create_task(payload: dict = Body(...), p=Depends(agent_only)):
             "priority",
             "deal",
             "runner",
+            "model",
         )
         if payload.get(k) is not None
     }
@@ -1574,6 +1702,15 @@ def agent_create_task(payload: dict = Body(...), p=Depends(agent_only)):
         raise HTTPException(422, "execution must be agent_supervised or agent_auto")
     fields["kind"] = "agent_job"
     fields.setdefault("runner", "local")
+    # model tier: sonnet (default) | haiku | opus | fable
+    # validate here before _validate_task_fields so the error message is explicit
+    model_val = fields.get("model", "sonnet")
+    if model_val not in models.MODEL_TIERS:
+        raise HTTPException(
+            422,
+            f"invalid model {model_val!r} — allowed: " + ", ".join(models.MODEL_TIERS),
+        )
+    fields["model"] = model_val
     if payload.get("deliverable_id"):
         prefix, dnum = _safe_ref(payload["deliverable_id"])
         if prefix != "d":
@@ -1646,6 +1783,7 @@ def answer_blocker(
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
         _guard_personal(row, p["id"])
+        _guard_foreign_agent(row, p)
         if row["status"] != "blocked" or not row["input_question"]:
             raise HTTPException(
                 409, f"task is {row['status']} and/or has no open question"
@@ -1754,6 +1892,10 @@ def decide_learning(
     row = conn.execute("SELECT * FROM learnings WHERE id=?", (lid,)).fetchone()
     if not row:
         raise HTTPException(404, f"learning {lid} not found")
+    # Lane privacy: non-admins curate only their own lane (codex 2026-07-15 #4).
+    # Lane-NULL (global) entries are founders' rules — admin-only to decide.
+    if not p.get("is_admin") and row["lane"] != p["id"]:
+        raise HTTPException(403, "learning belongs to another lane")
     with db.WRITE_LOCK:
         if action == "promote":
             if row["status"] == "active":
@@ -1812,11 +1954,19 @@ def delete_task(tid: str, p=Depends(human_only)):
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
         _guard_personal(row, p["id"])
+        _guard_foreign_agent(row, p)
         ref = models.task_id(num)
-        for other in conn.execute(
-            "SELECT id, prereqs, version FROM tasks WHERE prereqs LIKE ?",
+        dependents = conn.execute(
+            "SELECT id, prereqs, version, execution, created_by FROM tasks "
+            "WHERE prereqs LIKE ?",
             (f'%"{ref}"%',),
-        ).fetchall():
+        ).fetchall()
+        # A non-admin's delete must not silently strip a prereq from — and bump
+        # the version of — a FOUNDERS' agent task that depends on it (codex
+        # 2026-07-15 r3). Block rather than mutate across the lane boundary.
+        for other in dependents:
+            _guard_foreign_agent(other, p)
+        for other in dependents:
             pruned = [p_ for p_ in json.loads(other["prereqs"]) if p_.get("ref") != ref]
             conn.execute(
                 "UPDATE tasks SET prereqs=?, version=version+1, updated_at=? WHERE id=?",
@@ -1851,6 +2001,10 @@ def reorder_tasks(
     with db.WRITE_LOCK:
         for idx, tid_str in enumerate(task_ids):
             num = _tid(tid_str)
+            # A non-admin must not churn a foreign agent task's order/version
+            # (bumping it 409s the real owner) — same lane gate as the other
+            # task routes (codex 2026-07-15 r2).
+            _guard_foreign_agent(_get_task(conn, num), p)
             conn.execute(
                 "UPDATE tasks SET sort_order=?, updated_at=?, version=version+1 WHERE id=?",
                 (idx, db.now_iso(), num),
@@ -1940,6 +2094,7 @@ def approve(tid: str, p=Depends(human_only)):
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
         _guard_personal(row, p["id"])
+        _guard_foreign_agent(row, p)
         if row["status"] != "in_review":
             raise HTTPException(409, f"task is {row['status']}, not in_review")
         _update_task(conn, p["id"], num, {"status": "done"}, action="task_approve")
@@ -1964,6 +2119,7 @@ def reject(
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
         _guard_personal(row, p["id"])
+        _guard_foreign_agent(row, p)
         if row["status"] != "in_review":
             raise HTTPException(409, f"task is {row['status']}, not in_review")
         evidence = (row["evidence"] or "") + f"\nREJECTED ({p['id']}): {comment}"
@@ -2004,6 +2160,7 @@ def request_changes(
     with db.WRITE_LOCK:
         row = _get_task(conn, num)
         _guard_personal(row, p["id"])
+        _guard_foreign_agent(row, p)
         if row["status"] != "in_review":
             raise HTTPException(409, f"task is {row['status']}, not in_review")
         new_round = (row["review_round"] or 0) + 1
@@ -2092,7 +2249,7 @@ def upload_preview(
     _check_write(p, "agents")
     conn = db.get_conn()
     num = _tid(tid)
-    _get_task(conn, num)
+    _guard_foreign_agent(_get_task(conn, num), p)
     out = _store_preview(conn, p["id"], tid, num, file)
     _broadcast(p["id"])
     return out
@@ -2158,6 +2315,12 @@ def export_md(scope: str = Query(default="all"), p=Depends(principal)):
     # Privacy: drop personal todos not owned by the requester, for ALL scopes
     # (incl. scope=all) before scope filtering and rendering.
     _scrub_state_personal(st, p["id"])
+    # Same lane-privacy gate as /api/state — the export must never be the side
+    # door to foreign agent workflows (codex 2026-07-15 #1) or founders' loose
+    # standalone tasks (Strada leak 2026-07-15).
+    if p["role"] == "human" and not p.get("is_admin"):
+        _scrub_foreign_agent_tasks(st, p["id"])
+        _scrub_standalone_tasks(st, p)
     st = _filter_scope(st, scope)
     return mdio.render_export(st, scope)
 
@@ -2333,6 +2496,7 @@ def import_md(
         return summary
     with db.WRITE_LOCK:
         for num, fields in resolved_updates:
+            _guard_foreign_agent(_get_task(conn, num), p)
             _update_task(conn, p["id"], num, fields, action="import_update")
         created_ids = [
             models.task_id(_insert_task(conn, p["id"], f)) for f in resolved_creates
@@ -2364,28 +2528,59 @@ def activity_log(entity: str | None = Query(default=None), p=Depends(principal))
     # redacted. Rows whose task no longer exists can't be classified — but
     # personal-task bodies are no longer written into audit_log (see _audit_task),
     # so those legacy rows carry no private body for new personal todos.
-    personal_owner = {}  # entity ref -> created_by, for kind='personal' tasks
+    # Foreign AGENT tasks go further: for a non-admin human the entry is DROPPED
+    # entirely — audit after-fields carry the full task body, and even the
+    # entity id enables follow-on reads (codex 2026-07-15 #2).
+    task_meta = {}  # entity ref -> live task row (kind, execution, created_by)
 
-    def _is_other_personal(entity):
+    def _task_row(entity):
         if not entity or not entity.startswith("t-"):
-            return False
-        if entity not in personal_owner:
+            return None
+        if entity not in task_meta:
             try:
                 _, n = _safe_ref(entity)
-                trow = conn.execute(
-                    "SELECT kind, created_by FROM tasks WHERE id=?", (n,)
+                task_meta[entity] = conn.execute(
+                    "SELECT kind, execution, created_by FROM tasks WHERE id=?", (n,)
                 ).fetchone()
             except Exception:
-                trow = None
-            personal_owner[entity] = (
-                trow["created_by"] if trow and trow["kind"] == "personal" else False
-            )
-        owner = personal_owner[entity]
-        return owner is not False and owner != p["id"]
+                task_meta[entity] = None
+        return task_meta[entity]
+
+    def _is_other_personal(entity):
+        trow = _task_row(entity)
+        return bool(
+            trow and trow["kind"] == "personal" and trow["created_by"] != p["id"]
+        )
+
+    hide_foreign_agent = p["role"] == "human" and not p.get("is_admin")
+
+    def _is_foreign_agent(entity):
+        if not hide_foreign_agent:
+            return False
+        trow = _task_row(entity)
+        return bool(
+            trow
+            and trow["execution"] in models.AGENT_EXECUTIONS
+            and trow["created_by"] != p["id"]
+        )
+
+    def _unclassifiable_task(entity):
+        """A task entity that no longer exists — a DELETED task. Its audit
+        before-body carries the full row (incl. a possibly-foreign agent task
+        that _is_foreign_agent can't catch post-delete). Redact the body for
+        non-admins rather than leak it (codex 2026-07-15 r2 #2)."""
+        return (
+            hide_foreign_agent
+            and entity
+            and entity.startswith("t-")
+            and _task_row(entity) is None
+        )
 
     entries = []
     for r in rows:
-        redacted = _is_other_personal(r["entity"])
+        if _is_foreign_agent(r["entity"]):
+            continue
+        redacted = _is_other_personal(r["entity"]) or _unclassifiable_task(r["entity"])
         entries.append(
             {
                 "id": r["id"],
@@ -2460,6 +2655,19 @@ def _require_admin(p: dict) -> None:
         raise HTTPException(403, "admin access required")
 
 
+def _check_calendar_upn(upn: str) -> None:
+    """Admin-managed work email (= calendar identity). Reject only what Graph
+    positively rejects (bad format / unknown mailbox / probe error); when
+    verification is unavailable (env not configured, consent missing) the
+    address is stored anyway — the calendar stays inert until the backend
+    works, but the account must still carry its email."""
+    if not calendar_graph.UPN_RE.match(upn):
+        raise HTTPException(422, "unknown_upn")
+    ok, reason = calendar_graph.probe_upn(upn)
+    if not ok and reason not in ("not_configured", "consent_missing"):
+        raise HTTPException(422, reason)
+
+
 @app.post("/api/admin/user", status_code=201)
 def admin_create_user(payload: dict = Body(...), p=Depends(human_only)):
     _require_admin(p)
@@ -2471,7 +2679,23 @@ def admin_create_user(payload: dict = Body(...), p=Depends(human_only)):
     login_val = (payload.get("login") or "").strip() or None
     all_teams_val = 1 if payload.get("all_teams") else 0
     teams = payload.get("teams") or []
+    role = payload.get("role") or "human"
+    if role not in ("human", "agent"):
+        raise HTTPException(422, "role must be 'human' or 'agent'")
+    represents = (payload.get("represents") or "").strip() or None
+    calendar_upn = (payload.get("calendar_upn") or "").strip() or None
+    if calendar_upn:
+        _check_calendar_upn(calendar_upn)
     conn = db.get_conn()
+    if (
+        represents
+        and not conn.execute(
+            "SELECT 1 FROM users WHERE id=? AND role='human'", (represents,)
+        ).fetchone()
+    ):
+        raise HTTPException(
+            422, f"represents must be an existing human: {represents!r}"
+        )
     if conn.execute("SELECT 1 FROM users WHERE id=?", (uid,)).fetchone():
         raise HTTPException(409, f"user {uid!r} already exists")
     for tid in teams:
@@ -2481,9 +2705,19 @@ def admin_create_user(payload: dict = Body(...), p=Depends(human_only)):
     token_hash = hashlib.sha256(token.encode()).hexdigest()
     with db.WRITE_LOCK:
         conn.execute(
-            "INSERT INTO users (id, name, initials, role, token_hash, login, all_teams) "
-            "VALUES (?,?,?,?,?,?,?)",
-            (uid, name, initials, "human", token_hash, login_val, all_teams_val),
+            "INSERT INTO users (id, name, initials, role, token_hash, login, all_teams, represents, calendar_upn) "
+            "VALUES (?,?,?,?,?,?,?,?,?)",
+            (
+                uid,
+                name,
+                initials,
+                role,
+                token_hash,
+                login_val,
+                all_teams_val,
+                represents,
+                calendar_upn,
+            ),
         )
         for tid in teams:
             conn.execute(
@@ -2500,7 +2734,7 @@ def admin_overview(p=Depends(human_only)):
     _require_admin(p)
     conn = db.get_conn()
     users_rows = conn.execute(
-        "SELECT id, name, initials, role, login, all_teams, profile FROM users ORDER BY id"
+        "SELECT id, name, initials, role, login, all_teams, profile, calendar_upn FROM users ORDER BY id"
     ).fetchall()
     members_rows = conn.execute("SELECT team_id, user_id FROM team_members").fetchall()
     teams_rows = conn.execute(
@@ -2523,6 +2757,7 @@ def admin_overview(p=Depends(human_only)):
             "login": r["login"],
             "all_teams": bool(r["all_teams"]),
             "teams": user_teams.get(r["id"], []),
+            "calendar_upn": r["calendar_upn"],
         }
         for r in users_rows
     ]
@@ -2658,7 +2893,24 @@ def admin_patch_user(uid: str, payload: dict = Body(...), p=Depends(human_only))
     conn = db.get_conn()
     if not conn.execute("SELECT 1 FROM users WHERE id=?", (uid,)).fetchone():
         raise HTTPException(404, f"user {uid!r} not found")
+    # validate before taking the write lock — the probe is a network call
+    cal_upn = None
+    if "calendar_upn" in payload:
+        cal_upn = (payload["calendar_upn"] or "").strip() or None
+        if cal_upn:
+            _check_calendar_upn(cal_upn)
     with db.WRITE_LOCK:
+        if "name" in payload:
+            if not (payload["name"] or "").strip():
+                raise HTTPException(422, "name must not be empty")
+            conn.execute(
+                "UPDATE users SET name=? WHERE id=?", (payload["name"].strip(), uid)
+            )
+        if "initials" in payload:
+            conn.execute(
+                "UPDATE users SET initials=? WHERE id=?",
+                ((payload["initials"] or "").strip() or None, uid),
+            )
         if "login" in payload:
             conn.execute(
                 "UPDATE users SET login=? WHERE id=?", (payload["login"] or None, uid)
@@ -2681,13 +2933,24 @@ def admin_patch_user(uid: str, payload: dict = Body(...), p=Depends(human_only))
                     "INSERT OR IGNORE INTO team_members (team_id, user_id) VALUES (?,?)",
                     (tid, uid),
                 )
+        if "calendar_upn" in payload:
+            conn.execute("UPDATE users SET calendar_upn=? WHERE id=?", (cal_upn, uid))
         db.audit(
             conn,
             p["id"],
             "user_update",
             uid,
             after={
-                k: payload[k] for k in ("login", "all_teams", "teams") if k in payload
+                k: payload[k]
+                for k in (
+                    "name",
+                    "initials",
+                    "login",
+                    "all_teams",
+                    "teams",
+                    "calendar_upn",
+                )
+                if k in payload
             },
         )
         conn.commit()
@@ -2761,3 +3024,188 @@ def patch_workstream_access(wid: str, payload: dict = Body(...), p=Depends(human
         conn.commit()
     _broadcast(p["id"])
     return {"id": wid, "allowed_profiles": allowed_profiles}
+
+
+# --------------------------------------------------------------------------
+# Calendar
+@app.get("/api/calendar/events")
+def calendar_events(
+    scope: str = Query("me"),
+    start: str = Query(None),
+    days: int = Query(7),
+    p=Depends(principal),
+):
+    if p["role"] == "agent":
+        raise HTTPException(403, "agents cannot access calendar")
+    if "calendar" not in p.get("modules", []):
+        raise HTTPException(403, "calendar module not enabled")
+    conn = db.get_conn()
+    today = _today().isoformat()
+    days = max(1, min(days, 31))
+    try:
+        # date (not datetime) — a datetime string would corrupt start_iso below
+        start_d = date.fromisoformat(start or today)
+    except ValueError:
+        raise HTTPException(422, "invalid start date (expect YYYY-MM-DD)")
+    start_iso = start_d.isoformat() + "T00:00:00"
+    end_iso = (start_d + timedelta(days=days)).isoformat() + "T00:00:00"
+
+    my_id = p["id"]
+    my_row = conn.execute("SELECT * FROM users WHERE id=?", (my_id,)).fetchone()
+    my_upn = my_row["calendar_upn"] if my_row else None
+
+    if scope == "me":
+        upn_map = {my_id: my_upn} if my_upn else {}
+    else:
+        # team scope: self + users sharing >=1 active team
+        my_teams = set(
+            r["team_id"]
+            for r in conn.execute(
+                "SELECT team_id FROM team_members WHERE user_id=?", (my_id,)
+            ).fetchall()
+        )
+        if not my_teams and not p.get("all_teams"):
+            upn_map = {my_id: my_upn} if my_upn else {}
+        else:
+            if p.get("all_teams"):
+                rows = conn.execute(
+                    "SELECT id, name, initials, calendar_upn FROM users WHERE role='human'"
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT DISTINCT u.id, u.name, u.initials, u.calendar_upn "
+                    "FROM users u JOIN team_members tm ON tm.user_id = u.id "
+                    "WHERE tm.team_id IN ({}) AND u.role='human'".format(
+                        ",".join("?" * len(my_teams))
+                    ),
+                    tuple(my_teams),
+                ).fetchall()
+            upn_map = {r["id"]: r["calendar_upn"] for r in rows if r["calendar_upn"]}
+            if my_upn:
+                upn_map[my_id] = my_upn
+
+    # Build users list (all team members, mark connected)
+    if scope == "me":
+        user_rows = [my_row] if my_row else []
+    else:
+        if p.get("all_teams"):
+            user_rows = conn.execute(
+                "SELECT id, name, initials, calendar_upn FROM users WHERE role='human'"
+            ).fetchall()
+        else:
+            if my_teams:
+                user_rows = conn.execute(
+                    "SELECT DISTINCT u.id, u.name, u.initials, u.calendar_upn "
+                    "FROM users u JOIN team_members tm ON tm.user_id = u.id "
+                    "WHERE tm.team_id IN ({}) AND u.role='human'".format(
+                        ",".join("?" * len(my_teams))
+                    ),
+                    tuple(my_teams),
+                ).fetchall()
+            else:
+                user_rows = [my_row] if my_row else []
+
+    users_out = [
+        {
+            "id": r["id"],
+            "name": r["name"],
+            "initials": r["initials"],
+            "connected": bool(r["calendar_upn"]),
+        }
+        for r in user_rows
+    ]
+
+    # Fetch events
+    upns_to_fetch = list(upn_map.values())
+    upn_to_uid = {v: k for k, v in upn_map.items()}
+    uid_to_row = {
+        r["id"]: r for r in (user_rows if user_rows else [my_row] if my_row else [])
+    }
+
+    raw_events = (
+        calendar_graph.fetch_events(upns_to_fetch, start_iso, end_iso)
+        if upns_to_fetch
+        else []
+    )
+
+    # Determine status
+    fake = os.environ.get("COCKPIT_CALENDAR_FAKE") == "1"
+    if fake or (
+        os.environ.get("COCKPIT_GRAPH_TENANT")
+        and os.environ.get("COCKPIT_GRAPH_CLIENT_ID")
+    ):
+        status = "ok"
+    else:
+        status = "not_configured"
+
+    # Configured but zero events came back for connected users: distinguish a
+    # genuinely empty week from a silent Graph auth failure (fetch swallows
+    # per-upn errors), so the admin consent card can actually surface.
+    if status == "ok" and not fake and upns_to_fetch and not raw_events:
+        # probe the caller's own upn when connected — per-mailbox access policies
+        # could 403 a teammate while the caller's calendar works fine
+        probe_target = my_upn if my_upn in upns_to_fetch else upns_to_fetch[0]
+        probe_ok, probe_reason = calendar_graph.probe_upn(probe_target)
+        if not probe_ok and probe_reason in ("consent_missing", "not_configured"):
+            status = probe_reason
+
+    events_out = []
+    for ev in raw_events:
+        upn = ev["upn"]
+        uid = upn_to_uid.get(upn)
+        if not uid:
+            continue
+        urow = uid_to_row.get(uid)
+        is_self = uid == my_id
+        private = ev.get("private", False)
+        subject = ev["subject"] if (not private or is_self) else "Private"
+        location = ev.get("location", "") if (not private or is_self) else ""
+        online_url = ev.get("online_url") if (not private or is_self) else None
+        events_out.append(
+            {
+                "user": {
+                    "id": uid,
+                    "name": urow["name"] if urow else uid,
+                    "initials": urow["initials"] if urow else uid[:2].upper(),
+                },
+                "subject": subject,
+                "start": ev["start"],
+                "end": ev["end"],
+                "all_day": ev.get("all_day", False),
+                "location": location,
+                "private": private,
+                "online_url": online_url,
+                "show_as": ev.get("show_as", "busy"),
+            }
+        )
+
+    events_out.sort(key=lambda e: e["start"])
+    return {"status": status, "users": users_out, "events": events_out}
+
+
+@app.post("/api/calendar/connect")
+def calendar_connect(payload: dict = Body(...), p=Depends(human_only)):
+    upn = (payload.get("upn") or "").strip()
+    conn = db.get_conn()
+    if upn:
+        # format gate before any Graph call — a stored upn feeds URL paths
+        if not calendar_graph.UPN_RE.match(upn):
+            raise HTTPException(422, "unknown_upn")
+        ok, reason = calendar_graph.probe_upn(upn)
+        if not ok:
+            if reason == "not_configured":
+                raise HTTPException(503, "Calendar backend not configured")
+            if reason == "consent_missing":
+                raise HTTPException(422, "consent_missing")
+            if reason == "unknown_upn":
+                raise HTTPException(422, "unknown_upn")
+            # don't echo raw Graph status codes to the browser
+            raise HTTPException(422, "probe_failed")
+    with db.WRITE_LOCK:
+        conn.execute(
+            "UPDATE users SET calendar_upn=? WHERE id=?",
+            (upn or None, p["id"]),
+        )
+        db.audit(conn, p["id"], "calendar_connect", p["id"], after={"upn": upn or None})
+        conn.commit()
+    return {"status": "ok", "upn": upn or None}

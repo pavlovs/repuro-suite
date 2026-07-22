@@ -57,8 +57,12 @@ RC/FC lanes, server leases) is already built and stays unchanged — it was the 
    - Honors `runner` field: `local` tasks only when running on the laptop (OneDrive
      files, Office COM, local DBs); `any` runnable anywhere.
 2. **`cockpit_client.py add`** — create an agent task from any session
-   (`add --text ... --ac ... --deal ... --runner local|any [--deliverable d-n]`).
+   (`add --text ... --ac ... --deal ... --runner local|any [--deliverable d-n] [--model sonnet|haiku|opus|fable]`).
    AC required — the client refuses agent tasks without acceptance criteria.
+   `--model` sets the subagent tier (default `sonnet`): `haiku` = bulk fan-out;
+   `fable`/`opus` = deal-judgment only (analysis/negotiation/legal/investor).
+   The server stores the tier; the runner spawns the subagent on the assigned model.
+   Never split a reasoning chain across models — the whole task runs on one tier.
 3. `run.md` stays for one-off "do exactly this task now" — it's the manual override,
    no longer the primary path.
 

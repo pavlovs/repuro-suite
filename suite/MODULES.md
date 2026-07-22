@@ -16,6 +16,9 @@ Investor Room deviates from the convention: investor-view HTML is assembled at
 request time from `boardroom/templates/` (see `boardroom/SPEC-investor-split.md`);
 `investor` Caddy user is confined to `/investor/*` (403 elsewhere).
 
+Static route (no process/port): `/research/` → `suite/static/research/`
+(Caddy file_server, behind suite basic auth; added 2026-07-08).
+
 ## Module Structure Convention
 
 Each module follows this layout:

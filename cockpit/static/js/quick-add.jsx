@@ -62,7 +62,7 @@ function DelivPicker({ value, onChange }) {
 function QuickAdd({ open, onClose, prefill }) {
   const initType = (prefill && prefill.type) || "task";
   const [mode, setMode] = React.useState(initType);
-  const [f, setF] = React.useState({ text: "", d: "", ws: "", owners: ["RD"], due: TODAY, priority: "", execution: "me", ac: "", status: "open", target: "", inputFrom: "", inputQuestion: "" });
+  const [f, setF] = React.useState({ text: "", d: "", ws: "", owners: [ME], due: TODAY, priority: "", execution: "me", ac: "", status: "open", target: "", inputFrom: "", inputQuestion: "" });
   // Issue 22: guard against double-create. api.create awaits a full state refetch (the "lag");
   // without this, a second Enter/click during that window creates the task twice.
   const busyRef = React.useRef(false);
@@ -74,7 +74,7 @@ function QuickAdd({ open, onClose, prefill }) {
       setMode(t);
       setF({
         text: "", d: (prefill && prefill.d) || "", ws: (prefill && prefill.ws) || "",
-        owners: ["RD"], due: TODAY, priority: "",
+        owners: [ME], due: TODAY, priority: "",
         execution: (prefill && prefill.execution) || "me", ac: "",
         status: (prefill && prefill.status) || "open", target: TODAY,
         inputFrom: "", inputQuestion: "",
@@ -157,7 +157,7 @@ function QuickAdd({ open, onClose, prefill }) {
             <div className="qa-row">
               <label>Owner
                 <span className="qa-owners">
-                  {["RD", "FF"].map((p) => (
+                  {meFirst(Object.keys(PEOPLE)).map((p) => (
                     <button key={p} className={f.owners.includes(p) ? "on" : ""} onClick={() => toggleOwner(p)}>
                       <Avatar id={p} size={18} />{PEOPLE[p].name}
                     </button>
@@ -191,7 +191,7 @@ function QuickAdd({ open, onClose, prefill }) {
                 <div className="qa-row">
                   <label>Who
                     <select value={f.inputFrom} onChange={(e) => setF({ ...f, inputFrom: e.target.value })}>
-                      {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p].name}</option>)}
+                      {["RD", "FF"].map((p) => <option key={p} value={p}>{PEOPLE[p] ? PEOPLE[p].name : p}</option>)}
                     </select>
                   </label>
                   <label style={{flex:2}}>What's needed

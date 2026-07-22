@@ -461,6 +461,15 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .edit-toast.show{opacity:1}
 .edit-toast.err{background:#c0392b}
 .edit-badge{display:inline-block;font-size:9px;background:var(--ci-brand);color:#fff;padding:1px 6px;border-radius:4px;margin-left:6px;vertical-align:middle;font-weight:700;letter-spacing:.03em}
+/* slot add/remove — controls exist only in the admin draft (injected client-side) */
+.slot-off{display:none!important}
+.changed-tile{position:relative}
+.dec-num{position:relative}
+.slot-x{position:absolute;top:-6px;right:-6px;width:18px;height:18px;border:none;border-radius:50%;background:var(--ci-line);color:var(--ci-muted);font-size:12px;font-weight:700;line-height:1;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center}
+.dec-num .slot-x{top:2px;right:2px}
+.slot-x:hover{background:var(--ci-alert);color:var(--ci-white)}
+.slot-add{display:inline-flex;align-items:center;gap:6px;background:none;border:1px dashed var(--ci-brand);color:var(--ci-brand);border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin:8px 0 2px}
+.slot-add:hover{background:rgba(0,104,176,0.06)}
 </style>
 </head>
 <body>
@@ -473,7 +482,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
       <span class="x">×</span>
       <img class="logo strada-logo" src="static/img/strada-white.png" alt="Strada">
     </div>
-    <div class="meta"><b>Investor View</b>Weekly call · 02 Jul 2026</div>
+    <div class="meta"><b>Investor View</b>Weekly call · 23 Jul 2026</div>
   </div>
 </div>
 

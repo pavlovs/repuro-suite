@@ -103,7 +103,7 @@
     "tweaks-panel.jsx", "components.jsx", "task-drawer.jsx", "quick-add.jsx",
     "palette.jsx", "view-week.jsx", "view-overview.jsx", "view-board.jsx",
     "view-table.jsx", "view-timeline.jsx",
-    "view-agents.jsx", "activity.jsx", "view-admin.jsx", "app.jsx",
+    "view-agents.jsx", "activity.jsx", "view-admin.jsx", "view-calendar.jsx", "app.jsx",
   ];
 
   var WS_STYLE = [ // palette/icon assignment by order; name overrides below
@@ -167,11 +167,40 @@
     return (resp || "").split(/[,;\/\s]+/).filter(Boolean);
   }
 
+  /* People directory comes from the server (users table, humans only) — a new
+     team member is a data row, never a frontend change. Founders keep their
+     established colors/labels; everyone else draws from a fixed palette. */
+  var FOUNDER_META = {
+    rd: { name: "Roman", full: "Roman Dobriakov", color: "#0891B2", role: "Co-founder" },
+    ff: { name: "Flo", full: "Florian Fischer", color: "#A855F7", role: "Co-founder" },
+  };
+  var TEAM_COLORS = ["#D97706", "#0F766E", "#BE185D", "#4D7C0F", "#6D28D9"];
+  var _laneMap = {}; // created_by (user id) -> lane label, e.g. {rd:"RC"} — server truth
+
+  function buildPeople(users) {
+    var people = {};
+    var teamIdx = 0;
+    (users && users.length ? users : [{ id: "rd", initials: "RD" }, { id: "ff", initials: "FF" }])
+      .forEach(function (u) {
+        var meta = FOUNDER_META[u.id];
+        var key = u.initials || (u.id || "").toUpperCase().slice(0, 2);
+        people[key] = {
+          id: key, userId: u.id,
+          name: meta ? meta.name : (u.name || u.id).split(/\s+/)[0],
+          full: meta ? meta.full : (u.name || u.id),
+          color: meta ? meta.color : TEAM_COLORS[teamIdx++ % TEAM_COLORS.length],
+          role: meta ? meta.role : "Team",
+        };
+      });
+    return people;
+  }
+
+  var _peopleMap = {}; // initials -> person, module-level so mapTask can filter owners
+
   function mapState(state) {
-    var PEOPLE = {
-      RD: { id: "RD", name: "Roman", full: "Roman Dobriakov", color: "#0891B2", role: "Co-founder" },
-      FF: { id: "FF", name: "Flo", full: "Florian Fischer", color: "#A855F7", role: "Co-founder" },
-    };
+    var PEOPLE = buildPeople(state.users);
+    _peopleMap = PEOPLE;
+    _laneMap = state.lanes || { rd: "RC", ff: "FC" };
     var stageOf = {};
     (state.deals || []).forEach(function (d) { stageOf[d.codename] = d.stage; });
 
@@ -211,6 +240,8 @@
             displayNum: wsNum + "." + delivNum,
             status: d.status || "open",
             startDate: d.start_date || null,
+            hardDeadline: !!d.hard_deadline,
+            isMilestone: !!d.is_milestone,
             deal: dealCode ? { codename: dealCode, stage: w.deal_stage || stageOf[dealCode] || "?" } : null,
           });
           liveTasks.forEach(function (t) { pushTask(mapTask(t, d.id)); });
@@ -247,12 +278,13 @@
       SPACES: SPACES, WORKSTREAMS: WORKSTREAMS, DELIVERABLES: DELIVERABLES,
       TASKS: TASKS, PERSONAL: PERSONAL, PRINCIPAL: state.principal || null,
       LEARNINGS: state.learnings || [],
+      LANES: _laneMap,
       STAGE_LABEL: STAGE_LABEL,
     };
   }
 
   function mapTask(t, delivId) {
-    var owners = tokensOf(t.responsible).filter(function (x) { return x === "RD" || x === "FF"; });
+    var owners = tokensOf(t.responsible).filter(function (x) { return !!_peopleMap[x]; });
     return {
       id: t.id, d: delivId, text: t.text, detail: t.detail || null,
       owners: owners, ownersRaw: t.responsible || "",
@@ -283,7 +315,7 @@
       reviewRound: t.review_round || 0,
       claimed_by: t.claimed_by || null, claim_expires_at: t.claim_expires_at || null,
       created_by: t.created_by || null,
-      lane: t.created_by === "rd" ? "RC" : (t.created_by === "ff" ? "FC" : null),
+      lane: _laneMap[t.created_by] || null,
       doneAt: t.done_at || null,
       kind: t.kind, dealCode: t.deal || null, version: t.version,
       inputFrom: t.input_from || null, inputQuestion: t.input_question || null,
@@ -455,6 +487,23 @@
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ version: t.version, deadline: newDue }),
       });
+      // 409 on a due-date bump is almost always version staleness from a recent
+      // reorder (reorder bumps every task's version server-side). Read the current
+      // version from the 409 body and retry once — last-write-wins on this single
+      // explicitly-clicked field is safe.
+      if (r.status === 409) {
+        var conflict = null;
+        try { conflict = await r.json(); } catch (_) {}
+        // wire shape: {"detail": {"error": "version conflict", "current": {...task}}}
+        var cur = conflict && ((conflict.detail && conflict.detail.current) || conflict.current);
+        var freshVer = cur && cur.version;
+        if (freshVer != null) {
+          r = await authedFetch("/api/task/" + t.id, {
+            method: "PATCH", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ version: freshVer, deadline: newDue }),
+          });
+        }
+      }
       conflictReload(r);
       if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return false; }
       var updated = await r.json();
@@ -476,6 +525,28 @@
       var r = await authedFetch("/api/task/" + t.id, {
         method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
+      // 409 retry ONLY for quick single-purpose actions (checkmark, waiting
+      // chips, due bumps) where the version is usually stale from a recent
+      // reorder and last-write-wins on the clicked field is what the user
+      // meant. Rich editor saves must NOT auto-retry: blindly resubmitting
+      // would silently clobber a concurrent edit by Flo or an agent —
+      // those keep the conflict toast + reload via conflictReload below.
+      var QUICK_RETRY_FIELDS = { deadline: 1, status: 1, pinned_today: 1,
+        waiting_on_party: 1, waiting_on_type: 1, next_chase_date: 1, expected_back_by: 1 };
+      var quickOnly = Object.keys(body).every(function (k) { return k === "version" || QUICK_RETRY_FIELDS[k]; });
+      if (r.status === 409 && quickOnly) {
+        var conflict = null;
+        try { conflict = await r.json(); } catch (_) {}
+        // wire shape: {"detail": {"error": "version conflict", "current": {...task}}}
+        var cur2 = conflict && ((conflict.detail && conflict.detail.current) || conflict.current);
+        var freshVer = cur2 && cur2.version;
+        if (freshVer != null) {
+          body.version = freshVer;
+          r = await authedFetch("/api/task/" + t.id, {
+            method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+          });
+        }
+      }
       conflictReload(r);
       if (!r.ok) { showToast("Save failed: " + (await r.text()).slice(0, 200), "err"); return false; }
       await refreshFromServer(); // dependents' computed fields move too
@@ -541,6 +612,21 @@
       await refreshFromServer();
     },
     /* Deal playbook: one deliverable + the standard arc, prereq-chained. */
+    /* Calendar module — the only sanctioned fetch path for the JSX views
+       (authedFetch is closure-private; referencing it from the bundle throws). */
+    async calendarEvents(scope, startIso, days) {
+      var r = await authedFetch("/api/calendar/events?scope=" + scope + "&start=" + startIso + "&days=" + (days || 7));
+      if (!r.ok) throw new Error("calendar fetch failed: " + r.status);
+      return r.json();
+    },
+    async calendarConnect(upn) {
+      var r = await authedFetch("/api/calendar/connect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ upn: upn }),
+      });
+      return { ok: r.ok, text: await r.text() };
+    },
     async spinupDeal(wsId, codename, steps, target) {
       var r = await authedFetch("/api/deliverable", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -550,7 +636,8 @@
       var delivId = (await r.json()).id;
       var prev = null;
       for (var i = 0; i < steps.length; i++) {
-        var body = { deliverable_id: delivId, text: steps[i], kind: "workplan", deal: codename, responsible: "RD" };
+        var me = sessionStorage.getItem("cockpit_person") || "RD";
+        var body = { deliverable_id: delivId, text: steps[i], kind: "workplan", deal: codename, responsible: me };
         if (prev) body.prereqs = [{ ref: prev, hardness: "hard" }];
         var tr = await authedFetch("/api/task", {
           method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -612,12 +699,24 @@
       await refreshFromServer();
     },
     async reorder(taskIds) {
-      // taskIds: array of "t-N" strings in new display order
+      // taskIds: array of "t-N" strings in new display order.
+      // Optimistic: stamp sortOrder on each task object immediately so
+      // views re-sort without waiting for the server round-trip — eliminates
+      // the drop snap-back visible between setDragIdx(null) and refreshFromServer.
+      taskIds.forEach(function(id, idx) {
+        var t = window.byTask && window.byTask[id];
+        if (t) t.sortOrder = idx;
+      });
+      if (window.rerender) window.rerender();
       var r = await authedFetch("/api/tasks/reorder", {
         method: "PATCH", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ task_ids: taskIds }),
       });
-      if (!r.ok) { showToast("Reorder failed: " + (await r.text()).slice(0, 200), "err"); return; }
+      if (!r.ok) {
+        showToast("Reorder failed: " + (await r.text()).slice(0, 200), "err");
+        await refreshFromServer(); // roll back the optimistic sortOrder stamps to server truth
+        return;
+      }
       await refreshFromServer();
     },
     reload: function () { location.reload(); },
@@ -662,14 +761,18 @@
     }
     window.COCKPIT_DATA = mapState(state);
     window.COCKPIT = {
-      modules: (state.principal && state.principal.modules) || ["overview","week","workstreams","timeline","agents","relations"],
+      modules: (state.principal && state.principal.modules) || ["overview","week","workstreams","timeline","agents","relations","calendar"],
       readOnly: !!(state.principal && state.principal.read_only),
       perms: (state.principal && state.principal.perms) || {},
       isAdmin: !!(state.principal && state.principal.is_admin),
     };
-    if (state.principal && state.principal.id && !sessionStorage.getItem("cockpit_person")) {
-      var pMap = {rd: "RD", ff: "FF"};
-      if (pMap[state.principal.id]) sessionStorage.setItem("cockpit_person", pMap[state.principal.id]);
+    /* Identity = login for EVERYONE. cockpit_person is only an identity echo
+       (ME fallback, playbook `responsible`) — the admin "view as" switch was
+       removed 2026-07-16, so it is always the principal's own initials. */
+    var pr = state.principal || {};
+    var myInitials = pr.initials || (pr.id ? pr.id.toUpperCase().slice(0, 2) : null);
+    if (myInitials && pr.role === "human") {
+      sessionStorage.setItem("cockpit_person", myInitials);
     }
 
     var sources = await Promise.all(JSX_FILES.map(function (f) {

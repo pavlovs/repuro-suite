@@ -11,16 +11,8 @@ Claude reads this when `/suite-fix` is invoked.
 ---
 ## Bugs // Improvements (open)
 
-- [ ] Dealroom onepager MOUSE: add the content — still not in (content/data sync, Roman handling separately)
-- [ ] Update the local MOUSE onepager into the online Dealroom (content/data sync)
-- [ ] +1D still does not work correctly - i click it nothing happens
-- [ ] Agent tasks should only be in COCKPIT if they require feedback
-- [ ] AGENT Tasks should NOT show in the daily meeting
-- [ ] There is still some done, old deliverablres, e. g. "DD Kick-off" for Mantis - i cant find it so it looks weird
-- [ ] Agent Queue on the bototm of Cockpit does not make sense and needs respec
-- [ ] In Meeting things that have earlier dates should be higher on top!
-- [ ] Soritng of Tasks does not work properly in Cockpit
-
+*(none — all clear as of 2026-07-08)*
+- [ ] When I click dealroom in the dealroom view it navigates bak to the suite instead of back to the dealroom view (/deals/)
 
 
 ---
@@ -29,8 +21,8 @@ Claude reads this when `/suite-fix` is invoked.
 
 - [ ] [ARCH][high] DEALRoom: child tables keyed by free-text `domain` strand rows on rename — read-only check found REAL orphans in `deal_documents/deal_valuations/deal_questions` (domains `wolf`, `cat`, `blackbird`; Mouse→Everto clean). Migration SQL drafted, NOT executed — **approve cleanup?** (`dealroom/src/db.py`)
 - [x] [ARCH][medium] DEALRoom: wrong DB path silently creates+seeds a fresh DB — wired `DEALROOM_REQUIRE_DB=1` in fly.toml 2026-06-26
-- [ ] [ARCH][medium] Suite: `investor.db` started by supervisord but omitted from Litestream — moot until the investor/boardroom module ships to prod; decide when provisioning Strada access (`suite/litestream.yml`)
-- [ ] [ARCH][low] / Infra (deferred — architecture change): `entrypoint.sh` boot-time `sed` injection of `COCKPIT_BASE_PATH` is fragile. Replace with a `/config.js` endpoint that returns `window.COCKPIT_BASE="/cockpit"` so HTML files become immutable. (`suite/entrypoint.sh`)
+- [x] [ARCH][medium] Suite: `investor.db` omitted from Litestream — fixed 2026-07-07 (v2.1.22): investor.db added to litestream.yml + entrypoint restore-on-empty guard for all four DBs
+- [ ] [ARCH][low] / Infra (deferred — architecture change): `entrypoint.sh` boot-time `sed` injection of `COCKPIT_BASE_PATH` is fragile. Replace with a config.js endpoint (does not exist yet) that returns `window.COCKPIT_BASE="/cockpit"` so HTML files become immutable. (`suite/entrypoint.sh`)
 - [ ] [UX][low] ALLEX: blocking `alert()` fallbacks — no toast system exists; would need a new feedback primitive (`lead-pipeline/src/pipeline/templates/dashboard.html`)
 
 ---
@@ -38,7 +30,7 @@ Claude reads this when `/suite-fix` is invoked.
 > NOT auto-implemented. `/suite-fix` presents each with a recommendation and waits for Roman's go/no-go.
 
 - [ ] Unify CSS to repuro-ci — same headers, hero stages, fonts, H1/H2/H3 across all suite modules (the big standardization pass; covers the section-whitespace bug above)
-- [ ] SPEC: Users belong to a team (e.g. Roman / Flo = Founder). Teams see only their spaces; Meetings show the daily todo list of every team member
+- [x] SPEC: Users belong to a team — SHIPPED 2026-07-07 (v2.1.23/24, `cockpit/ai/SPEC-teams.md` v2): teams carry per-module rw/ro, strongest wins, workstream-team scoping, Admin view. OPEN REMAINDER: "Meetings show the daily todo list of every team member" — per-member meeting rollup not designed yet (flagged to Roman 07-07, needs his input on what a team meeting view shows)
 - [ ] SPEC: Integrate office calendar + Granola endpoint for meeting prep in-window
 - [ ] SPEC: Add + integrate the HubSpot database (already downloaded once) into the workflow
 - [ ] SPEC: Architecture between contact/HubSpot DB + DEALROOM + ALLEX
@@ -50,21 +42,14 @@ Claude reads this when `/suite-fix` is invoked.
 ## Resolved
 Deployed fixes are pruned on each `/suite-fix` run. See git history of this file for the full log.
 
-- [x] Login loop on all modules ("stuck at auth", roman locked out since 05.07 deploy) — fixed 2026-07-06 (v2.1.18, verified by Roman + synthetic browser-case probe). TWO real root causes: (1) cockpit principal() nuked X-Remote-User on ANY Authorization header, but browsers behind Caddy always send `Authorization: Basic ...` which Caddy forwards → all proxied browser traffic 401'd; now only Bearer marks a direct caller (+ regression tests). (2) Chrome no longer replays basic-auth credentials on background fetch(); `window.fetch` wrapper forces `credentials:'include'` in cockpit/investor/allex UIs; cockpit boot.js also re-tries the basic path each round and clears stale tokens (the token prompt could previously trap a user permanently). NOTE: the v2.1.17 "Caddy 2.11.4 regression" analysis was a diagnostic artifact (debug user unknown to backends) — the caddy:2.10 pin stays for reproducibility only.
-- [x] Investor portfolio table Lion/Wolf EV+multiple stale vs latest models — fixed 2026-07-06: Lion 4.8/5.9x → 3.7/5.6x (Golmed v15, 26.06), Wolf 5.2/5.1x → 4.3/5.4x (KVG v5, 12.06); matches dealroom.db overrides synced 05.07 (handoff item the v16 port session skipped).
+- [x] (Anton) Save failed: `{"detail":"input_question required when input_from is set"}` when setting "Input required from Roman" in the task drawer — chicken-and-egg: the drawer saved `inputFrom` immediately while `inputQuestion` was still empty (the Question field only renders after that save succeeds). Fixed 2026-07-21: selecting a person now opens the question modal first and saves both fields in one PATCH (`task-drawer.jsx`); defect-class sweep also guards clearing the question while inputFrom is set (toast, no 422); quick-add already guarded.
+- [x] MOUSE onepager into online Dealroom — pushed 2026-07-08 via flyctl SSH (onepager fields + 16 commercial + 40 customer rows + 19 missing financials; prod-only rows preserved; prod DB backed up first). Verified rendering live on /deals/?deal=Mouse. NOTE: flyctl SSH was never broken — the trailing "handle is invalid" is a cosmetic Windows console teardown error AFTER successful output.
 
-All Investor Mode items — fixed 2026-07-06 by applying the pending `boardroom/review/proposal-fresh-v16.html` through `boardroom/templates/` (reverse-split, byte-verified) + deploying the template split (92f0bba) and scorecard re-source (8251375) that were committed but never shipped:
+Cockpit fix batch — fixed + deployed + click-verified live 2026-07-08 (v2.1.25):
 
-- [x] LOI Scorecard comparison: "Total Score (out of 40)" row label, score column plain numbers — fixed 2026-07-06 (v16)
-- [x] Comment below comparison: Score/Multiple = value-for-money explainer — fixed 2026-07-06 (v16)
-- [x] Sources & Uses readability: more cell padding (9px/16px), kept K€; "—" = n/a vs 0 = true zero — fixed 2026-07-06 (v16)
-- [x] Customer Interviews provider → TBD — fixed 2026-07-06 (v16)
-- [x] Structuring/Tax KG → Ebner Stolz only (YPOG removed) — fixed 2026-07-06 (v16)
-- [x] Operating cash flow: side table (eo-panel) right of S&U instead of prose comment — fixed 2026-07-06 (v16)
-- [x] "Preliminary" note below all S&U views — fixed 2026-07-06 (v16)
-- [x] Mouse and Cat positions swapped (tabs, panels, all comparison columns) — fixed 2026-07-06 (v16 + `_PAGE_DEALS` order in boardroom/src/api.py)
-- [x] Mouse + Cat S&U same layout as Fox/Mantis (su-layout grid, no stretch) — fixed 2026-07-06 (v16)
-- [x] Individual scorecard formatting: horizontal category rows, no vertical labels — fixed 2026-07-06 (was committed 8251375, undeployed)
-- [x] Fox scorecard 432k/12% invented values — re-sourced from in-doc P&Ls, all 4 deals cross-checked (Fox 0.36 M€/10.3%, Mantis 0.81, Mouse 0.65, Cat 0.93; CAGRs match deals.md) — fixed 2026-07-06 (was committed 8251375, undeployed)
-- [x] Fox valuation earn-out table EVs inconsistent with EV 1,753 (963/1,463 → 1,253/1,753/1,903) — fixed 2026-07-06 (v16)
-- [x] Codex review findings on the v16 port (2026-07-06, verdict revise→ship): (1) "Total Score (out of 40)" + plain number propagated to the 4 individual scorecards (v16 only fixed the comparison — correction-sweep), (2) Decision 2 cost bullet "Notary, structuring = 23 K€" → 15 K€ (reconciles with dd-costs detail: notary 11 + structuring 4). Review: `boardroom/ai/codex-reviews/2026-07-06-investor-v16-commercial.md` + `-reverify.md`
+- [x] +1D does nothing — TWO root causes: (1) `addDays()` used `toISOString()` (UTC): in Berlin the +1 day collapsed back to the same date, a deterministic no-op; (2) stale-version 409 after reorders reverted the bump silently — quick actions now retry once with the server's current version (`detail.current.version`, wire shape verified live). Editor saves keep conflict semantics (no blind retry — would clobber Flo/agent edits; Codex HIGH finding).
+- [x] Sorting of tasks does not stick — optimistic sortOrder stamping + rerender, rollback on failed PATCH, sortOrder sorts in Table view + deliverable drawer; reorder-persistence pytest added. Verified live: reorder round-trip persisted server-side.
+- [x] AGENT tasks in daily meeting / should only be in Cockpit when feedback needed — Meeting + My Week exclude `execution=agent` everywhere (lists, deadline bars, completed-since-Monday, due-today/next-10-days pickers); agent work needing Roman surfaces ONLY in "Agents — waiting on you".
+- [x] Agent Queue respec — now "Agents — waiting on you": in_review (Needs review) + blocked (Waiting on your answer), up to 5; Agents nav badge counts both.
+- [x] Meeting: earlier dates on top — date-ascending sort in all Meeting/Week lists (verified live: RD + FF daily lists ascending).
+- [x] Done/old deliverables lingering ("DD Kick-off" Mantis) — deliverables with status done/dropped OR all tasks done are hidden in Timeline and greyed (`.deliv.done`) but findable in Table view for archiving. Verified live on DD kickoff (d-33).

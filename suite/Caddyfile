@@ -41,6 +41,7 @@
 	redir /deals /deals/ permanent
 	redir /cockpit /cockpit/ permanent
 	redir /investor /investor/ permanent
+	redir /research /research/ permanent
 
 	# Investor isolation: investor user is confined to /investor — 403 elsewhere.
 	# Must be a handle block (not respond) and placed BEFORE other handle/handle_path
@@ -138,6 +139,12 @@ a:hover{background:#0891B2;color:#fff}
 		reverse_proxy localhost:8084 {
 			header_up X-Remote-User {http.auth.user.id}
 		}
+	}
+
+	handle_path /research/* {
+		header Cache-Control "no-cache, must-revalidate"
+		root * /app/suite/static/research
+		file_server
 	}
 
 	handle /shared.css {

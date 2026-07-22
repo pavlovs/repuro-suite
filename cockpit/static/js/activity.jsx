@@ -24,12 +24,12 @@ function fmtAction(action, entity, after) {
   return map[action] || (action + (entityShort ? " " + entityShort : ""));
 }
 
-/* Actor display name */
+/* Actor display name — audit actors are user ids; map to initials via PEOPLE */
 function actorLabel(actor) {
-  if (!actor) return "System";
-  if (actor === "rd") return "RD";
-  if (actor === "ff") return "FF";
-  if (actor === "system") return "System";
+  if (!actor || actor === "system") return "System";
+  for (var k in PEOPLE) {
+    if (PEOPLE[k].userId === actor) return k;
+  }
   return actor;
 }
 

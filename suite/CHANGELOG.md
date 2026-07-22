@@ -4,6 +4,22 @@ Format: one entry per prod deploy. Group changes by module, then by feature. Bum
 
 ---
 
+## v2.1.29 — 2026-07-22
+
+### Cockpit — WS4a: per-task model tier for agent runner
+- **`model` field on tasks** (sonnet/haiku/opus/fable, DEFAULT sonnet): the
+  runner reads `task.model` and spawns the executing subagent on that tier.
+  `sonnet` = default/mechanical; `haiku` = bulk fan-out; `opus`/`fable` =
+  deal-judgment (analysis/negotiation/legal/investor-grade).
+- Server validates on enqueue (422 on unknown tier); queue endpoint returns
+  `model` field per task; migration 16 (additive ALTER TABLE ADD COLUMN).
+- Plugin: `cockpit_client.py add --model <tier>` argument; loop.md + run.md
+  updated with model-aware execution routing (plugin v0.7.0 — distribution
+  pending per convention).
+- SPEC-agentic-workflow.md §3a updated; cockpit CLAUDE.md schema docs updated.
+
+---
+
 ## v2.1.28 — 2026-07-15
 
 ### Cockpit — multi-user personal cockpit (Anton onboarding)
@@ -78,7 +94,7 @@ v2, boardroom ACT1) remains unshipped pending sign-off.
   frozen edits injected as `__FROZEN_EDITS` — published pages make no live
   API calls. Schema v3 migration; 33 new tests.
 - Weekly content 07 Jul 2026 (Fox/Mantis DD status, Mouse LOI, decisions).
-- Volume check before this deploy: `/data/investor.db` live with data
+- Volume check before this deploy: investor.db live with data
   (WAL-persisted inline edits), served by prod, litestream-replicated since
   v2.1.22 — investor mode needed no infra change, code ships with the image.
 
@@ -186,7 +202,7 @@ v2, boardroom ACT1) remains unshipped pending sign-off.
 - dealroom_sync never drops cockpit-owned mirror rows; prod deps pinned (~=).
 
 ### Suite — backup hardening
-- litestream replicates investor.db; entrypoint restores missing DBs from S3
+- litestream replicates the investor DB; entrypoint restores missing DBs from S3
   before replication starts (fresh volume can no longer overwrite backups
   with empty DBs).
 
@@ -321,7 +337,7 @@ injection works on both 2.10 and 2.11. The `caddy:2.10-alpine` pin stays
 ## v2.1.11 — 2026-06-17
 
 ### Infrastructure — Deploy consolidation
-- **Per-module Dockerfiles/fly.tomls removed** — `cockpit/Dockerfile`, `cockpit/fly.toml`, `lead-pipeline/Dockerfile`, `lead-pipeline/fly.toml` deleted; `suite/` is now the single deploy artefact
+- **Per-module Dockerfiles/fly.tomls removed** — per-module Dockerfiles and fly.tomls (cockpit, lead-pipeline) deleted; `suite/` is now the single deploy artefact
 - **MODULES.md** — module registry added to `suite/` documenting ports, routes, DB paths, and adding-a-module convention
 - **Suite landing page** — `suite/static/index.html` replaced with `Repuro Suite.html` (renamed)
 - **lead-pipeline/ai/CHANGELOG.md removed** — changelog consolidated into `suite/CHANGELOG.md`

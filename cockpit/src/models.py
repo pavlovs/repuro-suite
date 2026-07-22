@@ -9,6 +9,10 @@ HARDNESS = ("hard", "soft")
 WAITING_TYPES = ("counterparty", "advisor", "investor", "internal")
 PRIORITIES = ("high", "med", "low")
 RUNNERS = ("local", "cma", "any")
+# Agent subagent model tiers (WS4a, 2026-07-22).
+# sonnet = default / bulk-mechanical; haiku = high-volume fan-out;
+# fable / opus = deal-judgment: analysis, negotiation, legal, investor.
+MODEL_TIERS = ("sonnet", "haiku", "opus", "fable")
 WS_STATUSES = ("active", "parked", "done")
 DELIV_STATUSES = ("open", "done", "dropped")
 

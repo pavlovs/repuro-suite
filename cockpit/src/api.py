@@ -715,6 +715,7 @@ _TASK_FIELDS = {
     "preview_url",
     "review_feedback",
     "review_round",
+    "model",
 }
 _TASK_ENUMS = {
     "kind": models.KINDS,
@@ -724,6 +725,7 @@ _TASK_ENUMS = {
     "runner": models.RUNNERS,
     "waiting_on_type": models.WAITING_TYPES,
     "input_from": {"RD", "FF"},
+    "model": models.MODEL_TIERS,
 }
 
 
@@ -1557,6 +1559,8 @@ def agent_queue(scope: str = Query(default="mine"), p=Depends(agent_only)):
                 "review_round": r["review_round"] or 0,
                 "review_feedback": r["review_feedback"],
                 "evidence": r["evidence"],
+                # model tier — runner spawns the subagent on this model
+                "model": r["model"] if "model" in r.keys() else "sonnet",
                 "ready": ready,
                 "blocked_by": blocked_by,
             }
@@ -1689,6 +1693,7 @@ def agent_create_task(payload: dict = Body(...), p=Depends(agent_only)):
             "priority",
             "deal",
             "runner",
+            "model",
         )
         if payload.get(k) is not None
     }
@@ -1697,6 +1702,15 @@ def agent_create_task(payload: dict = Body(...), p=Depends(agent_only)):
         raise HTTPException(422, "execution must be agent_supervised or agent_auto")
     fields["kind"] = "agent_job"
     fields.setdefault("runner", "local")
+    # model tier: sonnet (default) | haiku | opus | fable
+    # validate here before _validate_task_fields so the error message is explicit
+    model_val = fields.get("model", "sonnet")
+    if model_val not in models.MODEL_TIERS:
+        raise HTTPException(
+            422,
+            f"invalid model {model_val!r} — allowed: " + ", ".join(models.MODEL_TIERS),
+        )
+    fields["model"] = model_val
     if payload.get("deliverable_id"):
         prefix, dnum = _safe_ref(payload["deliverable_id"])
         if prefix != "d":

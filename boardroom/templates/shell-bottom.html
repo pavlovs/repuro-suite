@@ -114,6 +114,17 @@ function recomputeSum(){
   var se=document.getElementById('sum-ebitda'); if(se) se.textContent=fmtDE(eb);
   var sm=document.getElementById('sum-emp'); if(sm) sm.textContent=emp;
 }
+// ---- ACT 3 — auto-sort portfolio rows by stage rank (template order preserved within a stage) ----
+var STAGE_RANK=['closed','contract_negotiation','due_diligence','loi_signed','loi_negotiation','indicative_offer','valuation_rfi','meeting_concluded','on_hold','dead'];
+(function(){
+  var tb=document.querySelector('.portfolio-table tbody');
+  if(!tb) return;
+  Array.prototype.slice.call(tb.children)
+    .map(function(tr,i){var r=STAGE_RANK.indexOf(tr.getAttribute('data-stage'));return {tr:tr,i:i,r:r===-1?STAGE_RANK.length:r};})
+    .sort(function(a,b){return (a.r-b.r)||(a.i-b.i);})
+    .forEach(function(o){tb.appendChild(o.tr);});
+})();
+
 applyStageFilter('active');
 
 applyDeal('overview');

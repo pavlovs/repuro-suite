@@ -282,6 +282,13 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .fn-l{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ci-muted);text-align:center;line-height:1.25}
 .fn-sub{font-size:12px;color:var(--ci-muted);text-align:center;line-height:1.2;min-height:1.2em}
 .fn-sub b{color:var(--ci-ink);font-weight:800;font-size:16px;font-variant-numeric:tabular-nums}
+/* under-LOI aggregate card — mirrors funnel type scale, tied to the LOI-stage purple */
+.fn-agg{align-self:stretch;display:flex;flex-direction:column;min-width:186px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid color-mix(in srgb,var(--stage-loi_signed) 30%,transparent);background:color-mix(in srgb,var(--stage-loi_signed) 5%,var(--ci-white))}
+.fn-agg-head{background:var(--stage-loi_signed);color:var(--ci-white);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:8px 16px;line-height:1.25}
+.fn-agg-body{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;padding:10px 16px}
+.fn-agg-stat{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:5px 0}
+.fn-agg-l{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ci-muted);line-height:1.25}
+.fn-agg-v{font-size:24px;font-weight:800;color:var(--ci-ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1;white-space:nowrap}
 
 /* portfolio table — VERBATIM dealroom (raw hex allowed here only) */
 .portfolio-wrap{overflow-x:auto}

@@ -136,7 +136,8 @@ function TaskDrawer({ task, onClose, mutate, openTask }) {
               onChange={(e) => api.save(task, { d: e.target.value || null })}>
               <option value="">(standalone)</option>
               {SPACES.map((s) => (wsPerSpace[s.id] || []).map((w) => {
-                const wsDelivs = DELIVERABLES.filter((d) => d.ws === w.id);
+                // hide done/past-deadline deliverables, but keep the task's current one so the select stays valid
+                const wsDelivs = DELIVERABLES.filter((d) => d.ws === w.id && (d.id === task.d || (d.status !== "done" && (!d.target || d.target >= TODAY))));
                 if (!wsDelivs.length) return null;
                 return (
                   <optgroup key={w.id} label={s.name + " › " + w.name}>

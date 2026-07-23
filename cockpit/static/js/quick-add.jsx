@@ -35,7 +35,8 @@ function DelivPicker({ value, onChange }) {
         <div className="dp-drop">
           <button type="button" className={"dp-item" + (!value ? " on" : "")} onClick={() => { onChange(""); setOpen(false); }}>(standalone)</button>
           {SPACES.map((s) => (wsPerSpace[s.id] || []).map((w) => {
-            const wsDelivs = DELIVERABLES.filter((d) => d.ws === w.id);
+            // done or past-deadline deliverables are history — keep them out of the picker
+            const wsDelivs = DELIVERABLES.filter((d) => d.ws === w.id && d.status !== "done" && (!d.target || d.target >= TODAY));
             if (!wsDelivs.length) return null;
             const isExp = expanded.has(w.id);
             return (

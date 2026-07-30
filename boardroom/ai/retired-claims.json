@@ -1,0 +1,50 @@
+{
+  "_doc": "Claims retired from the investor view. Any of these appearing in the assembled HTML is a hard fail (check_retired_claims.py). Add a row whenever a risk/flag/status is closed out — never rely on remembering it. Match is case-insensitive substring on the rendered text.",
+  "retired": [
+    {
+      "deal": "mantis",
+      "phrase": "Reported EBIT",
+      "context": "-55% in 2025 (716.8k -> 320.3k)",
+      "retired_on": "2026-07-30",
+      "reason": "Resolved in CDD - final JA 2025 established (EBIT 468 K EUR / rev 3,157 K EUR). Roman flagged this repeatedly; it is investor-facing and must not reappear."
+    },
+    {
+      "deal": "mantis",
+      "phrase": "Hospital segment 2024 spike",
+      "retired_on": "2026-07-30",
+      "reason": "Resolved in CDD."
+    },
+    {
+      "deal": "mantis",
+      "phrase": "2025 P&L preliminary",
+      "retired_on": "2026-07-30",
+      "reason": "Final annual accounts 2025 received and processed."
+    },
+    {
+      "deal": "mantis",
+      "phrase": "120 K",
+      "context": "unverified revenue shift to 2026",
+      "retired_on": "2026-07-30",
+      "reason": "Resolved in CDD tie-out.",
+      "requires": "revenue shift"
+    },
+    {
+      "deal": "mantis",
+      "phrase": "cohort degrading",
+      "retired_on": "2026-07-30",
+      "reason": "Resolved in CDD cohort analysis."
+    },
+    {
+      "deal": "mantis",
+      "phrase": "labor not allocated per segment",
+      "retired_on": "2026-07-30",
+      "reason": "Segment margin analysis closed in CDD."
+    },
+    {
+      "deal": "cat",
+      "phrase": "Price still moving",
+      "retired_on": "2026-07-29",
+      "reason": "Deal closed out 29 Jul 2026 - no live negotiation."
+    }
+  ]
+}

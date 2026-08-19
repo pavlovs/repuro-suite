@@ -45,6 +45,25 @@
       "phrase": "Price still moving",
       "retired_on": "2026-07-29",
       "reason": "Deal closed out 29 Jul 2026 - no live negotiation."
+    },
+    {
+      "deal": "mantis",
+      "phrase": "gate before signing",
+      "context": "China OEM change-of-control clause framed as a signing gate",
+      "retired_on": "2026-08-19",
+      "reason": "Kreipel call 18 Aug: CoC clause in the Lyn Mou contract is positively worded - no special termination right on sale. Live China topic is now MDR importer/product-liability coverage, not CoC."
+    },
+    {
+      "deal": "mantis",
+      "phrase": "change-of-control clause remains",
+      "retired_on": "2026-08-19",
+      "reason": "Same closure as above - CoC confirmed positive 18 Aug."
+    },
+    {
+      "deal": "mantis",
+      "phrase": "Olympus warning letter (advertising claims) — assessed in Legal DD",
+      "retired_on": "2026-08-19",
+      "reason": "Resolved: cease-and-desist declaration given, seller confirmed no further payments; taken up as SPA indemnity (ES call 13 Aug, Kreipel call 18 Aug)."
     }
   ]
 }

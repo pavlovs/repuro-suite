@@ -232,6 +232,22 @@ document.querySelectorAll('.dec-link').forEach(function(a){
       els.forEach(function(el){
         el.setAttribute('contenteditable','true');
         el.classList.add('editable');
+        el.addEventListener('paste',function(e){
+          e.preventDefault();
+          var cd=e.clipboardData||window.clipboardData;
+          var text=cd?cd.getData('text/plain'):'';
+          if(document.queryCommandSupported&&document.queryCommandSupported('insertText')){
+            document.execCommand('insertText',false,text);
+          }else{
+            var sel=window.getSelection();
+            if(sel&&sel.rangeCount){
+              var range=sel.getRangeAt(0);
+              range.deleteContents();
+              range.insertNode(document.createTextNode(text));
+              range.collapse(false);
+            }
+          }
+        });
         var orig=el.innerHTML;
         el.addEventListener('focus',function(){orig=el.innerHTML;});
         el.addEventListener('blur',function(){

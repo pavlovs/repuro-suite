@@ -64,6 +64,32 @@
       "phrase": "Olympus warning letter (advertising claims) — assessed in Legal DD",
       "retired_on": "2026-08-19",
       "reason": "Resolved: cease-and-desist declaration given, seller confirmed no further payments; taken up as SPA indemnity (ES call 13 Aug, Kreipel call 18 Aug)."
+    },
+    {
+      "deal": "fox",
+      "phrase": "awaiting seller-side data preparation",
+      "context": "Phase 2 (Tax & Legal) blocked on seller tax documents",
+      "retired_on": "2026-09-03",
+      "reason": "TDD draft report received from Ebner Stolz 02 Sep; owners' tax call 01 Sep held. Phase 2 is no longer waiting on the seller."
+    },
+    {
+      "deal": "fox",
+      "phrase": "TDD after seller tax documents",
+      "retired_on": "2026-09-03",
+      "reason": "Same closure - TDD draft received 02 Sep."
+    },
+    {
+      "deal": "mouse",
+      "phrase": "Phase 1 (CDD/FDD) to mid Sep",
+      "context": "pre-workshop DD phasing",
+      "retired_on": "2026-09-03",
+      "reason": "Superseded by the 02 Sep management Q&A plan: FDD running, workshop 16 Sep, legal/tax DD to end Sep, signing by end Oct before the IDL members' meeting."
+    },
+    {
+      "deal": "mantis",
+      "phrase": "contracts sent 26 Aug",
+      "retired_on": "2026-09-03",
+      "reason": "Superseded: SPA walked through with the sellers 27 Aug and reworked; seller-counsel review 04 Sep, feedback due 07 Sep."
     }
   ]
 }

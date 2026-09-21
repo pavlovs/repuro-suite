@@ -1146,6 +1146,8 @@ input, select, textarea { font: inherit; color: inherit; }
 .fnl-row:last-child { border-bottom: none; }
 .fnl-stage { font-size: 13px; font-weight: 500; }
 .fnl-stage-sub { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+.fnl-drop { font-size: 11px; color: var(--ink-3); margin-top: 6px; line-height: 1.5; }
+.fnl-drop b { color: var(--ink-2); font-weight: 600; }
 .fnl-track { height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden; }
 .fnl-bar {
   height: 100%;
@@ -3857,19 +3859,35 @@ function _computeDropoffGlobal(allRecords) {
   return stages;
 }
 
+// Batch drop step: 'pre' = removed before the manual check (OUT in the batch Excel, Duplikat, Excluded,
+// Prio 2 other/intl), 'check' = removed by the manual check (Prio 2 small/big, reclassified), null = still Prio 1.
+function _batchDropStep(r) {
+  if (r.prio === 'Prio 1') return null;
+  var reason = r.reclassify_reason || '';
+  if (r.prio === 'Duplicate' || r.prio === 'Excluded' || r.prio === 'Prio 2 (other)' || r.prio === 'Prio 2 (intl)'
+      || /^OUT\b/i.test(reason) || /^Duplikat/i.test(reason)) return 'pre';
+  return 'check';
+}
+function _batchDropReason(r) {
+  if (r.prio === 'Duplicate' && !r.reclassify_reason) return 'Duplikat';
+  return r.reclassify_reason || r.prio || ('→ ' + (r.klass || '?'));
+}
+function _reasonList(recs) {
+  var m = {};
+  recs.forEach(function(r){ var k = _batchDropReason(r); m[k] = (m[k] || 0) + 1; });
+  return Object.keys(m).sort(function(a,b){ return m[b]-m[a]; }).map(function(k){ return {label:k, n:m[k]}; });
+}
+
 function _computeDropoffBatch(batchRecords, ba) {
   var total = batchRecords.length;
   var stages = [];
   stages.push({ stage: 'Zugewiesen', sub: ba, passed: total, dropped: 0, reasons: [] });
-  var passed = batchRecords.filter(function(r){ return r.prio === 'Prio 1'; });
-  var dropped = batchRecords.filter(function(r){ return r.prio !== 'Prio 1'; });
-  var dropReasons = {};
-  dropped.forEach(function(r){
-    var reason = r.prio === 'Duplicate' ? 'Duplikat' : (r.reclassify_reason || ('→ ' + (r.klass || '?')));
-    dropReasons[reason] = (dropReasons[reason] || 0) + 1;
-  });
-  stages.push({ stage: 'Manuelle Prüfung', sub: 'Reklassifiziert nach Zuweisung', passed: passed.length, dropped: dropped.length,
-    reasons: Object.keys(dropReasons).sort(function(a,b){ return dropReasons[b]-dropReasons[a]; }).map(function(k){ return {label:k, n:dropReasons[k]}; }) });
+  var pre = batchRecords.filter(function(r){ return _batchDropStep(r) === 'pre'; });
+  var afterPre = batchRecords.filter(function(r){ return _batchDropStep(r) !== 'pre'; });
+  stages.push({ stage: 'Vorprüfung', sub: 'OUT im Batch-Excel · Duplikat · Excluded', passed: afterPre.length, dropped: pre.length, reasons: _reasonList(pre) });
+  var passed = afterPre.filter(function(r){ return r.prio === 'Prio 1'; });
+  var dropped = afterPre.filter(function(r){ return r.prio !== 'Prio 1'; });
+  stages.push({ stage: 'Manuelle Prüfung', sub: 'Größe · Ownership · Reklassifizierung', passed: passed.length, dropped: dropped.length, reasons: _reasonList(dropped) });
   var approved = passed.filter(function(r){ return r.approved_for_sendout == 1; });
   var notApproved = passed.filter(function(r){ return r.approved_for_sendout != 1; });
   stages.push({ stage: 'Freigabe', sub: 'Für Versand freigegeben', passed: approved.length, dropped: notApproved.length, reasons: [] });
@@ -3904,9 +3922,11 @@ function renderReviewDropoff() {
 
   var statsHtml;
   if (selectedBA) {
-    var reklassifiziert = stages.length > 1 ? stages[1].dropped : 0;
-    var freigegeben = stages.length > 2 ? stages[2].passed : 0;
-    var versendet = stages.length > 3 ? stages[3].passed : 0;
+    var byStage = {};
+    stages.forEach(function(s){ byStage[s.stage] = s; });
+    var reklassifiziert = (byStage['Vorprüfung'] ? byStage['Vorprüfung'].dropped : 0) + (byStage['Manuelle Prüfung'] ? byStage['Manuelle Prüfung'].dropped : 0);
+    var freigegeben = byStage['Freigabe'] ? byStage['Freigabe'].passed : 0;
+    var versendet = byStage['Versendet'] ? byStage['Versendet'].passed : 0;
     statsHtml = '<div class="ps"><div class="ps-num num">' + fmt(total) + '</div><div class="ps-lbl">Zugewiesen</div></div>' +
       '<div class="ps"><div class="ps-num num warn">' + fmt(reklassifiziert) + '</div><div class="ps-lbl">Reklassifiziert</div></div>' +
       '<div class="ps"><div class="ps-num num ok">' + fmt(freigegeben) + '</div><div class="ps-lbl">Freigegeben</div></div>' +
@@ -4415,20 +4435,14 @@ function renderAnalyzeFunnel() {
   var heading = 'Pipeline-Funnel · Alle Batches';
 
   if (selectedBA) {
-    // Client-side computation from ALL records of the batch (Prio 2 included — the A/B step shows the drop)
+    // Batch funnel: what happened to the assigned targets (all records of the batch, Prio 2 included).
+    // Same stages and drop reasons as Review › Drop-Off; reasons come from reclassify_reason / prio.
     var all = getBatchRows();
     var t = all.length || 1;
-    heading = 'Pipeline-Funnel · ' + selectedBA;
-    var scragedStages = ['scraped','scrape_failed','classified','ownership_enriched','ownership_review_needed','ownership_gated','email_enriched'];
-    rows = [
-      { stage: 'Total',      sub: selectedBA,              n: all.length,                                                                      pct: 100 },
-      { stage: 'Filtered',   sub: 'Hard Filter',           n: all.filter(function(r){ return r.filter_pass !== 0; }).length,                   pct: 0 },
-      { stage: 'Scraped',    sub: 'Website + Impressum',   n: all.filter(function(r){ return scragedStages.indexOf(r.pipeline_stage) >= 0; }).length, pct: 0 },
-      { stage: 'Classified', sub: 'AI · A/B/C/D/E',       n: all.filter(function(r){ return r.klass; }).length,                               pct: 0 },
-      { stage: 'A / B',      sub: 'Prio 1 nach Prüfung',   n: all.filter(function(r){ return r.prio === 'Prio 1'; }).length,    pct: 0 },
-      { stage: 'Approached', sub: 'Brief versendet',       n: all.filter(function(r){ return r.already_approached; }).length,                  pct: 0 },
-    ];
-    rows.forEach(function(r){ r.pct = (r.n / t) * 100; });
+    heading = 'Batch-Funnel · ' + selectedBA;
+    rows = _computeDropoffBatch(all, selectedBA).map(function(s) {
+      return { stage: s.stage, sub: s.sub, n: s.passed, pct: (s.passed / t) * 100, dropped: s.dropped, reasons: s.reasons || [] };
+    });
   } else {
     var funnel = DATA.funnel || {};
     var isArray = Array.isArray(funnel);
@@ -4458,16 +4472,22 @@ function renderAnalyzeFunnel() {
     ? '<p style="color:var(--ink-3);font-size:13px">Keine Daten für diese Auswahl.</p>'
     : '<div class="fnl">' + rows.map(function(f, i) {
         var pct = f.pct || 0;
+        var dropHtml = (f.dropped && f.reasons && f.reasons.length)
+          ? '<div class="fnl-drop"><b>−' + fmt(f.dropped) + '</b> · ' + f.reasons.map(function(x){ return escapeHtml(x.label) + ' <b>' + fmt(x.n) + '</b>'; }).join(' · ') + '</div>'
+          : '';
         return '<div class="fnl-row">' +
           '<div><div class="fnl-stage">' + escapeHtml(f.stage || '') + '</div><div class="fnl-stage-sub">' + escapeHtml(f.sub || '') + '</div></div>' +
-          '<div class="fnl-track"><div class="fnl-bar" style="width:' + Math.max(0.2, pct) + '%;animation-delay:' + (i*70) + 'ms"></div></div>' +
+          '<div><div class="fnl-track"><div class="fnl-bar" style="width:' + Math.max(0.2, pct) + '%;animation-delay:' + (i*70) + 'ms"></div></div>' + dropHtml + '</div>' +
           '<div class="fnl-n num">' + fmt(f.n) + '</div>' +
           '<div class="fnl-pct num">' + (pct < 1 ? pct.toFixed(1) : pct.toFixed(0)) + '%</div>' +
           '</div>';
       }).join('') + '</div>';
 
+  var lead = selectedBA
+    ? 'Was passiert mit den ' + fmt(totalIn) + ' zugewiesenen Targets in ' + escapeHtml(selectedBA) + '? Gründe je Stufe aus Reklassifiz. / Prio.'
+    : 'Wo stehen die ' + fmt(totalIn) + ' Records aktuell — und wo geht der Trichter verloren?';
   root.innerHTML = '<div class="analyze"><h2>' + escapeHtml(heading) + '</h2>' +
-    '<p class="lead">Wo stehen die ' + fmt(totalIn) + ' Records aktuell — und wo geht der Trichter verloren?</p>' +
+    '<p class="lead">' + lead + '</p>' +
     '<div class="an-section">' + bodyHtml + '</div></div>';
 }
 

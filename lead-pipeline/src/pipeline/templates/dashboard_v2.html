@@ -1323,7 +1323,37 @@ input, select, textarea { font: inherit; color: inherit; }
 .wn-modal .wn-btn { display:block;margin:20px auto 0;padding:8px 28px;border:none;border-radius:6px;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer; }
 .wn-modal .wn-btn:hover { opacity:.85; }
 
+/* ===== BATCH MAP ===== */
+#view-map .map-wrap { padding:16px; }
+#map-container { width:100%;height:calc(100vh - 185px);min-height:460px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb; }
+.map-controls { display:flex;gap:10px;margin-bottom:10px;align-items:center;flex-wrap:wrap; }
+.map-legend { display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px; }
+.map-legend-item { display:flex;align-items:center;gap:5px;font-size:11px;color:#374151; }
+.map-legend-dot { width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,0.15); }
+.map-status-msg { font-size:12px;color:#6b7280;margin-left:auto; }
+.map-count-badge { font-size:12px;font-weight:600;color:var(--spar);background:var(--spar-soft);border-radius:4px;padding:2px 8px; }
+/* layout classes for renderBatchMap */
+.map-shell { display:flex;flex-direction:column;height:100%;background:var(--bg); }
+.map-ctrl-bar { display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--line);flex-shrink:0;flex-wrap:wrap; }
+.map-ctrl-label { font-size:12px;font-weight:600;color:var(--ink-2); }
+.map-ctrl-select { font-size:12px;padding:3px 8px;border:1px solid var(--line);border-radius:4px;background:var(--surface);color:var(--ink); }
+.map-ctrl-count { font-size:11px;color:var(--ink-3); }
+.map-ctrl-legend { display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-left:auto; }
+.map-tile { flex:1;min-height:0; }
+.map-dot-followup1  { background:#f59e0b; }
+.map-dot-followup2  { background:#d97706; }
+.map-dot-contact    { background:#3b82f6; }
+.map-dot-meeting    { background:#10b981; }
+.map-dot-declined   { background:#ef4444; }
+.map-dot-financials { background:#059669; }
+.map-dot-hold       { background:#9ca3af; }
+.map-dot-pending    { background:#d1d5db; }
+.map-dot-sent       { background:#6366f1; }
+.map-loading        { padding:32px;color:var(--ink-2); }
+
 </style>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 </head>
 <body>
 
@@ -1337,6 +1367,10 @@ input, select, textarea { font: inherit; color: inherit; }
       <div class="side-mode" data-mode="analyze" title="Auswertung">
         <svg viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-7"/></svg>
         <span class="side-mode-label">Auswertung · Performance</span>
+      </div>
+      <div class="side-mode" data-mode="map" title="Karte">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>
+        <span class="side-mode-label">Karte · Geographie</span>
       </div>
     </div>
     <div class="side-foot" id="side-avatar">RD</div>
@@ -1356,6 +1390,7 @@ input, select, textarea { font: inherit; color: inherit; }
   <main class="main">
     <div class="view active" id="view-review"></div>
     <div class="view" id="view-analyze"></div>
+    <div class="view" id="view-map"></div>
   </main>
 </div>
 
@@ -1523,7 +1558,7 @@ var queueSort = 'ready';
 var queueFilter = null; // null = show all, 'missing' / 'review' / 'gesellschafter' / 'approved'
 var hideApproached = false; // toggle: hide records with BA1-BA7 (already approached)
 var mode = 'review';
-var sub = { review: 'baprep', analyze: 'funnel' };
+var sub = { review: 'baprep', analyze: 'funnel', map: 'batchmap' };
 var activityFilter = 'all';
 var selectedBA = (function() { try { return localStorage.getItem('allex_last_ba') || ''; } catch(e) { return ''; } })();
 var leadsSearch = '';
@@ -1662,6 +1697,16 @@ function getFilteredRows() {
   return rows;
 }
 
+// All records of the selected batch, no prio cut — for Auswertung (Funnel/Klassen/Bottlenecks),
+// where the Prio-2 drop IS the information. getFilteredRows() is the Review queue (Prio 1 only).
+function getBatchRows() {
+  var rows = DATA.records || [];
+  if (selectedBA) {
+    rows = rows.filter(function(r){ return r.briefaktion === selectedBA; });
+  }
+  return rows;
+}
+
 function sortedRows() {
   var rows = getFilteredRows();
   var allRecords = DATA.records || [];
@@ -1682,6 +1727,7 @@ function sortedRows() {
 var TITLES = {
   review:  ['Review',    'Was fehlt, damit Records exportbereit sind'],
   analyze: ['Auswertung','Performance der Pipeline und Batches'],
+  map:     ['Karte',     'Geographische Verteilung der Batch-Unternehmen'],
 };
 // F21 — per-subnav top title
 var SUBNAV_TITLES = {
@@ -1692,6 +1738,7 @@ var SUBNAV_TITLES = {
   export:     ['Export',       'PDF · Excel · Briefmarken'],
   followup:   ['Follow-Up',   'Nachfassen · Status · Termine'],
   batchoverview: ['Batch-Übersicht', 'Gesellschaft · Stammdaten · Brief — auf einen Blick'],
+  batchmap:   ['Batch-Karte',  'Unternehmen auf der Karte · Status · Geographie'],
   funnel:     ['Funnel',       'Pipeline-Stadien'],
   cohorts:    ['Cohorts',      'Sent → FU → Contact → Meeting'],
   classes:    ['Klassen',      'A/B/C/D/E/S Verteilung'],
@@ -1712,6 +1759,9 @@ var SUBNAV = {
     { id: 'cohorts',     label: 'Cohorts',     hint: 'Sent → FU → Contact → Meeting' },
     { id: 'classes',     label: 'Klassen',     hint: 'A/B/C/D/E Verteilung' },
     { id: 'bottlenecks', label: 'Bottlenecks', hint: 'Aktuelle Blocker' },
+  ],
+  map: [
+    { id: 'batchmap', label: 'Batch-Karte', hint: 'Unternehmen auf der Deutschland-Karte' },
   ],
 };
 
@@ -1756,7 +1806,7 @@ function renderSubnav() {
   var items = SUBNAV[mode];
   var cur = sub[mode];
   if (!panelItemsEl) return;
-  var modeLabels = { review: 'Review', analyze: 'Auswertung' };
+  var modeLabels = { review: 'Review', analyze: 'Auswertung', map: 'Karte' };
   if (panelHeaderEl) panelHeaderEl.textContent = modeLabels[mode] || mode;
   panelItemsEl.innerHTML = items.map(function(it) {
     return '<button class="panel-item ' + (it.id === cur ? 'active' : '') + '" data-sub="' + it.id + '">' +
@@ -1785,6 +1835,8 @@ function renderCurrent() {
     if (sub.review === 'activity') renderReviewActivity();
     if (sub.review === 'export')   renderExportView();
     if (sub.review === 'followup') renderFollowUpView();
+  } else if (mode === 'map') {
+    if (sub.map === 'batchmap') renderBatchMap();
   } else {
     if (sub.analyze === 'funnel')      renderAnalyzeFunnel();
     if (sub.analyze === 'cohorts')     renderAnalyzeCohorts();
@@ -4363,8 +4415,8 @@ function renderAnalyzeFunnel() {
   var heading = 'Pipeline-Funnel · Alle Batches';
 
   if (selectedBA) {
-    // Client-side computation from BA-filtered records
-    var all = getFilteredRows();
+    // Client-side computation from ALL records of the batch (Prio 2 included — the A/B step shows the drop)
+    var all = getBatchRows();
     var t = all.length || 1;
     heading = 'Pipeline-Funnel · ' + selectedBA;
     var scragedStages = ['scraped','scrape_failed','classified','ownership_enriched','ownership_review_needed','ownership_gated','email_enriched'];
@@ -4373,8 +4425,8 @@ function renderAnalyzeFunnel() {
       { stage: 'Filtered',   sub: 'Hard Filter',           n: all.filter(function(r){ return r.filter_pass !== 0; }).length,                   pct: 0 },
       { stage: 'Scraped',    sub: 'Website + Impressum',   n: all.filter(function(r){ return scragedStages.indexOf(r.pipeline_stage) >= 0; }).length, pct: 0 },
       { stage: 'Classified', sub: 'AI · A/B/C/D/E',       n: all.filter(function(r){ return r.klass; }).length,                               pct: 0 },
-      { stage: 'A / B',      sub: 'Platform + Add-on',     n: all.filter(function(r){ return r.prio === 'Prio 1'; }).length,    pct: 0 },
-      { stage: 'Approached', sub: 'Mit Batch',             n: all.filter(function(r){ return r.already_approached; }).length,                  pct: 0 },
+      { stage: 'A / B',      sub: 'Prio 1 nach Prüfung',   n: all.filter(function(r){ return r.prio === 'Prio 1'; }).length,    pct: 0 },
+      { stage: 'Approached', sub: 'Brief versendet',       n: all.filter(function(r){ return r.already_approached; }).length,                  pct: 0 },
     ];
     rows.forEach(function(r){ r.pct = (r.n / t) * 100; });
   } else {
@@ -4465,7 +4517,7 @@ function renderAnalyzeClasses() {
 
   if (selectedBA) {
     subtitle = selectedBA;
-    var filtered = getFilteredRows().filter(function(r){ return r.klass; });
+    var filtered = getBatchRows().filter(function(r){ return r.klass; });
     var counts = {};
     filtered.forEach(function(r){ counts[r.klass] = (counts[r.klass] || 0) + 1; });
     classes = Object.entries(counts)
@@ -4502,7 +4554,7 @@ function renderAnalyzeClasses() {
 function renderAnalyzeBottlenecks() {
   var root = document.getElementById('view-analyze');
   var outreach = DATA.outreach_breakdown || {};
-  var records = selectedBA ? getFilteredRows() : (DATA.records || []);
+  var records = getBatchRows();
   var ab = records.filter(function(r){ return r.prio === 'Prio 1'; });
   var noEmail = ab.filter(function(r){ return !r.gf_email || !String(r.gf_email).trim(); }).length;
   var noCompliment = ab.filter(function(r){ return !r.compliment_draft || !String(r.compliment_draft).trim(); }).length;
@@ -4535,6 +4587,136 @@ function renderAnalyzeBottlenecks() {
     '</div></div></div>';
 }
 
+
+// ===== MAP > BATCH MAP =====
+var _leafletMapInstance = null;
+var _leafletMarkersLayer = null;
+var _mapSelectedBa = null;
+
+var PLZ_CENTROIDS = {
+  '01':[51.05,13.74],'02':[51.15,14.99],'03':[51.76,14.33],'04':[51.33,12.37],
+  '06':[51.48,11.97],'07':[50.93,11.59],'08':[50.72,12.50],'09':[50.83,12.92],
+  '10':[52.52,13.40],'11':[52.52,13.40],'12':[52.50,13.42],'13':[52.55,13.35],
+  '14':[52.40,13.06],'15':[52.35,14.56],'16':[53.00,13.00],'17':[53.50,14.00],
+  '18':[54.08,12.13],'19':[53.63,11.41],'20':[53.55,10.00],'21':[53.46,9.98],
+  '22':[53.58,10.05],'23':[53.87,10.69],'24':[54.32,10.14],'25':[53.92,9.52],
+  '26':[53.14,8.21],'27':[53.54,8.58],'28':[53.08,8.80],'29':[52.62,10.08],
+  '30':[52.37,9.73],'31':[52.15,9.97],'32':[52.11,8.67],'33':[51.99,8.53],
+  '34':[51.31,9.50],'35':[50.58,8.68],'36':[50.56,9.68],'37':[51.53,9.93],
+  '38':[52.27,10.52],'39':[52.12,11.63],'40':[51.22,6.77],'41':[51.20,6.44],
+  '42':[51.26,7.17],'44':[51.51,7.46],'45':[51.46,7.01],'46':[51.52,6.93],
+  '47':[51.43,6.76],'48':[51.96,7.63],'49':[52.28,8.05],'50':[50.94,6.96],
+  '51':[50.99,7.13],'52':[50.78,6.08],'53':[50.74,7.10],'54':[49.75,6.64],
+  '55':[49.99,8.27],'56':[50.36,7.59],'57':[50.88,8.02],'58':[51.36,7.47],
+  '59':[51.54,7.69],'60':[50.11,8.68],'61':[50.23,8.62],'63':[50.10,8.77],
+  '64':[49.87,8.65],'65':[50.08,8.24],'66':[49.23,7.00],'67':[49.44,7.77],
+  '68':[49.49,8.47],'69':[49.40,8.69],'70':[48.78,9.18],'71':[48.80,9.01],
+  '72':[48.49,9.21],'73':[48.74,9.31],'74':[49.14,9.22],'75':[48.89,8.70],
+  '76':[49.00,8.40],'77':[48.47,7.94],'78':[48.06,8.46],'79':[47.99,7.85],
+  '80':[48.14,11.58],'81':[48.12,11.60],'82':[47.49,11.09],'83':[47.86,12.13],
+  '84':[48.63,12.52],'85':[48.31,11.91],'86':[48.37,10.89],'87':[47.73,10.32],
+  '88':[47.78,9.62],'89':[48.40,9.99],'90':[49.45,11.08],'91':[49.30,10.57],
+  '92':[49.44,11.86],'93':[49.01,12.10],'94':[48.57,13.47],'95':[49.95,11.58],
+  '96':[49.90,10.90],'97':[49.80,9.94],'98':[50.05,10.23],'99':[50.98,11.03]
+};
+
+var MAP_STATUS_COLORS = {
+  followup1:'#f59e0b', followup2:'#d97706', contact:'#3b82f6',
+  meeting:'#10b981',   declined:'#ef4444',  financials:'#059669',
+  hold:'#9ca3af',      sent:'#6366f1',      pending:'#d1d5db'
+};
+var MAP_STATUS_LABELS = {
+  followup1:'Follow-Up 1', followup2:'Follow-Up 2', contact:'Kontakt',
+  meeting:'Meeting',       declined:'Abgelehnt',     financials:'Zahlen',
+  hold:'Hold',             sent:'Versendet',          pending:'Ausstehend'
+};
+
+function _strHash(s) {
+  var h = 0;
+  for (var i = 0; i < s.length; i++) { h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; }
+  return h;
+}
+
+function renderBatchMap() {
+  var root = document.getElementById('view-map');
+  if (!root) return;
+  if (typeof L === 'undefined') {
+    root.innerHTML = '<div class="map-loading">Leaflet wird geladen…</div>';
+    return;
+  }
+
+  var bas = (DATA.briefaktion_counts || []).map(function(b){ return b.briefaktion; }).filter(Boolean).sort();
+  if (_mapSelectedBa === null) {
+    var _lastBa = BATCH_ORDER.filter(function(b){ return /^BA\d+$/.test(b) && bas.indexOf(b) >= 0; }).pop();
+    _mapSelectedBa = _lastBa || bas[0] || '';
+  }
+
+  var legendHtml = Object.keys(MAP_STATUS_LABELS).map(function(s) {
+    return '<span class="map-legend-item"><span class="map-legend-dot map-dot-' + escapeHtml(s) + '"></span>' + escapeHtml(MAP_STATUS_LABELS[s]) + '</span>';
+  }).join('');
+
+  root.innerHTML =
+    '<div class="map-shell">' +
+      '<div class="map-ctrl-bar">' +
+        '<span class="map-ctrl-label">Batch</span>' +
+        '<select id="map-ba-sel" class="map-ctrl-select">' +
+          '<option value="">— Alle —</option>' +
+          bas.map(function(b){ return '<option value="' + escapeHtml(b) + '"' + (b === _mapSelectedBa ? ' selected' : '') + '>' + escapeHtml(b) + '</option>'; }).join('') +
+        '</select>' +
+        '<span id="map-count" class="map-ctrl-count"></span>' +
+        '<div class="map-ctrl-legend">' + legendHtml + '</div>' +
+      '</div>' +
+      '<div id="batch-map-el" class="map-tile"></div>' +
+    '</div>';
+
+  if (_leafletMapInstance) { _leafletMapInstance.remove(); _leafletMapInstance = null; }
+  var map = L.map('batch-map-el', { center: [51.2, 10.4], zoom: 6 });
+  _leafletMapInstance = map;
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 13
+  }).addTo(map);
+  _leafletMarkersLayer = L.layerGroup().addTo(map);
+
+  function plotBatch(ba) {
+    _leafletMarkersLayer.clearLayers();
+    var recs = DATA.records.filter(function(r){ return ba ? r.briefaktion === ba : !!r.briefaktion; });
+    var plotted = 0, skipped = 0;
+    recs.forEach(function(r) {
+      var plz2 = (r.plz_ort || '').replace(/\D/g, '').slice(0, 2);
+      var centroid = PLZ_CENTROIDS[plz2];
+      if (!centroid) { skipped++; return; }
+      var h = _strHash(r.domain || r.full_name || String(plotted));
+      var lat = centroid[0] + ((h & 0xff) / 255 - 0.5) * 0.18;
+      var lon = centroid[1] + (((h >> 8) & 0xff) / 255 - 0.5) * 0.18;
+      var status = r.outreach_status || (r.outreach_sent_at ? 'sent' : 'pending');
+      var color = MAP_STATUS_COLORS[status] || '#d1d5db';
+      var m = L.circleMarker([lat, lon], {
+        radius: 7, fillColor: color, color: '#fff',
+        weight: 1.5, opacity: 1, fillOpacity: 0.88
+      });
+      var statusLabel = MAP_STATUS_LABELS[status] || status;
+      m.bindPopup(
+        '<strong>' + escapeHtml(r.full_name || r.domain || '') + '</strong><br>' +
+        escapeHtml(r.city || '') + (r.plz_ort ? ' · ' + escapeHtml(r.plz_ort) : '') + '<br>' +
+        'Status: <strong>' + escapeHtml(statusLabel) + '</strong> · Klasse: ' + escapeHtml(r.klass || '—') +
+        (ba ? '' : '<br>Batch: ' + escapeHtml(r.briefaktion || ''))
+      );
+      m.addTo(_leafletMarkersLayer);
+      plotted++;
+    });
+    var countEl = document.getElementById('map-count');
+    if (countEl) countEl.textContent = plotted + ' Unternehmen' + (skipped > 0 ? ' · ' + skipped + ' ohne PLZ' : '');
+    map.invalidateSize();
+    setTimeout(function(){ map.invalidateSize(); }, 300);
+  }
+
+  plotBatch(_mapSelectedBa);
+  document.getElementById('map-ba-sel').addEventListener('change', function() {
+    _mapSelectedBa = this.value;
+    plotBatch(_mapSelectedBa);
+  });
+}
 
 // ===== INIT =====
 // F30 — All user-visible string output MUST go through escapeHtml(). Treat any new innerHTML without it as a bug.

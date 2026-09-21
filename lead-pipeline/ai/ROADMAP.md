@@ -168,6 +168,10 @@ Verified against codebase 2026-04-29.
 | **"majority owner" label misleading** — `_parse_owners` selects largest share, not necessarily >50%; label should say "largest owner" when <50% | Low | Open (Codex C3) |
 | **No parent_owners storage** — `_resolve_ubo` finds UBO behind holding company but doesn't store the holding's shareholder list; detail panel can't show multi-level drill-down | Medium | Open (Codex finding 3) |
 | **Ownership provenance not tracked** — no DB column distinguishes whether gesellschafter_name came from ORBIS, OpenRegister, impressum, or manual entry | Low | Open (Codex finding 1) |
+| **Auswertung counted Prio 1 only for a selected batch** — Funnel/Klassen/Bottlenecks used `getFilteredRows()` (Review queue), so BA9 showed Total 25 instead of 86 and the Prio-2 drop was invisible | High | Fixed 2026-09-21 — `getBatchRows()`; hot-patched on prod (template + process restart), commit on dev, ships with next deploy |
+| **Lead-Liste serves stale `/api/data` after external DB writes** — prio/reason changes made via scripts show only after hard reload | Medium | Open (TICKETS T007 — add `Cache-Control: no-store`) |
+| **Lead-Liste prio dropdown lacks `Duplicate`** — Duplicate records render as "Prio 1"; a save would overwrite | Medium | Open (TICKETS T008) |
+| **`test_static_badge_not_in_serve_mode` fails on committed template** | Low | Open (TICKETS T009) |
 
 ---
 

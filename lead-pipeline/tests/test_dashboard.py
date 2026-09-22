@@ -153,6 +153,42 @@ def populated_db(tmp_path):
     return db_path
 
 
+class TestLoadDataPayload:
+    def test_scraped_text_is_an_excerpt(self, populated_db):
+        """The dashboard payload never carries the full website text (OOM on prod, 2026-09-22)."""
+        from src.config import settings
+
+        with get_connection(populated_db) as conn:
+            conn.execute(
+                "UPDATE company_records SET scraped_text = ? WHERE domain = 'a.de'",
+                ("x" * (settings.DASHBOARD_SCRAPED_EXCERPT_CHARS * 10),),
+            )
+        data = _load_data(populated_db)
+        rec = next(r for r in data["records"] if r["domain"] == "a.de")
+        assert len(rec["scraped_text"]) == settings.DASHBOARD_SCRAPED_EXCERPT_CHARS
+        assert (
+            next(r for r in data["records"] if r["domain"] == "b.de")["scraped_text"]
+            is None
+        )
+
+
+class TestPayloadJson:
+    def test_null_fields_are_dropped(self, populated_db):
+        """Page data and /api/data carry no null fields (half of the payload on prod, 2026-09-22)."""
+        import json
+
+        from src.pipeline.dashboard import _payload_json
+
+        data = _load_data(populated_db)
+        out = json.loads(_payload_json(data))
+        assert len(out["records"]) == 3
+        c = next(r for r in out["records"] if r["domain"] == "c.de")
+        assert "klass" not in c  # NULL in the DB
+        assert c["filter_reason"] == "too_large"
+        assert all(v is not None for r in out["records"] for v in r.values())
+        assert out["required_fields"] == data["required_fields"]
+
+
 class TestLoadDataDropoff:
     def test_dropoff_key_exists(self, populated_db):
         data = _load_data(populated_db)

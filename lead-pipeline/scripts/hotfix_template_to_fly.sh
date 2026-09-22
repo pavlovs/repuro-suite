@@ -3,12 +3,16 @@
 # Scope: ONE file, /app/allex/src/pipeline/templates/dashboard_v2.html. No deploy, no other app touched.
 # The container filesystem is ephemeral: a machine restart or the next `flyctl deploy` replaces it, so the
 # same change MUST also be committed on dev so the next real deploy carries it.
-# Usage (Git Bash): bash scripts/hotfix_template_to_fly.sh [expected_prod_blob_sha1_prefix]
+# Usage (Git Bash): bash scripts/hotfix_template_to_fly.sh [expected_prod_blob_sha1_prefix] [relative file] [marker]
+#   default file = src/pipeline/templates/dashboard_v2.html; any other file under lead-pipeline/ works the same way
+#   (e.g. src/pipeline/dashboard.py). The marker is grepped in the startup HTML after the restart.
 set -euo pipefail
 APP=repuro-suite
 HERE="$(cd "$(dirname "$0")" && pwd)"
-SRC="$HERE/../src/pipeline/templates/dashboard_v2.html"
-DST=/app/allex/src/pipeline/templates/dashboard_v2.html
+REL="${2:-src/pipeline/templates/dashboard_v2.html}"
+SRC="$HERE/../$REL"
+DST="/app/allex/$REL"
+MARKER="${3:-leadsFilterPopHtml}"
 STAMP=$(date +%Y-%m-%d-%H%M)
 EXPECT="${1:-}"
 
@@ -45,4 +49,4 @@ echo "== restart allex process (supervisord respawns it)"
 fssh "python3 -c \"import os,signal;me=str(os.getpid());[os.kill(int(p),signal.SIGTERM) for p in os.listdir('/proc') if p.isdigit() and p!=me and b'--serve' in open('/proc/'+p+'/cmdline','rb').read()];print('SIGTERM sent')\""
 sleep 12
 echo "== startup HTML check (expect a fresh timestamp and marker>0)"
-fssh "sh -c 'f=/app/allex/data/output/dashboard_\$(date +%Y%m%d).html; ls -la --time-style=+%H:%M:%S \$f; echo markers \$(grep -c leadsFilterPopHtml \$f)'"
+fssh "sh -c 'f=/app/allex/data/output/dashboard_\$(date +%Y%m%d).html; ls -la --time-style=+%H:%M:%S \$f; echo markers \$(grep -c $MARKER \$f)'"

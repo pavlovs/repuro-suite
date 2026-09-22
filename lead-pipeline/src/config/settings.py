@@ -12,6 +12,10 @@ PROFILES_DIR = BASE_DIR / "profiles"
 # Scraping
 SCRAPE_DELAY_SEC: float = 1.0
 SCRAPE_MAX_CHARS: int = 5000
+# Dashboard payload: the full scraped_text (up to SCRAPE_MAX_CHARS per record, ~80% of all record bytes) stays in
+# pipeline.db for the pipeline stages; the dashboard page and /api/data only carry this excerpt (used as a fallback
+# description). Shipping the full text OOM-killed the 512 MB prod machine on every second page load (2026-09-22).
+DASHBOARD_SCRAPED_EXCERPT_CHARS: int = 180
 
 # Claude CLI — all AI calls go through CLI subprocess (OAuth, no API key).
 # shutil.which finds "claude" on PATH; no hardcoded user-specific fallback.

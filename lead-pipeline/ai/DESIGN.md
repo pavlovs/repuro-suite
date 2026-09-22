@@ -305,7 +305,7 @@ All blank on first export; filled manually or via future dashboard write-back.
 
 ### REST endpoints (server mode only)
 
-- `GET /api/data` — all pipeline data as JSON (includes `required_fields`, `dropoff`, `briefaktion_counts`)
+- `GET /api/data` — all pipeline data as JSON (includes `required_fields`, `dropoff`, `briefaktion_counts`); `records[].scraped_text` is a 180-char excerpt, the full text stays in `pipeline.db`
 - `PATCH /api/company/{domain}?actor=<name>` — update record fields (whitelisted via `_WRITEBACK_FIELDS` frozenset)
 - `PATCH /api/batch?actor=<name>` — bulk update multiple records
 - `POST /api/compliment/{domain}?actor=<name>` — regenerate K1/K2 via Claude CLI

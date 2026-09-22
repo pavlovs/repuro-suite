@@ -484,7 +484,7 @@ Python reads the template and does string replacements at build time:
 
 - **Two modes**: Review (BA-Prep, Lead-Liste, Drop-off, Aenderungslog) and Auswertung (Funnel, Cohorts, Klassen, Bottlenecks — placeholders until M30)
 - **Design system**: CSS custom properties, Inter font, teal accent (`--spar: #0891B2`), single teal subnav bar
-- **Data flow**: `_load_data()` computes `required_fields` (from `check_letter.py`) and `dropoff` (per-stage pipeline attrition), injected via `__DATA_JSON__`. Live-refreshed via `fetch('/api/data')` in serve mode.
+- **Data flow**: `_load_data()` computes `required_fields` (from `check_letter.py`) and `dropoff` (per-stage pipeline attrition), injected via `__DATA_JSON__`. Live-refreshed via `fetch('/api/data')` in serve mode. `records[].scraped_text` is an excerpt (`settings.DASHBOARD_SCRAPED_EXCERPT_CHARS`, 180 chars): the full website text is ~80% of all record bytes and only ever read by pipeline stages from `pipeline.db`; carrying it made every page load a ~8 MB JSON build and OOM-killed the 512 MB prod machine (2026-09-22).
 - **Actor identity**: `localStorage.getItem('allex_actor')` (roman/flo) appended as `?actor=` to all PATCH/POST requests
 - **Filter chips**: BA-Prep queue sidebar uses Fehlend/Pruefen/Gesellschafter filter chips (replaced sort chips in M28)
 

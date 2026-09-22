@@ -217,7 +217,8 @@ def _load_data(db_path: Path, source_filter: Optional[str] = None) -> dict:
         source_filter: if set, only load records matching this source value.
 
     Returns a dict with keys:
-    - records: list[dict] — all company_records as raw dicts (all columns)
+    - records: list[dict] — all company_records as raw dicts (all columns; scraped_text cut to
+      settings.DASHBOARD_SCRAPED_EXCERPT_CHARS, the full text stays in the DB for pipeline stages)
     - funnel: dict — {stage: count} for funnel visualization
     - klass_counts: dict — {klass: count}
     - d_reasons: list[dict] — [{reason, count}] for D records (reclassify_reason with filter_reason fallback)
@@ -256,6 +257,11 @@ def _load_data(db_path: Path, source_filter: Optional[str] = None) -> dict:
             for k, v in d.items():
                 if v is not None and not isinstance(v, (str, int, float, bool)):
                     d[k] = str(v)
+            # Raw website text stays in the DB for the pipeline stages; the dashboard only shows an excerpt
+            if d.get("scraped_text"):
+                d["scraped_text"] = d["scraped_text"][
+                    : settings.DASHBOARD_SCRAPED_EXCERPT_CHARS
+                ]
             records.append(d)
 
         # Funnel counts
@@ -521,6 +527,20 @@ def _parse_latest_changelog() -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _payload_json(data: dict) -> str:
+    """JSON for the embedded page data and /api/data.
+
+    Records are serialised without null fields: 58% of the 74 columns are null per record, and the
+    repeated key names + nulls were half of the payload on the 512 MB prod machine (2026-09-22). The
+    JS reads fields as `r.x || ''` / `r.x == null`, so a missing key behaves like null.
+    """
+    slim = dict(data)
+    slim["records"] = [
+        {k: v for k, v in r.items() if v is not None} for r in data.get("records", [])
+    ]
+    return json.dumps(slim, ensure_ascii=False, default=str)
+
+
 def _build_html(
     data: dict, serve_mode: bool, logo_b64: str = "", hubspot_portal_id: int = 0
 ) -> str:
@@ -535,7 +555,7 @@ def _build_html(
     template_path = Path(__file__).parent / "templates" / _template_name()
     template = template_path.read_text(encoding="utf-8")
 
-    data_json = json.dumps(data, ensure_ascii=False, default=str)
+    data_json = _payload_json(data)
     logo_img = (
         f'<img class="header-logo" src="{logo_b64}" alt="ALLEX">' if logo_b64 else ""
     )
@@ -750,7 +770,7 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
                 self.__class__._db_path,
                 source_filter=getattr(self.__class__, "_source_filter", None),
             )
-            content = json.dumps(data, ensure_ascii=False, default=str).encode("utf-8")
+            content = _payload_json(data).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Content-Length", str(len(content)))

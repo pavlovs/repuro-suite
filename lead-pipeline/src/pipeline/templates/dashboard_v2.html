@@ -694,7 +694,11 @@ input, select, textarea { font: inherit; color: inherit; }
 .leads-table td { padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .leads-table tbody tr:hover { background: var(--hover); }
 .leads-table tbody tr.active { background: var(--spar-soft); }
-.leads-table .lt-name { font-weight: 500; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leads-table .lt-name { font-weight: 500; min-width: 300px; white-space: nowrap; }
+.leads-table td.lt-name input.lt-edit { width: auto; }  /* sized by its size= attribute, so the column grows with the longest name */
+.leads-table select.lt-edit-prio { min-width: 130px; font-size: 11px; }
+.leads-table select.lt-edit-klass { min-width: 170px; }
+.leads-table input.lt-edit-region { min-width: 190px; }  /* longest region: "Mecklenburgische Ostseeküste" */
 .leads-table .lt-domain { color: var(--ink-3); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .leads-table .lt-klass { font-weight: 700; font-size: 11px; padding: 2px 6px; border-radius: 3px; background: var(--surface-2); color: var(--ink); display: inline-block; }
 .leads-table .lt-klass.A { background: #e3f2ec; color: var(--ok); }
@@ -3758,19 +3762,18 @@ function renderLeadsTable() {
   if (resetBtn) resetBtn.disabled = !leadsFilterActive();
   leadsRefreshCounts();
 
-  // Lead-Liste columns: # → briefaktion → full_name → rechtsform → klass → MA → region → reason cols → freigabe → missing
+  // Lead-Liste columns: # → briefaktion → full_name → prio → klass → MA → region → filter reason → ownership → freigabe → missing
+  // (Rechtsform + Reklassifiz. dropped 2026-09-22: Rechtsform is empty/junk for all but 66 rows, Reklassifiz. duplicates Filter-Grund)
   var cols = [
     { id: '_ref_id',               label: '#',            sort: '_ref_id',              edit: 'readonly' },
     { id: 'briefaktion',           label: 'Batch',        sort: 'briefaktion',          edit: 'readonly' },
     { id: 'full_name',             label: 'Name',         sort: 'full_name',            edit: 'text' },
-    { id: 'rechtsform',            label: 'Rechtsform',   sort: 'rechtsform',           edit: 'readonly' },
     { id: 'prio',                  label: 'Prio',         sort: 'prio',                 edit: 'select-prio' },
     { id: 'klass',                 label: 'Klass',        sort: 'klass',                edit: 'select-klass' },
     { id: 'ma_count',              label: 'MA',           sort: 'ma_count',             edit: 'readonly' },
     { id: 'region',                label: 'Region',       sort: 'region',               edit: 'text' },
     { id: 'filter_reason',         label: 'Filter-Grund', sort: 'filter_reason',        edit: 'readonly' },
     { id: 'ownership_reason',      label: 'Ownership',    sort: 'ownership_reason',     edit: 'readonly' },
-    { id: 'reclassify_reason',     label: 'Reklassifiz.', sort: 'reclassify_reason',    edit: 'readonly' },
     { id: 'approved_for_sendout',  label: 'Druckfreigabe',sort: 'approved_for_sendout', edit: 'checkbox' },
     { id: '_missing',              label: 'Fehlt',        sort: '_missing',             edit: 'readonly' },
   ];
@@ -3789,7 +3792,7 @@ function renderLeadsTable() {
       var prioOptions = ['Prio 1','Prio 2 (small)','Prio 2 (big)','Prio 2 (intl)','Prio 2 (other)','Duplicate','Excluded'].map(function(opt) {
         return '<option value="' + opt + '"' + ((r.prio || '') === opt ? ' selected' : '') + '>' + opt + '</option>';
       }).join('');
-      return '<td><select class="lt-edit lt-edit-prio" style="font-size:11px">' + prioOptions + '</select></td>';
+      return '<td><select class="lt-edit lt-edit-prio">' + prioOptions + '</select></td>';
     }
     if (c.edit === 'select-klass') {
       var klassOptions = ['DEA','INT','SER_PLA_1','SER_PLA_2','SER_MAI','SER_ITS','OEM','HEC','OOS','OTH','B2C','A','B','C','D','E','S'].map(function(opt) {
@@ -3805,7 +3808,9 @@ function renderLeadsTable() {
     }
     if (c.edit === 'text') {
       var cellClass = (c.id === 'full_name') ? 'lt-name' : '';
-      return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><input class="lt-edit lt-edit-' + c.id + '" type="text" value="' + escapeHtml(v || '') + '"/></td>';
+      // name input sized to its text so the column grows with the longest name on the page (never clipped)
+      var sizeAttr = (c.id === 'full_name') ? ' size="' + Math.min(80, Math.max(30, String(v || '').length + 2)) + '"' : '';
+      return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><input class="lt-edit lt-edit-' + c.id + '" type="text"' + sizeAttr + ' value="' + escapeHtml(v || '') + '"/></td>';
     }
     if (c.edit === 'email') {
       return '<td><input class="lt-edit lt-edit-' + c.id + '" type="email" value="' + escapeHtml(v || '') + '"/></td>';

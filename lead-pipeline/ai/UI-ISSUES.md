@@ -22,7 +22,7 @@ Features
 - [ ] Website: Preview automatically Impressum (instead of landing page)
 - [ ] Briefvorbereitung: Please move Ansprechpartner (Brief), Anrede and Salutation to "Stammdaten"
 - [ ] For reference: You can find all classifier context in this folder: @C:\Users\flori\OneDrive - Kamu Kapital\Dokumente - Kamu Kapital\CLAUDE_REPURO\classifier.
-- [x] Kategorie: Please categorize every company in the Batch section by default to "Prio 1". Once we change the Priorität to "Prio 2" or "Duplicate" it should automaticelly disappear in the Batch section and be stored in the database → **resolved 2026-05-27**: Prio 2 records hidden from Review queue (already) + Lead-Liste (new toggle "Prio 2 anzeigen", off by default). Prio 2 records remain in DB, visible when filter toggled on.
+- [x] Kategorie: Please categorize every company in the Batch section by default to "Prio 1". Once we change the Priorität to "Prio 2" or "Duplicate" it should automaticelly disappear in the Batch section and be stored in the database → **resolved 2026-05-27**: Prio 2 records hidden from Review queue (already) + Lead-Liste (new toggle "Prio 2 anzeigen", off by default). Prio 2 records remain in DB, visible when filter toggled on. → **2026-09-22**: Lead-Liste toggle replaced by the filter toolbar (Prio/Batch/Klass/Region/MA); Review queue unchanged.
 - [x] Briefvorbereitung Kompliment-Logik + Defaults → **M34 delivered** (incrementally across M16–M32; verified 2026-06-29). Prompt cascade, about-page scraping, category defaults, compliment_guide.md updated with Flo's verbatim cascade.
 
 ---
@@ -67,6 +67,10 @@ Features
 ---
 
 ## Resolved (commit refs for traceability)
+
+### 2026-09-22
+- [x] **Lead-Liste filter toolbar** (RD, Roman 2026-09-22): "Prio 2 anzeigen" toggle replaced by filters: Batch / Prio (incl. "Prio 2 (alle)" + "(leer)") / Klass / Region selects built from the values in the data, MA von/bis, "Filter zurücksetzen"; selection persists per browser. Verified 2026-09-22 headless (Playwright, 26 checks, counts tie to pipeline.db); Chrome extension was not connected.
+- [x] **Duplicate in row prio select** (T008): `Duplicate` added to the Lead-Liste prio options. Verified 2026-09-22 headless.
 
 ### 2026-05-11
 - [x] **Freigabe validation** — button disabled when Pflichtfelder missing (detail view + Lead-Liste checkbox); confirm-bypass removed; tooltip shows missing fields. 2026-05-11.

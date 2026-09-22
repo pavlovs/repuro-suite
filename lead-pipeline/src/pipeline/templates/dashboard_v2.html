@@ -673,9 +673,11 @@ input, select, textarea { font: inherit; color: inherit; }
 .src { display: none; }
 /* Lead-Liste table */
 .leads-page { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 0; overflow: hidden; }
-.leads-toolbar { padding: 12px 24px; border-bottom: 1px solid var(--line); background: var(--surface); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.leads-toolbar { padding: 12px 24px; border-bottom: 1px solid var(--line); background: var(--surface); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
 .leads-toolbar input[type="text"] { padding: 6px 10px; border: 1px solid var(--line); border-radius: 5px; outline: none; font-size: 12px; min-width: 240px; }
-.leads-toolbar input:focus { border-color: var(--spar); box-shadow: 0 0 0 3px var(--spar-soft); }
+.leads-toolbar select, .leads-toolbar input[type="number"] { padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; outline: none; font-size: 12px; background: var(--surface); color: var(--ink); max-width: 200px; }
+.leads-toolbar input[type="number"] { width: 78px; }
+.leads-toolbar input:focus, .leads-toolbar select:focus { border-color: var(--spar); box-shadow: 0 0 0 3px var(--spar-soft); }
 .leads-toolbar .lt-count { color: var(--ink-3); font-size: 12px; margin-left: auto; }
 .leads-table-wrap { flex: 1; overflow: auto; background: var(--surface); }
 .leads-table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -1566,10 +1568,18 @@ var selectedBA = (function() { try { return localStorage.getItem('allex_last_ba'
 var leadsSearch = '';
 var leadsSortField = '_ref_id';
 var leadsSortDir = 'asc';
-var leadsBatchFilter = '';
 var leadsPage = 0;
 var LEADS_PAGE_SIZE = 100;
-var leadsShowPrio2 = localStorage.getItem('allex_leads_show_prio2') === '1';
+// Lead-Liste filters: one select per field (options = values present in the data) + MA range; persisted per browser
+var LEADS_FILTER_DEFS = [
+  { id: 'briefaktion', all: 'Alle Batches' },
+  { id: 'prio',        all: 'Alle Prios', group: 'Prio 2' },
+  { id: 'klass',       all: 'Alle Klassen' },
+  { id: 'region',      all: 'Alle Regionen' },
+];
+var leadsFilters = (function() {
+  try { var v = JSON.parse(localStorage.getItem('allex_leads_filters')); return (v && typeof v === 'object') ? v : {}; } catch(e) { return {}; }
+})();
 // F18 — Persistent collapsed-state across renderRecord() calls
 var collapsedSections = { 'sec-kategorie': true, 'sec-gesellschafter': false, 'sec-stammdaten': false, 'sec-briefvorbereitung': false, 'sec-notizen': true };
 
@@ -3339,29 +3349,67 @@ function attachSiteOpenButton(siteUrl) {
 }
 
 // ===== REVIEW › LEAD-LISTE (full DB tabular view) =====
+// Filter select for one field; options = distinct values in the data.
+// Values: '' = alle · '__leer__' = Feld leer · '^X' = beginnt mit X (Prio 2 (alle) = every Prio 2 variant)
+function leadsFilterSelectHtml(def, records) {
+  var seen = {};
+  records.forEach(function(r) {
+    var v = r[def.id];
+    if (v != null && String(v).trim()) seen[String(v).trim()] = 1;
+  });
+  var cur = leadsFilters[def.id] || '';
+  var opts = [['', def.all]];
+  if (def.group) opts.push(['^' + def.group, def.group + ' (alle)']);
+  Object.keys(seen).sort(function(a, b) { return a.localeCompare(b, 'de'); }).forEach(function(v) {
+    opts.push([v, (def.id === 'klass' && KLASS_LABELS[v]) ? v + ' · ' + KLASS_LABELS[v] : v]);
+  });
+  opts.push(['__leer__', '(leer)']);
+  // persisted value no longer in the data: keep it visible + selected instead of silently filtering behind "Alle"
+  if (cur && !opts.some(function(o) { return o[0] === cur; })) opts.push([cur, cur + ' (nicht vorhanden)']);
+  return '<select class="leads-filter" data-field="' + def.id + '" title="' + escapeHtml(def.all) + '">' +
+    opts.map(function(o) {
+      return '<option value="' + escapeHtml(o[0]) + '"' + (o[0] === cur ? ' selected' : '') + '>' + escapeHtml(o[1]) + '</option>';
+    }).join('') +
+    '</select>';
+}
+
+function leadsMatches(r) {
+  for (var i = 0; i < LEADS_FILTER_DEFS.length; i++) {
+    var f = LEADS_FILTER_DEFS[i].id;
+    var want = leadsFilters[f] || '';
+    if (!want) continue;
+    var have = r[f] == null ? '' : String(r[f]).trim();
+    if (want === '__leer__') { if (have) return false; }
+    else if (want.charAt(0) === '^') { if (have.indexOf(want.slice(1)) !== 0) return false; }
+    else if (have !== want) return false;
+  }
+  // records without a usable MA count (null, blank, non-numeric) are excluded once a bound is set
+  var ma = (r.ma_count == null || String(r.ma_count).trim() === '') ? null : Number(r.ma_count);
+  if (ma != null && !isFinite(ma)) ma = null;
+  if (leadsFilters.ma_min && (ma == null || ma < Number(leadsFilters.ma_min))) return false;
+  if (leadsFilters.ma_max && (ma == null || ma > Number(leadsFilters.ma_max))) return false;
+  return true;
+}
+
+function leadsFilterActive() {
+  if ((leadsSearch || '').trim()) return true;
+  return Object.keys(leadsFilters).some(function(k) { return leadsFilters[k] != null && leadsFilters[k] !== ''; });
+}
+
 function renderReviewLeads() {
   var root = document.getElementById('view-review');
   var records = (DATA.records || []).slice();
   var total = records.length;
 
-  // Lead-Liste toolbar: batch dropdown + prio2 toggle + search
-  var batchOpts = (DATA.briefaktion_counts || [])
-    .map(function(b){ return b.briefaktion; })
-    .filter(Boolean)
-    .sort();
-  var batchSelectHtml = '<select id="leads-batch-filter" style="font-size:12px;padding:2px 6px">' +
-    '<option value="">Alle Batches</option>' +
-    batchOpts.map(function(b) {
-      return '<option value="' + escapeHtml(b) + '"' + (b === leadsBatchFilter ? ' selected' : '') + '>' + escapeHtml(b) + '</option>';
-    }).join('') +
-    '</select>';
+  // Lead-Liste toolbar: search + one filter select per field + MA range + reset
+  var filterHtml = LEADS_FILTER_DEFS.map(function(def) { return leadsFilterSelectHtml(def, records); }).join('');
   root.innerHTML = '<div class="leads-page">' +
     '<div class="leads-toolbar">' +
       '<input type="text" id="leads-search" placeholder="Suchen (Name, Domain, Region, Stage…)" value="' + escapeHtml(leadsSearch) + '"/>' +
-      batchSelectHtml +
-      '<label style="font-size:12px;color:var(--ink-3);display:flex;align-items:center;gap:4px">' +
-        '<input type="checkbox" id="leads-show-prio2"' + (leadsShowPrio2 ? ' checked' : '') + '> Prio 2 anzeigen' +
-      '</label>' +
+      filterHtml +
+      '<input type="number" class="leads-filter-ma" data-field="ma_min" min="0" placeholder="MA von" title="Mitarbeiter mindestens" value="' + escapeHtml(leadsFilters.ma_min || '') + '"/>' +
+      '<input type="number" class="leads-filter-ma" data-field="ma_max" min="0" placeholder="MA bis" title="Mitarbeiter höchstens" value="' + escapeHtml(leadsFilters.ma_max || '') + '"/>' +
+      '<button class="btn sm ghost" id="leads-filter-reset">Filter zurücksetzen</button>' +
       '<span class="lt-count" id="leads-count">' + fmt(total) + ' Records</span>' +
     '</div>' +
     '<div class="leads-table-wrap" id="leads-table-wrap"></div>' +
@@ -3375,21 +3423,26 @@ function renderReviewLeads() {
       renderLeadsTable();
     });
   }
-  var batchSel = document.getElementById('leads-batch-filter');
-  if (batchSel) {
-    batchSel.addEventListener('change', function() {
-      leadsBatchFilter = batchSel.value;
-      leadsPage = 0;
-      renderLeadsTable();
-    });
+  function onFilterChange(el) {
+    leadsFilters[el.dataset.field] = el.value;
+    try { localStorage.setItem('allex_leads_filters', JSON.stringify(leadsFilters)); } catch(e) {}
+    leadsPage = 0;
+    renderLeadsTable();
   }
-  var prio2Box = document.getElementById('leads-show-prio2');
-  if (prio2Box) {
-    prio2Box.addEventListener('change', function() {
-      leadsShowPrio2 = prio2Box.checked;
-      localStorage.setItem('allex_leads_show_prio2', leadsShowPrio2 ? '1' : '0');
+  root.querySelectorAll('.leads-filter').forEach(function(el) {
+    el.addEventListener('change', function() { onFilterChange(el); });
+  });
+  root.querySelectorAll('.leads-filter-ma').forEach(function(el) {
+    el.addEventListener('input', function() { onFilterChange(el); });
+  });
+  var resetBtn = document.getElementById('leads-filter-reset');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', function() {
+      leadsFilters = {};
+      leadsSearch = '';
+      try { localStorage.removeItem('allex_leads_filters'); } catch(e) {}
       leadsPage = 0;
-      renderLeadsTable();
+      renderReviewLeads();
     });
   }
   renderLeadsTable();
@@ -3558,12 +3611,7 @@ function renderLeadsTable() {
   var rows = allRecords.map(function(r, idx) {
     return Object.assign({}, r, { _origIdx: idx, _missing: missingFor(r).filter(function(m){ return m.severity !== 'done'; }).length });
   });
-  if (leadsBatchFilter) {
-    rows = rows.filter(function(r){ return r.briefaktion === leadsBatchFilter; });
-  }
-  if (!leadsShowPrio2) {
-    rows = rows.filter(function(r){ return !(r.prio || '').startsWith('Prio 2'); });
-  }
+  rows = rows.filter(leadsMatches);
   if (term) {
     rows = rows.filter(function(r) {
       return (r.full_name || '').toLowerCase().indexOf(term) >= 0
@@ -3595,6 +3643,8 @@ function renderLeadsTable() {
   var pageStart = leadsPage * LEADS_PAGE_SIZE;
   rows = rows.slice(pageStart, pageStart + LEADS_PAGE_SIZE);
   if (counter) counter.textContent = fmt(totalFiltered) + ' / ' + fmt(allRecords.length) + ' Records · Seite ' + (leadsPage + 1) + '/' + totalPages;
+  var resetBtn = document.getElementById('leads-filter-reset');
+  if (resetBtn) resetBtn.disabled = !leadsFilterActive();
 
   // Lead-Liste columns: # → briefaktion → full_name → rechtsform → klass → MA → region → reason cols → freigabe → missing
   var cols = [
@@ -3624,7 +3674,7 @@ function renderLeadsTable() {
   function renderCell(c, r) {
     var v = r[c.id];
     if (c.edit === 'select-prio') {
-      var prioOptions = ['Prio 1','Prio 2 (small)','Prio 2 (big)','Prio 2 (intl)','Prio 2 (other)','Excluded'].map(function(opt) {
+      var prioOptions = ['Prio 1','Prio 2 (small)','Prio 2 (big)','Prio 2 (intl)','Prio 2 (other)','Duplicate','Excluded'].map(function(opt) {
         return '<option value="' + opt + '"' + ((r.prio || '') === opt ? ' selected' : '') + '>' + opt + '</option>';
       }).join('');
       return '<td><select class="lt-edit lt-edit-prio" style="font-size:11px">' + prioOptions + '</select></td>';

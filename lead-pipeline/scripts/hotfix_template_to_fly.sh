@@ -38,5 +38,11 @@ fssh "sh -c 'base64 -d $DST.b64 > $DST.new && rm $DST.b64 && mv $DST.new $DST'"
 
 echo "== prod after (expect $local_sha)"
 fssh "python3 -c \"import hashlib;d=open('$DST','rb').read();print('prod blob',hashlib.sha1(b'blob %d\\\\0'%len(d)+d).hexdigest()[:10],len(d))\""
-echo "== served page check"
-fssh "python3 -c \"import urllib.request;h=urllib.request.urlopen('http://localhost:8081/',timeout=15).read().decode();print('served: getBatchRows' if 'getBatchRows' in h else 'served: OLD TEMPLATE', len(h))\""
+# The prod server caches the HTML at startup: restart the process so it re-reads the template (supervisord respawns it).
+# NEVER fetch the served page inside the container to check: the ~8 MB response on the 512 MB machine OOM-killed the
+# process on 2026-09-22 08:44 UTC (5th kill that day). Check the HTML the new process writes at startup instead.
+echo "== restart allex process (supervisord respawns it)"
+fssh "python3 -c \"import os,signal;[os.kill(int(p),signal.SIGTERM) for p in os.listdir('/proc') if p.isdigit() and b'pipeline.py' in open('/proc/'+p+'/cmdline','rb').read()];print('SIGTERM sent')\""
+sleep 12
+echo "== startup HTML check (expect a fresh timestamp and marker>0)"
+fssh "sh -c 'f=/app/allex/data/output/dashboard_\$(date +%Y%m%d).html; ls -la --time-style=+%H:%M:%S \$f; echo markers \$(grep -c leadsFilterPopHtml \$f)'"

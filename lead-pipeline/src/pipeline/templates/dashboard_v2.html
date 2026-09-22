@@ -684,6 +684,7 @@ input, select, textarea { font: inherit; color: inherit; }
 .leads-ms .queue-filter-pop { max-height: 340px; overflow-y: auto; }
 .leads-ms .leads-ms-search { display: block; width: calc(100% - 24px); margin: 2px 12px 6px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; font-size: 12px; outline: none; }
 .leads-ms .leads-ms-count { margin-left: auto; padding-left: 12px; color: var(--ink-3); font-size: 11px; }
+.leads-ms label.is-empty { display: none; }  /* 0 records under the other filters and not ticked */
 .leads-toolbar .lt-count { color: var(--ink-3); font-size: 12px; margin-left: auto; }
 .leads-table-wrap { flex: 1; overflow: auto; background: var(--surface); }
 .leads-table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -3364,34 +3365,80 @@ function attachSiteOpenButton(siteUrl) {
 // ===== REVIEW › LEAD-LISTE (full DB tabular view) =====
 // Multi-select popover for one field (same component as the queue filter); options = distinct values in the data with counts.
 // Tokens: '__leer__' = Feld leer · '^X' = beginnt mit X (Prio 2 (alle) = every Prio 2 variant) · anything else = exact value.
-function leadsFilterPopHtml(def, records) {
+function leadsValueCounts(def, rows) {
   var counts = {};
-  records.forEach(function(r) {
+  rows.forEach(function(r) {
     var v = r[def.id] == null ? '' : String(r[def.id]).trim();
     counts[v] = (counts[v] || 0) + 1;
   });
+  return counts;
+}
+
+function leadsTokenCount(token, counts) {
+  if (token === '__leer__') return counts[''] || 0;
+  if (token.charAt(0) === '^') {
+    return Object.keys(counts).filter(function(k) { return k.indexOf(token.slice(1)) === 0; })
+      .reduce(function(n, k) { return n + counts[k]; }, 0);
+  }
+  return counts[token] || 0;
+}
+
+// Rows that pass search + MA + every field filter except skipField. Facet counts exclude the field's own
+// selection, so a list always sums to what the OTHER filters leave over (Batch = BA9 -> Prio list sums to BA9).
+function leadsBaseRows(skipField) {
+  var term = (leadsSearch || '').toLowerCase().trim();
+  return (DATA.records || []).filter(function(r) { return leadsMatches(r, skipField) && leadsSearchMatches(r, term); });
+}
+
+function leadsFilterPopHtml(def, records) {
+  var all = leadsValueCounts(def, records);                    // option list = every value in the data
+  var counts = leadsValueCounts(def, leadsBaseRows(def.id));   // numbers = what the other filters leave over
   var sel = leadsFilters[def.id] || [];
   var opts = [];
-  if (def.group) {
-    var groupCount = Object.keys(counts).filter(function(k) { return k.indexOf(def.group) === 0; })
-      .reduce(function(n, k) { return n + counts[k]; }, 0);
-    opts.push(['^' + def.group, def.group + ' (alle)', groupCount]);
-  }
-  Object.keys(counts).filter(Boolean).sort(function(a, b) { return a.localeCompare(b, 'de'); }).forEach(function(v) {
-    opts.push([v, (def.id === 'klass' && KLASS_LABELS[v]) ? v + ' · ' + KLASS_LABELS[v] : v, counts[v]]);
+  if (def.group) opts.push(['^' + def.group, def.group + ' (alle)']);
+  Object.keys(all).filter(Boolean).sort(function(a, b) { return a.localeCompare(b, 'de'); }).forEach(function(v) {
+    opts.push([v, (def.id === 'klass' && KLASS_LABELS[v]) ? v + ' · ' + KLASS_LABELS[v] : v]);
   });
-  opts.push(['__leer__', '(leer)', counts[''] || 0]);
+  opts.push(['__leer__', '(leer)']);
   // persisted token no longer in the data: keep it visible + checked instead of silently filtering
-  sel.forEach(function(t) { if (!opts.some(function(o) { return o[0] === t; })) opts.push([t, t + ' (nicht vorhanden)', 0]); });
+  sel.forEach(function(t) { if (!opts.some(function(o) { return o[0] === t; })) opts.push([t, t + ' (nicht vorhanden)']); });
   var searchHtml = opts.length > 12 ? '<input type="search" class="leads-ms-search" placeholder="Suchen…">' : '';
   return '<div class="leads-ms" data-field="' + def.id + '">' +
     '<button type="button" class="queue-filter-btn' + (sel.length ? ' has-active' : '') + '">' + leadsFilterBtnLabel(def) + '</button>' +
     '<div class="queue-filter-pop">' + searchHtml +
       opts.map(function(o) {
-        return '<label><input type="checkbox" value="' + escapeHtml(o[0]) + '"' + (sel.indexOf(o[0]) >= 0 ? ' checked' : '') + '> ' +
-          escapeHtml(o[1]) + '<span class="leads-ms-count">' + fmt(o[2]) + '</span></label>';
+        var checked = sel.indexOf(o[0]) >= 0;
+        var n = leadsTokenCount(o[0], counts);
+        return '<label' + (n === 0 && !checked ? ' class="is-empty"' : '') + '><input type="checkbox" value="' + escapeHtml(o[0]) + '"' + (checked ? ' checked' : '') + '> ' +
+          escapeHtml(o[1]) + '<span class="leads-ms-count">' + fmt(n) + '</span></label>';
       }).join('') +
     '</div></div>';
+}
+
+// Re-count every popover after a filter / search / MA change (each list excludes its own field)
+function leadsRefreshCounts() {
+  LEADS_FILTER_DEFS.forEach(function(def) {
+    var ms = document.querySelector('.leads-ms[data-field="' + def.id + '"]');
+    if (!ms) return;
+    var counts = leadsValueCounts(def, leadsBaseRows(def.id));
+    ms.querySelectorAll('label').forEach(function(l) {
+      var cb = l.querySelector('input[type="checkbox"]');
+      var n = leadsTokenCount(cb.value, counts);
+      l.querySelector('.leads-ms-count').textContent = fmt(n);
+      l.classList.toggle('is-empty', n === 0 && !cb.checked);
+    });
+  });
+}
+
+function leadsSearchMatches(r, term) {
+  if (!term) return true;
+  return (r.full_name || '').toLowerCase().indexOf(term) >= 0
+    || (r.domain || '').toLowerCase().indexOf(term) >= 0
+    || (r.region || '').toLowerCase().indexOf(term) >= 0
+    || (r.pipeline_stage || '').toLowerCase().indexOf(term) >= 0
+    || (r.gf_email || '').toLowerCase().indexOf(term) >= 0
+    || (r.briefaktion || '').toLowerCase().indexOf(term) >= 0
+    || (r.owner_name || '').toLowerCase().indexOf(term) >= 0;
 }
 
 function leadsFilterBtnLabel(def) {
@@ -3407,11 +3454,11 @@ function leadsTokenMatches(token, have) {
   return have === token;
 }
 
-function leadsMatches(r) {
+function leadsMatches(r, skipField) {
   for (var i = 0; i < LEADS_FILTER_DEFS.length; i++) {
     var f = LEADS_FILTER_DEFS[i].id;
     var sel = leadsFilters[f] || [];
-    if (!sel.length) continue;
+    if (f === skipField || !sel.length) continue;
     var have = r[f] == null ? '' : String(r[f]).trim();
     if (!sel.some(function(t) { return leadsTokenMatches(t, have); })) return false;
   }
@@ -3686,18 +3733,7 @@ function renderLeadsTable() {
   var rows = allRecords.map(function(r, idx) {
     return Object.assign({}, r, { _origIdx: idx, _missing: missingFor(r).filter(function(m){ return m.severity !== 'done'; }).length });
   });
-  rows = rows.filter(leadsMatches);
-  if (term) {
-    rows = rows.filter(function(r) {
-      return (r.full_name || '').toLowerCase().indexOf(term) >= 0
-        || (r.domain || '').toLowerCase().indexOf(term) >= 0
-        || (r.region || '').toLowerCase().indexOf(term) >= 0
-        || (r.pipeline_stage || '').toLowerCase().indexOf(term) >= 0
-        || (r.gf_email || '').toLowerCase().indexOf(term) >= 0
-        || (r.briefaktion || '').toLowerCase().indexOf(term) >= 0
-        || (r.owner_name || '').toLowerCase().indexOf(term) >= 0;
-    });
-  }
+  rows = rows.filter(function(r) { return leadsMatches(r) && leadsSearchMatches(r, term); });
   // Sort
   rows.sort(function(a, b) {
     var av = a[leadsSortField] || '';
@@ -3720,6 +3756,7 @@ function renderLeadsTable() {
   if (counter) counter.textContent = fmt(totalFiltered) + ' / ' + fmt(allRecords.length) + ' Records · Seite ' + (leadsPage + 1) + '/' + totalPages;
   var resetBtn = document.getElementById('leads-filter-reset');
   if (resetBtn) resetBtn.disabled = !leadsFilterActive();
+  leadsRefreshCounts();
 
   // Lead-Liste columns: # → briefaktion → full_name → rechtsform → klass → MA → region → reason cols → freigabe → missing
   var cols = [

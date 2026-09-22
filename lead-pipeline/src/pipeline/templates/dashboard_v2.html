@@ -700,6 +700,8 @@ input, select, textarea { font: inherit; color: inherit; }
 .leads-table select.lt-edit-klass { min-width: 170px; }
 .leads-table input.lt-edit-region { min-width: 190px; }  /* longest region: "Mecklenburgische Ostseeküste" */
 .leads-table .lt-domain { color: var(--ink-3); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.leads-table .lt-site { margin-left: 6px; color: var(--spar); text-decoration: none; font-size: 13px; vertical-align: middle; }  /* website shortcut next to the name */
+.leads-table .lt-site:hover { text-decoration: underline; }
 .leads-table .lt-klass { font-weight: 700; font-size: 11px; padding: 2px 6px; border-radius: 3px; background: var(--surface-2); color: var(--ink); display: inline-block; }
 .leads-table .lt-klass.A { background: #e3f2ec; color: var(--ok); }
 .leads-table .lt-klass.B { background: var(--spar-soft); color: var(--spar); }
@@ -3809,8 +3811,17 @@ function renderLeadsTable() {
     if (c.edit === 'text') {
       var cellClass = (c.id === 'full_name') ? 'lt-name' : '';
       // name input sized to its text so the column grows with the longest name on the page (never clipped)
-      var sizeAttr = (c.id === 'full_name') ? ' size="' + Math.min(80, Math.max(30, String(v || '').length + 2)) + '"' : '';
-      return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><input class="lt-edit lt-edit-' + c.id + '" type="text"' + sizeAttr + ' value="' + escapeHtml(v || '') + '"/></td>';
+      var sizeAttr = (c.id === 'full_name') ? ' size="' + Math.min(90, Math.max(30, Math.ceil(String(v || '').length * 1.1) + 3)) + '"' : '';
+      // website shortcut next to the name (no extra column): opens https://<domain> in a new tab
+      var siteLink = '';
+      if (c.id === 'full_name') {
+        var site = (r.website || r.domain || '').trim();
+        if (site) {
+          var siteUrl = site.match(/^https?:\/\//) ? site : ('https://' + site);
+          siteLink = '<a class="lt-site" href="' + escapeHtml(siteUrl) + '" target="_blank" rel="noopener" title="' + escapeHtml(site) + ' in neuem Tab öffnen">↗</a>';
+        }
+      }
+      return '<td' + (cellClass ? ' class="' + cellClass + '"' : '') + '><input class="lt-edit lt-edit-' + c.id + '" type="text"' + sizeAttr + ' value="' + escapeHtml(v || '') + '"/>' + siteLink + '</td>';
     }
     if (c.edit === 'email') {
       return '<td><input class="lt-edit lt-edit-' + c.id + '" type="email" value="' + escapeHtml(v || '') + '"/></td>';

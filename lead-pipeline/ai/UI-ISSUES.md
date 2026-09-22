@@ -69,7 +69,7 @@ Features
 ## Resolved (commit refs for traceability)
 
 ### 2026-09-22
-- [x] **Lead-Liste filter toolbar** (RD, Roman 2026-09-22): "Prio 2 anzeigen" toggle replaced by filters: Batch / Prio (incl. "Prio 2 (alle)" + "(leer)") / Klass / Region selects built from the values in the data, MA von/bis, "Filter zurücksetzen"; selection persists per browser. Verified 2026-09-22 headless (Playwright, 26 checks, counts tie to pipeline.db); Chrome extension was not connected.
+- [x] **Lead-Liste filter toolbar** (RD, Roman 2026-09-22): "Prio 2 anzeigen" toggle replaced by multi-select filters (same button + checkbox popover as the queue filter): Batch / Prio (incl. "Prio 2 (alle)" + "(leer)") / Klass / Region with per-value counts and a search box for long lists, MA von/bis, "Filter zurücksetzen"; OR within a field, AND across fields; selection persists per browser. Roman's v1 feedback: single-select was "pretty stupid" with that many Prio 2 classes → multi-select same day. Verified 2026-09-22 headless (Playwright, 36 checks, counts tie to pipeline.db at run time); Chrome extension was not connected.
 - [x] **Duplicate in row prio select** (T008): `Duplicate` added to the Lead-Liste prio options. Verified 2026-09-22 headless.
 
 ### 2026-05-11

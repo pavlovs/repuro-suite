@@ -675,9 +675,15 @@ input, select, textarea { font: inherit; color: inherit; }
 .leads-page { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 0; overflow: hidden; }
 .leads-toolbar { padding: 12px 24px; border-bottom: 1px solid var(--line); background: var(--surface); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
 .leads-toolbar input[type="text"] { padding: 6px 10px; border: 1px solid var(--line); border-radius: 5px; outline: none; font-size: 12px; min-width: 240px; }
-.leads-toolbar select, .leads-toolbar input[type="number"] { padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; outline: none; font-size: 12px; background: var(--surface); color: var(--ink); max-width: 200px; }
-.leads-toolbar input[type="number"] { width: 78px; }
-.leads-toolbar input:focus, .leads-toolbar select:focus { border-color: var(--spar); box-shadow: 0 0 0 3px var(--spar-soft); }
+.leads-toolbar input[type="number"] { padding: 6px 8px; border: 1px solid var(--line); border-radius: 5px; outline: none; font-size: 12px; background: var(--surface); color: var(--ink); width: 78px; }
+.leads-toolbar input:focus { border-color: var(--spar); box-shadow: 0 0 0 3px var(--spar-soft); }
+/* Lead-Liste multi-select filters: same button + popover component as the queue filter */
+.leads-ms { position: relative; }
+.leads-ms .queue-filter-btn { font-size: 12px; padding: 6px 10px; border-radius: 5px; color: var(--ink); }
+.leads-ms .queue-filter-btn.has-active { color: var(--primary); }
+.leads-ms .queue-filter-pop { max-height: 340px; overflow-y: auto; }
+.leads-ms .leads-ms-search { display: block; width: calc(100% - 24px); margin: 2px 12px 6px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 4px; font-size: 12px; outline: none; }
+.leads-ms .leads-ms-count { margin-left: auto; padding-left: 12px; color: var(--ink-3); font-size: 11px; }
 .leads-toolbar .lt-count { color: var(--ink-3); font-size: 12px; margin-left: auto; }
 .leads-table-wrap { flex: 1; overflow: auto; background: var(--surface); }
 .leads-table { width: 100%; border-collapse: collapse; font-size: 12px; }
@@ -1570,16 +1576,23 @@ var leadsSortField = '_ref_id';
 var leadsSortDir = 'asc';
 var leadsPage = 0;
 var LEADS_PAGE_SIZE = 100;
-// Lead-Liste filters: one select per field (options = values present in the data) + MA range; persisted per browser
+// Lead-Liste filters: one multi-select per field (options = values present in the data) + MA range; persisted per browser.
+// leadsFilters[field] = array of selected tokens (OR within a field, AND across fields); ma_min / ma_max = strings.
 var LEADS_FILTER_DEFS = [
-  { id: 'briefaktion', all: 'Alle Batches' },
-  { id: 'prio',        all: 'Alle Prios', group: 'Prio 2' },
-  { id: 'klass',       all: 'Alle Klassen' },
-  { id: 'region',      all: 'Alle Regionen' },
+  { id: 'briefaktion', label: 'Batch' },
+  { id: 'prio',        label: 'Prio', group: 'Prio 2' },
+  { id: 'klass',       label: 'Klass' },
+  { id: 'region',      label: 'Region' },
 ];
 var leadsFilters = (function() {
-  try { var v = JSON.parse(localStorage.getItem('allex_leads_filters')); return (v && typeof v === 'object') ? v : {}; } catch(e) { return {}; }
+  try {
+    var v = JSON.parse(localStorage.getItem('allex_leads_filters'));
+    if (!v || typeof v !== 'object') return {};
+    LEADS_FILTER_DEFS.forEach(function(d) { if (typeof v[d.id] === 'string') v[d.id] = v[d.id] ? [v[d.id]] : []; });  // pre-multi-select format
+    return v;
+  } catch(e) { return {}; }
 })();
+var leadsMsDocClickBound = false;
 // F18 — Persistent collapsed-state across renderRecord() calls
 var collapsedSections = { 'sec-kategorie': true, 'sec-gesellschafter': false, 'sec-stammdaten': false, 'sec-briefvorbereitung': false, 'sec-notizen': true };
 
@@ -3349,39 +3362,58 @@ function attachSiteOpenButton(siteUrl) {
 }
 
 // ===== REVIEW › LEAD-LISTE (full DB tabular view) =====
-// Filter select for one field; options = distinct values in the data.
-// Values: '' = alle · '__leer__' = Feld leer · '^X' = beginnt mit X (Prio 2 (alle) = every Prio 2 variant)
-function leadsFilterSelectHtml(def, records) {
-  var seen = {};
+// Multi-select popover for one field (same component as the queue filter); options = distinct values in the data with counts.
+// Tokens: '__leer__' = Feld leer · '^X' = beginnt mit X (Prio 2 (alle) = every Prio 2 variant) · anything else = exact value.
+function leadsFilterPopHtml(def, records) {
+  var counts = {};
   records.forEach(function(r) {
-    var v = r[def.id];
-    if (v != null && String(v).trim()) seen[String(v).trim()] = 1;
+    var v = r[def.id] == null ? '' : String(r[def.id]).trim();
+    counts[v] = (counts[v] || 0) + 1;
   });
-  var cur = leadsFilters[def.id] || '';
-  var opts = [['', def.all]];
-  if (def.group) opts.push(['^' + def.group, def.group + ' (alle)']);
-  Object.keys(seen).sort(function(a, b) { return a.localeCompare(b, 'de'); }).forEach(function(v) {
-    opts.push([v, (def.id === 'klass' && KLASS_LABELS[v]) ? v + ' · ' + KLASS_LABELS[v] : v]);
+  var sel = leadsFilters[def.id] || [];
+  var opts = [];
+  if (def.group) {
+    var groupCount = Object.keys(counts).filter(function(k) { return k.indexOf(def.group) === 0; })
+      .reduce(function(n, k) { return n + counts[k]; }, 0);
+    opts.push(['^' + def.group, def.group + ' (alle)', groupCount]);
+  }
+  Object.keys(counts).filter(Boolean).sort(function(a, b) { return a.localeCompare(b, 'de'); }).forEach(function(v) {
+    opts.push([v, (def.id === 'klass' && KLASS_LABELS[v]) ? v + ' · ' + KLASS_LABELS[v] : v, counts[v]]);
   });
-  opts.push(['__leer__', '(leer)']);
-  // persisted value no longer in the data: keep it visible + selected instead of silently filtering behind "Alle"
-  if (cur && !opts.some(function(o) { return o[0] === cur; })) opts.push([cur, cur + ' (nicht vorhanden)']);
-  return '<select class="leads-filter" data-field="' + def.id + '" title="' + escapeHtml(def.all) + '">' +
-    opts.map(function(o) {
-      return '<option value="' + escapeHtml(o[0]) + '"' + (o[0] === cur ? ' selected' : '') + '>' + escapeHtml(o[1]) + '</option>';
-    }).join('') +
-    '</select>';
+  opts.push(['__leer__', '(leer)', counts[''] || 0]);
+  // persisted token no longer in the data: keep it visible + checked instead of silently filtering
+  sel.forEach(function(t) { if (!opts.some(function(o) { return o[0] === t; })) opts.push([t, t + ' (nicht vorhanden)', 0]); });
+  var searchHtml = opts.length > 12 ? '<input type="search" class="leads-ms-search" placeholder="Suchen…">' : '';
+  return '<div class="leads-ms" data-field="' + def.id + '">' +
+    '<button type="button" class="queue-filter-btn' + (sel.length ? ' has-active' : '') + '">' + leadsFilterBtnLabel(def) + '</button>' +
+    '<div class="queue-filter-pop">' + searchHtml +
+      opts.map(function(o) {
+        return '<label><input type="checkbox" value="' + escapeHtml(o[0]) + '"' + (sel.indexOf(o[0]) >= 0 ? ' checked' : '') + '> ' +
+          escapeHtml(o[1]) + '<span class="leads-ms-count">' + fmt(o[2]) + '</span></label>';
+      }).join('') +
+    '</div></div>';
+}
+
+function leadsFilterBtnLabel(def) {
+  var sel = leadsFilters[def.id] || [];
+  if (!sel.length) return escapeHtml(def.label);
+  var one = sel[0] === '__leer__' ? '(leer)' : (sel[0].charAt(0) === '^' ? sel[0].slice(1) + ' (alle)' : sel[0]);
+  return escapeHtml(def.label + ': ' + (sel.length === 1 ? one : sel.length + ' ausgewählt'));
+}
+
+function leadsTokenMatches(token, have) {
+  if (token === '__leer__') return !have;
+  if (token.charAt(0) === '^') return have.indexOf(token.slice(1)) === 0;
+  return have === token;
 }
 
 function leadsMatches(r) {
   for (var i = 0; i < LEADS_FILTER_DEFS.length; i++) {
     var f = LEADS_FILTER_DEFS[i].id;
-    var want = leadsFilters[f] || '';
-    if (!want) continue;
+    var sel = leadsFilters[f] || [];
+    if (!sel.length) continue;
     var have = r[f] == null ? '' : String(r[f]).trim();
-    if (want === '__leer__') { if (have) return false; }
-    else if (want.charAt(0) === '^') { if (have.indexOf(want.slice(1)) !== 0) return false; }
-    else if (have !== want) return false;
+    if (!sel.some(function(t) { return leadsTokenMatches(t, have); })) return false;
   }
   // records without a usable MA count (null, blank, non-numeric) are excluded once a bound is set
   var ma = (r.ma_count == null || String(r.ma_count).trim() === '') ? null : Number(r.ma_count);
@@ -3393,7 +3425,10 @@ function leadsMatches(r) {
 
 function leadsFilterActive() {
   if ((leadsSearch || '').trim()) return true;
-  return Object.keys(leadsFilters).some(function(k) { return leadsFilters[k] != null && leadsFilters[k] !== ''; });
+  return Object.keys(leadsFilters).some(function(k) {
+    var v = leadsFilters[k];
+    return Array.isArray(v) ? v.length > 0 : (v != null && v !== '');
+  });
 }
 
 function renderReviewLeads() {
@@ -3401,8 +3436,8 @@ function renderReviewLeads() {
   var records = (DATA.records || []).slice();
   var total = records.length;
 
-  // Lead-Liste toolbar: search + one filter select per field + MA range + reset
-  var filterHtml = LEADS_FILTER_DEFS.map(function(def) { return leadsFilterSelectHtml(def, records); }).join('');
+  // Lead-Liste toolbar: search + one multi-select per field + MA range + reset
+  var filterHtml = LEADS_FILTER_DEFS.map(function(def) { return leadsFilterPopHtml(def, records); }).join('');
   root.innerHTML = '<div class="leads-page">' +
     '<div class="leads-toolbar">' +
       '<input type="text" id="leads-search" placeholder="Suchen (Name, Domain, Region, Stage…)" value="' + escapeHtml(leadsSearch) + '"/>' +
@@ -3423,17 +3458,57 @@ function renderReviewLeads() {
       renderLeadsTable();
     });
   }
-  function onFilterChange(el) {
-    leadsFilters[el.dataset.field] = el.value;
+  function saveFilters() {
     try { localStorage.setItem('allex_leads_filters', JSON.stringify(leadsFilters)); } catch(e) {}
     leadsPage = 0;
     renderLeadsTable();
   }
-  root.querySelectorAll('.leads-filter').forEach(function(el) {
-    el.addEventListener('change', function() { onFilterChange(el); });
+  function closeAllPops() {
+    document.querySelectorAll('.leads-ms .queue-filter-pop.open').forEach(function(p) { p.classList.remove('open'); });
+  }
+  root.querySelectorAll('.leads-ms').forEach(function(ms) {
+    var field = ms.dataset.field;
+    var def = LEADS_FILTER_DEFS.filter(function(d) { return d.id === field; })[0];
+    var btn = ms.querySelector('.queue-filter-btn');
+    var pop = ms.querySelector('.queue-filter-pop');
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var wasOpen = pop.classList.contains('open');
+      closeAllPops();
+      if (!wasOpen) {
+        pop.classList.add('open');
+        var s = pop.querySelector('.leads-ms-search');
+        if (s) s.focus();
+      }
+    });
+    pop.addEventListener('click', function(e) { e.stopPropagation(); });
+    pop.addEventListener('keydown', function(e) { if (e.key === 'Escape') pop.classList.remove('open'); });
+    var search = pop.querySelector('.leads-ms-search');
+    if (search) {
+      search.addEventListener('input', function() {
+        var q = search.value.toLowerCase();
+        pop.querySelectorAll('label').forEach(function(l) {
+          l.style.display = (q && l.textContent.toLowerCase().indexOf(q) < 0) ? 'none' : '';
+        });
+      });
+    }
+    pop.querySelectorAll('input[type="checkbox"]').forEach(function(cb) {
+      cb.addEventListener('change', function() {
+        var sel = (leadsFilters[field] || []).filter(function(t) { return t !== cb.value; });
+        if (cb.checked) sel.push(cb.value);
+        leadsFilters[field] = sel;
+        btn.innerHTML = leadsFilterBtnLabel(def);
+        btn.classList.toggle('has-active', sel.length > 0);
+        saveFilters();
+      });
+    });
   });
+  if (!leadsMsDocClickBound) {
+    leadsMsDocClickBound = true;
+    document.addEventListener('click', closeAllPops);
+  }
   root.querySelectorAll('.leads-filter-ma').forEach(function(el) {
-    el.addEventListener('input', function() { onFilterChange(el); });
+    el.addEventListener('input', function() { leadsFilters[el.dataset.field] = el.value; saveFilters(); });
   });
   var resetBtn = document.getElementById('leads-filter-reset');
   if (resetBtn) {

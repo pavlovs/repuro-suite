@@ -42,7 +42,7 @@ fssh "python3 -c \"import hashlib;d=open('$DST','rb').read();print('prod blob',h
 # NEVER fetch the served page inside the container to check: the ~8 MB response on the 512 MB machine OOM-killed the
 # process on 2026-09-22 08:44 UTC (5th kill that day). Check the HTML the new process writes at startup instead.
 echo "== restart allex process (supervisord respawns it)"
-fssh "python3 -c \"import os,signal;[os.kill(int(p),signal.SIGTERM) for p in os.listdir('/proc') if p.isdigit() and b'pipeline.py' in open('/proc/'+p+'/cmdline','rb').read()];print('SIGTERM sent')\""
+fssh "python3 -c \"import os,signal;me=str(os.getpid());[os.kill(int(p),signal.SIGTERM) for p in os.listdir('/proc') if p.isdigit() and p!=me and b'--serve' in open('/proc/'+p+'/cmdline','rb').read()];print('SIGTERM sent')\""
 sleep 12
 echo "== startup HTML check (expect a fresh timestamp and marker>0)"
 fssh "sh -c 'f=/app/allex/data/output/dashboard_\$(date +%Y%m%d).html; ls -la --time-style=+%H:%M:%S \$f; echo markers \$(grep -c leadsFilterPopHtml \$f)'"

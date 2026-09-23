@@ -88,6 +88,9 @@ _WRITEBACK_FIELDS = frozenset(
         "gruppe_2",
         "gesellschafter_field",
         "gesellschafter_note",
+        # 2026-09-23: reasons are curated by hand in the Lead-Liste (Roman); pipeline stages overwrite them on re-run
+        "filter_reason",
+        "ownership_reason",
     }
 )
 

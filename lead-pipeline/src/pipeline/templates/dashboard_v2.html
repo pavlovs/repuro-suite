@@ -722,7 +722,8 @@ input, select, textarea { font: inherit; color: inherit; }
 .leads-table .lt-klass.OTH { background: var(--surface-2); color: var(--ink-3); }
 .leads-table .lt-klass.B2C { background: var(--surface-2); color: var(--ink-3); }
 .leads-table input.lt-edit, .leads-table select.lt-edit { width: 100%; padding: 4px 6px; border: 1px solid transparent; border-radius: 3px; background: transparent; font-size: 12px; outline: none; }
-.leads-table input.lt-edit:focus, .leads-table select.lt-edit:focus { border-color: var(--spar); background: var(--surface); box-shadow: 0 0 0 2px var(--spar-soft); }
+.leads-table input.lt-edit:focus, .leads-table select.lt-edit:focus, .leads-table textarea.lt-edit:focus { border-color: var(--spar); background: var(--surface); box-shadow: 0 0 0 2px var(--spar-soft); }
+.leads-table textarea.lt-edit { display: block; width: 100%; min-width: 260px; padding: 4px 6px; border: 1px solid transparent; border-radius: 3px; background: transparent; font-size: 12px; line-height: 1.35; resize: vertical; outline: none; }  /* free-text reasons, editable in place */
 .leads-table .lt-miss { font-variant-numeric: tabular-nums; color: var(--ink-3); font-size: 11px; }
 .leads-table .lt-miss.warn { color: var(--warn); }
 .leads-table .lt-miss.block { color: var(--block); }
@@ -3774,8 +3775,8 @@ function renderLeadsTable() {
     { id: 'klass',                 label: 'Klass',        sort: 'klass',                edit: 'select-klass' },
     { id: 'ma_count',              label: 'MA',           sort: 'ma_count',             edit: 'readonly' },
     { id: 'region',                label: 'Region',       sort: 'region',               edit: 'text' },
-    { id: 'filter_reason',         label: 'Filter-Grund', sort: 'filter_reason',        edit: 'readonly' },
-    { id: 'ownership_reason',      label: 'Ownership',    sort: 'ownership_reason',     edit: 'readonly' },
+    { id: 'filter_reason',         label: 'Filter-Grund', sort: 'filter_reason',        edit: 'textarea' },
+    { id: 'ownership_reason',      label: 'Ownership',    sort: 'ownership_reason',     edit: 'textarea' },
     { id: 'approved_for_sendout',  label: 'Druckfreigabe',sort: 'approved_for_sendout', edit: 'checkbox' },
     { id: '_missing',              label: 'Fehlt',        sort: '_missing',             edit: 'readonly' },
   ];
@@ -3825,6 +3826,9 @@ function renderLeadsTable() {
     }
     if (c.edit === 'email') {
       return '<td><input class="lt-edit lt-edit-' + c.id + '" type="email" value="' + escapeHtml(v || '') + '"/></td>';
+    }
+    if (c.edit === 'textarea') {
+      return '<td class="lt-wide"><textarea class="lt-edit lt-edit-' + c.id + '" rows="2">' + escapeHtml(v == null ? '' : String(v)) + '</textarea></td>';
     }
     if (c.edit === 'pass-badge') {
       var passVal = (v === 1 || v === true) ? 1 : 0;
@@ -3953,6 +3957,12 @@ function renderLeadsTable() {
   wrap.querySelectorAll('.lt-edit-owner_name').forEach(function(el) {
     el.addEventListener('blur', function(){ inlineSave(el, 'owner_name'); });
     el.addEventListener('click', function(e){ e.stopPropagation(); });
+  });
+  ['filter_reason', 'ownership_reason'].forEach(function(field) {
+    wrap.querySelectorAll('.lt-edit-' + field).forEach(function(el) {
+      el.addEventListener('blur', function(){ inlineSave(el, field); });
+      el.addEventListener('click', function(e){ e.stopPropagation(); });
+    });
   });
   wrap.querySelectorAll('.lt-edit-gf_email').forEach(function(el) {
     el.addEventListener('blur', function(){ inlineSave(el, 'gf_email'); });

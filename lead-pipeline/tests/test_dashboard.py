@@ -172,6 +172,14 @@ class TestLoadDataPayload:
         )
 
 
+class TestWritebackFields:
+    def test_reasons_are_writable(self):
+        """Filter-Grund and Ownership are edited by hand in the Lead-Liste (Roman, 2026-09-23)."""
+        from src.pipeline.dashboard import _WRITEBACK_FIELDS
+
+        assert {"filter_reason", "ownership_reason"} <= _WRITEBACK_FIELDS
+
+
 class TestPayloadJson:
     def test_null_fields_are_dropped(self, populated_db):
         """Page data and /api/data carry no null fields (half of the payload on prod, 2026-09-22)."""

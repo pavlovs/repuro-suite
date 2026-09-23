@@ -68,6 +68,9 @@ Features
 
 ## Resolved (commit refs for traceability)
 
+### 2026-09-23
+- [x] **Filter-Grund / Ownership editable in the Lead-Liste** (RD, Roman 2026-09-23 "why not editable?!"): both were `readonly` since the 2026-05-04 column set AND missing from the server's `_WRITEBACK_FIELDS`, so no UI could have saved them. Now text areas with blur-save; `filter_reason` + `ownership_reason` added to the whitelist. Caveat: `filter`/`enrich` re-runs overwrite them. Verified 2026-09-23 headless (values match records, blur sends the PATCH with the field, request intercepted so no real record was written); whitelist test added.
+
 ### 2026-09-22
 - [x] **Lead-Liste filter toolbar** (RD, Roman 2026-09-22): "Prio 2 anzeigen" toggle replaced by multi-select filters (same button + checkbox popover as the queue filter): Batch / Prio (incl. "Prio 2 (alle)" + "(leer)") / Klass / Region with facet counts (each list counts what the OTHER filters + search + MA leave over, so Batch = BA9 makes the Prio list sum to the BA9 total; zero-count options hidden unless ticked) and a search box for long lists, MA von/bis, "Filter zurücksetzen"; OR within a field, AND across fields; selection persists per browser. Roman's v1 feedback: single-select was "pretty stupid" with that many Prio 2 classes → multi-select same day. Verified 2026-09-22 headless (Playwright, 36 checks, counts tie to pipeline.db at run time); Chrome extension was not connected.
 - [x] **Duplicate in row prio select** (T008): `Duplicate` added to the Lead-Liste prio options. Verified 2026-09-22 headless.

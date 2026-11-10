@@ -190,6 +190,11 @@ def extract_page_text(
     extra_paths: Optional[list[str]] = None,
     max_chars: int = 2500,
     homepage_min_chars: int = 800,
+    homepage_max_chars: Optional[int] = None,
+    path_max_chars: Optional[int] = None,
+    skip_duplicate_pages: bool = False,
+    link_keywords: Optional[list[str]] = None,
+    max_link_pages: int = 4,
 ) -> str:
     """Fetch and combine text from domain homepage + extra_paths, up to max_chars.
 
@@ -197,19 +202,30 @@ def extract_page_text(
     1. Try HTTPS homepage. If empty, fall back to HTTP homepage.
     2. If homepage already yields >= homepage_min_chars, skip extra paths.
     3. Fetch extra paths only until max_chars is reached.
+
+    M37 (all optional, defaults keep the ambulatory behaviour): homepage_max_chars caps the
+    homepage share, path_max_chars caps each extra page, skip_duplicate_pages drops soft-404
+    pages whose text equals the homepage. link_keywords: same-site homepage links whose path
+    contains a keyword are fetched first (up to max_link_pages). With homepage_max_chars set,
+    leftover room is topped up with the rest of the homepage text.
     """
     if extra_paths is None:
         extra_paths = ["/leistungen", "/service", "/produkte", "/ueber-uns"]
+    home_cap = max_chars if homepage_max_chars is None else min(homepage_max_chars, max_chars)
 
     collected: list[str] = []
     total_chars = 0
+    home_text = ""
+    home_html = ""
 
     # Homepage — HTTPS first, HTTP fallback.
     for scheme in ("https", "http"):
         html = fetch_with_retry(f"{scheme}://{domain}")
         if html:
             text = clean_html(html)
-            chunk = text[:max_chars]
+            home_text = text
+            home_html = html
+            chunk = text[:home_cap]
             if chunk:
                 collected.append(chunk)
                 total_chars += len(chunk)
@@ -219,20 +235,69 @@ def extract_page_text(
     if total_chars >= homepage_min_chars:
         return " ".join(collected)[:max_chars]
 
-    # Fetch extra paths for more content.
-    for path in extra_paths:
+    # Fetch extra paths for more content (M37: keyword links from the homepage first).
+    urls = [f"https://{domain}{path}" for path in extra_paths]
+    if link_keywords and home_html:
+        urls = _keyword_links(home_html, domain, link_keywords)[:max_link_pages] + urls
+    seen_urls: set[str] = set()
+    for url in urls:
         if total_chars >= max_chars:
             break
-        html = fetch_with_retry(f"https://{domain}{path}")
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+        html = fetch_with_retry(url)
         if html:
             text = clean_html(html)
+            if skip_duplicate_pages and home_text and text == home_text:
+                continue  # soft 404: server answered the homepage again
             remaining = max_chars - total_chars
+            if path_max_chars is not None:
+                remaining = min(remaining, path_max_chars)
             chunk = text[:remaining]
             if chunk:
                 collected.append(chunk)
                 total_chars += len(chunk)
 
+    # M37: top up with the homepage text that the homepage cap held back
+    if homepage_max_chars is not None and total_chars < max_chars and len(home_text) > home_cap:
+        collected.append(home_text[home_cap : home_cap + (max_chars - total_chars)])
+
     return " ".join(collected)[:max_chars]
+
+
+_HREF_RE = re.compile(r"""href=["']([^"'#?]+)""", re.IGNORECASE)
+
+
+def _keyword_links(html: str, domain: str, keywords: list[str]) -> list[str]:
+    """Same-site links from raw homepage HTML whose path contains a keyword, keyword order."""
+    from urllib.parse import urljoin, urlparse
+
+    base = f"https://{domain}/"
+    bare = domain.lower().removeprefix("www.")
+    found: dict[str, int] = {}
+    for href in _HREF_RE.findall(html):
+        url = urljoin(base, href.strip())
+        parsed = urlparse(url)
+        host = (parsed.hostname or "").lower().removeprefix("www.")
+        if host != bare or parsed.path in ("", "/"):
+            continue
+        if re.search(r"\.(pdf|jpe?g|png|gif|svg|zip|docx?|xlsx?|css|js)$", parsed.path, re.I):
+            continue
+        low = parsed.path.lower()
+        if "wp-json" in low or "wp-content" in low:
+            continue
+        tokens = [t for t in re.split(r"[/\-_.]+", low) if t]
+        for rank, kw in enumerate(keywords):
+            # multi-part keywords match as substring; short ones (oem) only as a whole token
+            hit = (kw in low) if ("-" in kw) else any(
+                t == kw or (len(kw) >= 5 and t.startswith(kw)) for t in tokens
+            )
+            if hit:
+                clean = f"https://{domain}{parsed.path}"
+                found[clean] = min(rank, found.get(clean, rank))
+                break
+    return sorted(found, key=lambda u: found[u])
 
 
 _BOILERPLATE_MARKERS = [

@@ -345,6 +345,44 @@ CREATE TABLE documents (
 
 ---
 
+### M37 profile fields (optional, absent in medtech_germany.json)
+
+```jsonc
+"scrape": {                       // ScrapeConfig; defaults = ambulatory scrape (4 paths, 2,500 chars)
+  "extra_paths": [...],           // OEM: /produktion /fertigung /unternehmen /qualitaet /partner /oem /private-label + the 4 defaults
+  "max_chars": 4000,
+  "homepage_max_chars": 1500,     // homepage share; leftover room is topped up with the rest of the homepage
+  "homepage_min_chars": 4000,
+  "path_max_chars": 900,
+  "skip_duplicate_pages": true,   // soft-404 pages identical to the homepage are dropped
+  "link_keywords": [...],         // same-site homepage links whose path holds a keyword are fetched first
+  "max_link_pages": 4
+},
+"classification": {
+  "mode": "oem",                  // "ambulatory" (default) | "oem" -> classify_oem_cmd
+  "max_text_chars": 4000,         // default 2000
+  "rule": "...", "reason_codes": [...], "examples_per_class": {"D1": 2, "D2": 2, "C": 1, "D": 1}
+}
+```
+
+`--profile` accepts a path or an alias (`oem`, `oem_germany`, `medtech`, `medtech_germany`, see `resolve_profile_path`). Default stays `profiles/medtech_germany.json`. Give `--profile` after the subcommand (`classify --profile oem`): the subparser default overrides a value placed before it.
+
+### M37 columns and flags
+
+| Item | Where | Notes |
+|---|---|---|
+| `klass_oem TEXT` | `_OUTREACH_COLUMNS` | D1 / D2 / C / D, written only by `classify_oem_cmd` and the dashboard PATCH |
+| `klass_oem_reason TEXT` | `_OUTREACH_COLUMNS` | `<reason_code>: <one sentence>` |
+| `scrape --oem-targets [--workers N]` | `scrape_oem_targets_cmd` | domain set, text < 200 chars, stage ingested / scrape_failed or source BA11_src, minus exclusions; HTTP in a thread pool, DB and KB writes on the main thread; cached text < 200 chars is bypassed once; stage moves only from ingested / scrape_failed |
+| `classify --model <alias>` | `_cli_argv` | adds `--model` only when given (any profile) |
+| `classify --profile oem [--rescan] [--workers N]` | `classify_oem_cmd` | see DESIGN.md OEM Profile |
+| `ingest-manual --source-tag BA11_src --col-note 8` | `_ingest_raw_leads` | raw-lead mode: insert-only, klass NULL, stage ingested, no briefaktion, note into `manual_note`; without `--source-tag` the legacy path is unchanged |
+| enrich selection | `get_records_for_enrich` | also `klass_oem IN ('D1','C')` at a pre-ownership stage and never contacted; S gate unchanged |
+| dashboard | `_WRITEBACK_FIELDS`, `_check_oem_value` | `klass_oem` editable (D1 / D2 / C / D / empty, else 400); Lead-Liste column OEM + OEM-Grund and filter OEM |
+| scripts | `scripts/m37_build_ba11_src.py`, `m37_fixture_check.py`, `m37_tag_ba11.py` | BA11 source sheet, live fixture check, BA11 tagging (dry-run default, `--apply`) |
+
+---
+
 ## Excel Sheet Reference (medtech_germany only)
 
 These details are medtech-specific and only relevant for M3 ingest.

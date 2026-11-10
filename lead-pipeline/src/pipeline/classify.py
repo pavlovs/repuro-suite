@@ -8,6 +8,7 @@ import os
 import random
 import re
 import subprocess
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -240,15 +241,35 @@ Return JSON only:
 # ---------------------------------------------------------------------------
 
 
-def _call_claude_cli(prompt: str) -> dict:
-    """Call Claude via CLI subprocess (OAuth auth, no API key needed)."""
+def _cli_argv(model: Optional[str] = None, extra_args: Optional[list[str]] = None) -> list[str]:
+    """Claude CLI argv. No model and no extra args = the pre-M37 argv, byte for byte."""
+    argv = [settings.CLAUDE_CMD, "-p", "--output-format", "text"]
+    if model:
+        argv += ["--model", model]
+    if extra_args:
+        argv += list(extra_args)
+    return argv
+
+
+def _call_claude_cli(
+    prompt: str,
+    model: Optional[str] = None,
+    extra_args: Optional[list[str]] = None,
+    cwd: Optional[str] = None,
+    lenient_json: bool = False,
+) -> dict:
+    """Call Claude via CLI subprocess (OAuth auth, no API key needed).
+
+    M37: model / extra_args / cwd are optional and only change the call when given.
+    """
     env = os.environ.copy()
     env.pop("ANTHROPIC_API_KEY", None)
 
     for attempt in range(_MAX_RETRIES):
         try:
             result = subprocess.run(
-                [settings.CLAUDE_CMD, "-p", "--output-format", "text"],
+                _cli_argv(model, extra_args),
+                cwd=cwd,
                 input=prompt,
                 capture_output=True,
                 text=True,
@@ -265,6 +286,11 @@ def _call_claude_cli(prompt: str) -> dict:
                 raw = raw.split("```")[1]
                 if raw.startswith("json"):
                     raw = raw[4:]
+            if lenient_json:
+                # M37 (OEM only): model put prose around the JSON object
+                start, end = raw.find("{"), raw.rfind("}")
+                if start >= 0 and end > start:
+                    raw = raw[start : end + 1]
             return json.loads(raw)
         except json.JSONDecodeError as e:
             logger.warning(
@@ -323,12 +349,28 @@ def classify_cmd(
     dry_run: bool = False,
     limit: int = 0,
     db_path: Path | None = None,
+    model: Optional[str] = None,
+    workers: int = 1,
+    rescan: bool = False,
 ) -> int:
     """Classify all scraped records. Returns count of successfully classified records.
 
     Pre-filters obvious non-medtech companies (free, no Claude call).
     Remaining companies sent to Claude CLI.
+
+    M37: a profile with classification.mode == "oem" runs classify_oem_cmd instead (writes
+    klass_oem only). model is passed to the CLI only when given; workers / rescan apply to OEM.
     """
+    if profile.classification.mode == "oem":
+        return classify_oem_cmd(
+            profile,
+            dry_run=dry_run,
+            limit=limit,
+            db_path=db_path,
+            model=model,
+            workers=workers,
+            rescan=rescan,
+        )
     if db_path is None:
         db_path = settings.PIPELINE_DB_PATH
 
@@ -427,7 +469,7 @@ def classify_cmd(
                         ma_count=rec.ma_count,
                         scraped_text=rec.scraped_text,
                     )
-                    raw = _call_claude_cli(prompt)
+                    raw = _call_claude_cli(prompt, model=model)
                     result = _parse_result(raw)
 
             with pipeline_db.get_connection(db_path) as conn:
@@ -486,5 +528,260 @@ def classify_cmd(
         name_dupes,
         claude_calls,
         errors,
+    )
+    return classified
+
+
+# ---------------------------------------------------------------------------
+# M37: OEM profile (D1 light / D2 heavy / C / D) - writes klass_oem only
+# ---------------------------------------------------------------------------
+
+_OEM_DEFAULT_REASON_CODES = [
+    "Eigenmarke_Zukauf",
+    "Private_Label",
+    "Montage_Konfektion",
+    "Eigene_Fertigung",
+    "Werk_Reinraum",
+    "Produktionsmodell_unklar",
+    "Unpassende_Branche",
+    "Dental",
+    "Apotheke",
+    "Krankenhaus",
+    "Kein_Hersteller",
+    "Pharma",
+    "Software",
+    "Ausland",
+    "Tochtergesellschaft",
+]
+_OEM_DEFAULT_PER_CLASS = {"D1": 2, "D2": 2, "C": 1, "D": 1}
+_OEM_FALLBACK_KLASS = "C"  # bias rule: unknown or missing class -> C, never D2
+_OEM_FALLBACK_REASON = "Produktionsmodell_unklar"
+_OEM_EXAMPLE_EXCERPT_CHARS = 400
+
+# CLI overhead flags for OEM mode only (measured 10.11.2026 with --model haiku, see DESIGN.md):
+# no MCP servers, no tools, no session file, no user/project settings, neutral cwd (no CLAUDE.md
+# auto-discovery). 16.5-18.7 s per call vs 23.4-40.4 s without. Never --bare (needs an API key).
+_OEM_CLI_EXTRA_ARGS: list[str] = [
+    "--strict-mcp-config",
+    "--tools",
+    "",
+    "--no-session-persistence",
+    "--setting-sources",
+    "",
+]
+_OEM_CLI_CWD: str = tempfile.gettempdir()
+
+
+def _norm_domain(domain: Optional[str]) -> str:
+    d = (domain or "").strip().lower()
+    for prefix in ("https://", "http://"):
+        if d.startswith(prefix):
+            d = d[len(prefix) :]
+    if d.startswith("www."):
+        d = d[4:]
+    return d.split("/")[0]
+
+
+def _select_oem_examples(
+    examples: list[ClassificationExample],
+    exclude_domain: Optional[str],
+    per_class: Optional[dict[str, int]] = None,
+    seed: Optional[str] = None,
+) -> list[ClassificationExample]:
+    """Few-shot set per OEM class with leave-one-out: never the record's own example.
+
+    Deterministic per seed (the record's domain), so a re-run shows the same examples.
+    """
+    per_class = per_class or _OEM_DEFAULT_PER_CLASS
+    own = _norm_domain(exclude_domain)
+    rng = random.Random(seed or own or "oem")
+    selected: list[ClassificationExample] = []
+    for klass, n in per_class.items():
+        pool = [e for e in examples if e.klass == klass and _norm_domain(e.domain) != own]
+        if pool:
+            selected.extend(rng.sample(pool, min(n, len(pool))))
+    return selected
+
+
+def _format_oem_example(ex: ClassificationExample) -> str:
+    excerpt = (ex.scraped_text_excerpt or "")[:_OEM_EXAMPLE_EXCERPT_CHARS]
+    text_part = f"\nWebsite: {excerpt}" if excerpt else ""
+    out = {
+        "klass_oem": ex.klass,
+        "reason_code": ex.reason_code or _OEM_FALLBACK_REASON,
+        "reasoning": ex.reasoning[:160],
+    }
+    return (
+        f"Company: {ex.full_name} ({ex.domain}){text_part}\n"
+        f"Output: {json.dumps(out, ensure_ascii=False)}"
+    )
+
+
+def _build_oem_prompt(
+    profile: IndustryProfile,
+    full_name: str,
+    domain: str,
+    city: Optional[str],
+    scraped_text: Optional[str],
+) -> str:
+    """OEM prompt: class definitions, D2 rule, reason codes, leave-one-out few-shot, text cap."""
+    cls = profile.classification
+    class_defs = "\n".join(f"{k} = {v}" for k, v in cls.class_definitions.items())
+    reason_codes = " | ".join(cls.reason_codes or _OEM_DEFAULT_REASON_CODES)
+    examples = _select_oem_examples(
+        cls.examples,
+        exclude_domain=domain,
+        per_class=cls.examples_per_class or None,
+        seed=domain,
+    )
+    examples_text = "\n\n".join(_format_oem_example(e) for e in examples)
+    text_block = (scraped_text or "")[: cls.max_text_chars]
+    location = city or "unbekannt"
+    return f"""Classify this German company by its production model (OEM-light vs OEM-heavy).
+
+Target: {cls.target_description}
+
+Classes:
+{class_defs}
+
+Rule: {cls.rule}
+
+Reason codes (pick exactly one): {reason_codes}
+
+Examples:
+{examples_text}
+
+---
+Company: {full_name} ({domain})
+Location: {location}
+Website:
+{text_block}
+---
+
+Return JSON only, no prose:
+{{"klass_oem": "D1|D2|C|D", "reason_code": "one of the reason codes above", "reasoning": "one sentence citing the production evidence from the text"}}"""
+
+
+def _parse_oem_result(raw: dict) -> dict[str, str]:
+    """Normalize OEM output. Unknown or missing class -> C (bias rule)."""
+    klass = str(raw.get("klass_oem") or raw.get("klass") or "").strip().upper()
+    if klass not in pipeline_db.OEM_CLASSES:
+        klass = _OEM_FALLBACK_KLASS
+    reason_code = str(raw.get("reason_code") or "").strip()
+    if reason_code not in _OEM_DEFAULT_REASON_CODES:
+        reason_code = _OEM_FALLBACK_REASON
+    reasoning = " ".join(str(raw.get("reasoning") or "").split())[:240]
+    return {
+        "klass_oem": klass,
+        "reason_code": reason_code,
+        "klass_oem_reason": f"{reason_code}: {reasoning}" if reasoning else reason_code,
+    }
+
+
+def classify_oem_one(
+    profile: IndustryProfile,
+    full_name: str,
+    domain: str,
+    city: Optional[str],
+    scraped_text: Optional[str],
+    model: Optional[str] = None,
+) -> dict[str, str]:
+    """Classify one company under the OEM profile (one CLI call). No DB access."""
+    prompt = _build_oem_prompt(profile, full_name, domain, city, scraped_text)
+    raw = _call_claude_cli(
+        prompt,
+        model=model,
+        extra_args=_OEM_CLI_EXTRA_ARGS or None,
+        cwd=_OEM_CLI_CWD,
+        lenient_json=True,
+    )
+    return _parse_oem_result(raw)
+
+
+def classify_oem_cmd(
+    profile: IndustryProfile,
+    dry_run: bool = False,
+    limit: int = 0,
+    db_path: Path | None = None,
+    model: Optional[str] = None,
+    workers: int = 1,
+    rescan: bool = False,
+) -> int:
+    """M37: classify under the OEM profile. Writes klass_oem + klass_oem_reason only.
+
+    No keyword auto-D, no name-dupe copy (both copy the ambulatory klass). pipeline_stage,
+    klass, prio and classified_at are never written. CLI calls run in a pool of `workers`;
+    DB writes happen on the main thread. Returns count classified.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    if db_path is None:
+        db_path = settings.PIPELINE_DB_PATH
+    if not dry_run:
+        pipeline_db.ensure_schema(db_path)
+
+    records = pipeline_db.get_records_for_oem_classify(db_path, rescan=rescan)
+    if limit > 0:
+        records = records[:limit]
+    total = len(records)
+    logger.info(
+        "OEM classify: %d records (rescan=%s, limit=%d, model=%s, workers=%d)",
+        total,
+        rescan,
+        limit,
+        model or "CLI default",
+        workers,
+    )
+    if dry_run:
+        logger.info("DRY RUN - would classify %d records (no CLI calls, no writes)", total)
+        return 0
+    if not records:
+        return 0
+    if not profile.classification.examples:
+        logger.warning("OEM profile has no few-shot examples")
+
+    counts: dict[str, int] = {k: 0 for k in pipeline_db.OEM_CLASSES}
+    classified = 0
+    errors = 0
+
+    def _job(rec: dict) -> dict[str, str]:
+        return classify_oem_one(
+            profile,
+            rec["full_name"],
+            rec["domain"],
+            rec.get("city"),
+            rec["scraped_text"],
+            model,
+        )
+
+    with ThreadPoolExecutor(max_workers=max(1, workers)) as pool:
+        futures = {pool.submit(_job, rec): rec["domain"] for rec in records}
+        for i, fut in enumerate(as_completed(futures), 1):
+            domain = futures[fut]
+            try:
+                result = fut.result()
+                with pipeline_db.get_connection(db_path) as conn:
+                    n = pipeline_db.update_oem_classify_result(
+                        conn, domain, result["klass_oem"], result["klass_oem_reason"]
+                    )
+                if n == 0:
+                    errors += 1
+                    logger.error("DB WRITE MISS: domain '%s' not found", domain)
+                else:
+                    classified += 1
+                    counts[result["klass_oem"]] += 1
+                    logger.debug(
+                        "[%d/%d] %s -> %s", i, total, domain, result["klass_oem_reason"]
+                    )
+            except Exception as e:  # noqa: BLE001 - one failed record never stops the batch
+                errors += 1
+                logger.error("[%d/%d] FAILED: %s - %s", i, total, domain, e)
+            if i % 25 == 0:
+                logger.info(
+                    "OEM classify progress: %d/%d - %s, %d errors", i, total, counts, errors
+                )
+
+    logger.info(
+        "OEM classify complete: %d classified %s, %d errors", classified, counts, errors
     )
     return classified

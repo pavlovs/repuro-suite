@@ -186,7 +186,18 @@ _OUTREACH_COLUMNS: list[tuple[str, str]] = [
     ("gesellschafter_field", "TEXT"),  # M36: gendered from Anrede for letter merge
     ("gesellschafter_note", "TEXT"),
     ("openregister_address", "TEXT"),
+    ("klass_oem", "TEXT"),  # M37: OEM profile class D1 / D2 / C / D (ambulatory klass untouched)
+    ("klass_oem_reason", "TEXT"),  # M37: '<reason_code>: <one sentence>'
 ]
+
+# M37: OEM classes and the exclusion fragment shared by OEM scrape / rescan / BA11 tagging.
+OEM_CLASSES: tuple[str, ...] = ("D1", "D2", "C", "D")
+OEM_SOURCE_TAG = "BA11_src"
+OEM_EXCLUSION_SQL = (
+    "COALESCE(pipeline_stage, '') != 'approached'"
+    " AND COALESCE(already_approached, 0) = 0"
+    " AND (briefaktion IS NULL OR briefaktion = '')"
+)
 
 
 def _migrate_schema(conn: sqlite3.Connection) -> None:
@@ -401,10 +412,14 @@ def get_klass_counts(db_path: Path) -> dict[str, int]:
 
 
 def get_records_for_filter(db_path: Path) -> "list[CompanyRecord]":
-    """Return all records not yet filtered (filter_pass IS NULL)."""
+    """Return all records not yet filtered (filter_pass IS NULL).
+
+    M37: BA11_src maker leads skip the ambulatory hard filter (OEM scrape picks them up).
+    """
     with get_connection(db_path) as conn:
         rows = conn.execute(
             "SELECT * FROM company_records WHERE filter_pass IS NULL"
+            " AND COALESCE(source, '') <> 'BA11_src'"
         ).fetchall()
     return [_row_to_company_record(row) for row in rows]
 
@@ -589,11 +604,97 @@ def get_scrape_counts(db_path: Path) -> dict[str, int]:
     return {"scraped": row[0] or 0, "failed": row[1] or 0, "pending": row[2] or 0}
 
 
+def get_records_for_oem_scrape(db_path: Path) -> list[dict]:
+    """M37: OEM scrape targets: domain set, no usable text (<200 chars), stage ingested or
+    scrape_failed or source BA11_src, minus OEM exclusions. Rows as dicts."""
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            f"""SELECT domain, full_name, pipeline_stage, source
+                FROM company_records
+                WHERE domain IS NOT NULL AND domain != ''
+                  AND (scraped_text IS NULL OR length(scraped_text) < 200)
+                  AND (pipeline_stage IN ('ingested', 'scrape_failed') OR source = ?)
+                  AND {OEM_EXCLUSION_SQL}
+                ORDER BY CASE WHEN source = ? THEN 0 ELSE 1 END, domain""",
+            (OEM_SOURCE_TAG, OEM_SOURCE_TAG),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def update_oem_scrape_result(
+    conn: sqlite3.Connection, domain: str, scraped_text: str, scraped_at: str
+) -> None:
+    """M37: write an OEM scrape result. Writes scraped_text, scraped_at and pipeline_stage only.
+
+    Stage moves only from ingested / scrape_failed: usable text (>=200) -> scraped, else
+    scrape_failed. An empty result never wipes existing text.
+    """
+    usable = len(scraped_text or "") >= 200
+    conn.execute(
+        """UPDATE company_records
+           SET scraped_text = CASE WHEN ? != '' THEN ? ELSE scraped_text END,
+               scraped_at = ?,
+               pipeline_stage = CASE
+                   WHEN pipeline_stage IN ('ingested', 'scrape_failed') THEN ?
+                   ELSE pipeline_stage END
+           WHERE domain = ?""",
+        (
+            scraped_text or "",
+            scraped_text or "",
+            scraped_at,
+            STAGE_SCRAPED if usable else STAGE_SCRAPE_FAILED,
+            domain,
+        ),
+    )
+
+
+def get_records_for_oem_classify(db_path: Path, rescan: bool = False) -> list[dict]:
+    """M37: OEM classify selection (klass_oem IS NULL, scraped text > 200 chars, minus exclusions).
+
+    Default: source BA11_src only (new maker leads). rescan=True adds every record with
+    ambulatory klass NULL or D (the M37 rescan of the existing base).
+    """
+    scope = (
+        "(klass IS NULL OR klass = 'D' OR source = ?)" if rescan else "source = ?"
+    )
+    with get_connection(db_path) as conn:
+        rows = conn.execute(
+            f"""SELECT domain, full_name, city, region, ma_count, scraped_text, source
+                FROM company_records
+                WHERE klass_oem IS NULL
+                  AND length(scraped_text) >= 200
+                  AND {scope}
+                  AND {OEM_EXCLUSION_SQL}
+                ORDER BY CASE WHEN source = ? THEN 0 ELSE 1 END, domain""",
+            (OEM_SOURCE_TAG, OEM_SOURCE_TAG),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def update_oem_classify_result(
+    conn: sqlite3.Connection, domain: str, klass_oem: str, klass_oem_reason: str
+) -> int:
+    """M37: write the OEM class. Touches klass_oem + klass_oem_reason only. Returns rowcount."""
+    if klass_oem not in OEM_CLASSES:
+        raise ValueError(f"invalid klass_oem {klass_oem!r}")
+    cur = conn.execute(
+        # klass_oem IS NULL: never overwrite a hand edit (D1 -> D2) made while the CLI call ran
+        "UPDATE company_records SET klass_oem = ?, klass_oem_reason = ?"
+        " WHERE domain = ? AND klass_oem IS NULL",
+        (klass_oem, klass_oem_reason, domain),
+    )
+    return cur.rowcount
+
+
 def get_records_for_classify(db_path: Path) -> list[CompanyRecord]:
-    """Return all records at pipeline_stage='scraped' (not yet classified)."""
+    """Return all records at pipeline_stage='scraped' (not yet classified).
+
+    M37: BA11_src maker leads are OEM-profile only; the ambulatory classifier skips them.
+    """
     with get_connection(db_path) as conn:
         rows = conn.execute(
             "SELECT * FROM company_records WHERE pipeline_stage = 'scraped'"
+            " AND COALESCE(source, '') <> 'BA11_src'"
         ).fetchall()
     return [_row_to_company_record(row) for row in rows]
 
@@ -691,14 +792,26 @@ def get_classify_counts(db_path: Path) -> dict[str, int]:
     return result
 
 
-def get_records_for_enrich(db_path: Path) -> list[CompanyRecord]:
-    """Return A/B classified records not yet ownership-enriched."""
+def get_records_for_enrich(db_path: Path, include_oem: bool = False) -> list[CompanyRecord]:
+    """Return A/B classified records not yet ownership-enriched.
+
+    M37: with include_oem=True (explicit `enrich --include-oem` only), also OEM D1 / C
+    records (klass_oem) that never reached an ownership stage and were never contacted.
+    The S ownership gate downstream is unchanged.
+    """
+    # Default branch excludes OEM D1/C records: they wait for Roman's review even when an
+    # ambulatory Prio 1 path would otherwise reach OpenRegister (codex finding 1, 10.11.2026).
+    sql = """SELECT * FROM company_records
+               WHERE (pipeline_stage = 'classified'
+                      AND prio = 'Prio 1'
+                      AND COALESCE(klass_oem, '') NOT IN ('D1', 'C'))"""
+    if include_oem:
+        sql += """
+                  OR (klass_oem IN ('D1', 'C')
+                      AND pipeline_stage IN ('ingested', 'filtered', 'scraped', 'scrape_failed', 'classified')
+                      AND COALESCE(already_approached, 0) = 0)"""
     with get_connection(db_path) as conn:
-        rows = conn.execute(
-            """SELECT * FROM company_records
-               WHERE pipeline_stage = 'classified'
-               AND prio = 'Prio 1'"""
-        ).fetchall()
+        rows = conn.execute(sql).fetchall()
     return [_row_to_company_record(row) for row in rows]
 
 

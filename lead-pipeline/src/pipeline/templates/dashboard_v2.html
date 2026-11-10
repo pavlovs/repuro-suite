@@ -698,6 +698,8 @@ input, select, textarea { font: inherit; color: inherit; }
 .leads-table td.lt-name input.lt-edit { width: auto; }  /* sized by its size= attribute, so the column grows with the longest name */
 .leads-table select.lt-edit-prio { min-width: 130px; width: auto; font-size: 11px; }
 .leads-table select.lt-edit-klass { min-width: 170px; }
+.leads-table select.lt-edit-klass_oem { min-width: 64px; width: auto; }  /* M37 OEM class D1/D2/C/D */
+.leads-table td.lt-oem-reason { min-width: 220px; max-width: 340px; font-size: 11px; line-height: 1.35; color: var(--ink-2); white-space: normal; }
 .leads-table input.lt-edit-region { min-width: 190px; }  /* longest region: "Mecklenburgische Ostseeküste" */
 .leads-table .lt-domain { color: var(--ink-3); max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .leads-table .lt-site { margin-left: 6px; color: var(--spar); text-decoration: none; font-size: 13px; vertical-align: middle; }  /* website shortcut next to the name */
@@ -1590,6 +1592,7 @@ var LEADS_FILTER_DEFS = [
   { id: 'briefaktion', label: 'Batch' },
   { id: 'prio',        label: 'Prio', group: 'Prio 2' },
   { id: 'klass',       label: 'Klass' },
+  { id: 'klass_oem',   label: 'OEM' },
   { id: 'region',      label: 'Region' },
 ];
 var leadsFilters = (function() {
@@ -3773,6 +3776,8 @@ function renderLeadsTable() {
     { id: 'full_name',             label: 'Name',         sort: 'full_name',            edit: 'text' },
     { id: 'prio',                  label: 'Prio',         sort: 'prio',                 edit: 'select-prio' },
     { id: 'klass',                 label: 'Klass',        sort: 'klass',                edit: 'select-klass' },
+    { id: 'klass_oem',             label: 'OEM',          sort: 'klass_oem',            edit: 'select-oem' },
+    { id: 'klass_oem_reason',      label: 'OEM-Grund',    sort: 'klass_oem_reason',     edit: 'oem-reason' },
     { id: 'ma_count',              label: 'MA',           sort: 'ma_count',             edit: 'readonly' },
     { id: 'region',                label: 'Region',       sort: 'region',               edit: 'text' },
     { id: 'filter_reason',         label: 'Filter-Grund', sort: 'filter_reason',        edit: 'textarea' },
@@ -3802,6 +3807,16 @@ function renderLeadsTable() {
         return '<option value="' + opt + '"' + (r.klass === opt ? ' selected' : '') + '>' + opt + ' — ' + (KLASS_LABELS[opt] || opt) + '</option>';
       }).join('');
       return '<td><select class="lt-edit lt-edit-klass" title="' + (KLASS_LABELS[r.klass] || r.klass || '') + '">' + klassOptions + '</select></td>';
+    }
+    if (c.edit === 'select-oem') {
+      // M37: OEM class (D1 light = target, D2 heavy); Roman downgrades D1 to D2 here
+      var oemOptions = ['', 'D1', 'D2', 'C', 'D'].map(function(opt) {
+        return '<option value="' + opt + '"' + ((r.klass_oem || '') === opt ? ' selected' : '') + '>' + (opt || '—') + '</option>';
+      }).join('');
+      return '<td><select class="lt-edit lt-edit-klass_oem">' + oemOptions + '</select></td>';
+    }
+    if (c.edit === 'oem-reason') {
+      return '<td class="lt-oem-reason" title="' + escapeHtml(v == null ? '' : String(v)) + '">' + escapeHtml(v == null ? '' : String(v)) + '</td>';
     }
     if (c.edit === 'select-anrede') {
       var anredeOptions = ['', 'Herr', 'Frau'].map(function(opt) {
@@ -3944,6 +3959,10 @@ function renderLeadsTable() {
       rec.region_prep = newRp;
       if (SERVE_MODE) patchCompany(rec.domain, { region_prep: newRp }).catch(function(e){ console.warn('patchCompany silent fail:', e); });
     });
+    el.addEventListener('click', function(e){ e.stopPropagation(); });
+  });
+  wrap.querySelectorAll('.lt-edit-klass_oem').forEach(function(el) {
+    el.addEventListener('change', function(e){ e.stopPropagation(); inlineSave(el, 'klass_oem'); });
     el.addEventListener('click', function(e){ e.stopPropagation(); });
   });
   wrap.querySelectorAll('.lt-edit-anrede').forEach(function(el) {

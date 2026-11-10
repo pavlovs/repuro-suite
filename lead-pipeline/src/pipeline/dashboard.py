@@ -91,8 +91,29 @@ _WRITEBACK_FIELDS = frozenset(
         # 2026-09-23: reasons are curated by hand in the Lead-Liste (Roman); pipeline stages overwrite them on re-run
         "filter_reason",
         "ownership_reason",
+        # M37: OEM class, editable so Roman can downgrade D1 to D2 (values checked in _check_oem_value)
+        "klass_oem",
     }
 )
+
+_KLASS_OEM_VALUES = frozenset({"D1", "D2", "C", "D"})
+
+
+def _check_oem_value(updates: dict) -> Optional[str]:
+    """M37: validate / normalize klass_oem in a PATCH payload in place. Returns an error or None.
+
+    Accepted: D1, D2, C, D, or empty ('' / null, stored as NULL).
+    """
+    if "klass_oem" not in updates:
+        return None
+    v = updates["klass_oem"]
+    if v is None or (isinstance(v, str) and v.strip() == ""):
+        updates["klass_oem"] = None
+        return None
+    if isinstance(v, str) and v.strip().upper() in _KLASS_OEM_VALUES:
+        updates["klass_oem"] = v.strip().upper()
+        return None
+    return f"klass_oem must be one of D1, D2, C, D or empty (got {v!r})"
 
 # ---------------------------------------------------------------------------
 # Dropoff computation
@@ -967,6 +988,10 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
         if not updates:
             self._json_error(400, "No writable fields in payload")
             return
+        oem_err = _check_oem_value(updates)
+        if oem_err:
+            self._json_error(400, oem_err)
+            return
 
         actor = parse_qs(urlparse(self.path).query).get("actor", ["unknown"])[0]
         db_path = self.__class__._db_path
@@ -1043,6 +1068,10 @@ class _DashboardHandler(http.server.BaseHTTPRequestHandler):
         }
         if not domains or not updates:
             self._json_error(400, "Need domains[] and updates{}")
+            return
+        oem_err = _check_oem_value(updates)
+        if oem_err:
+            self._json_error(400, oem_err)
             return
 
         db_path = self.__class__._db_path

@@ -1,0 +1,238 @@
+{
+  "id": "oem_germany",
+  "name": "OEM-light makers Germany",
+  "description": "M37: German medtech makers classified by production model. D1 OEM-light (target), D2 OEM-heavy, C unclear maker, D not a maker. Writes klass_oem only; the ambulatory klass is never touched.",
+  "geography": {
+    "country": "DE"
+  },
+  "discovery": {
+    "wlw_search_terms": [],
+    "wlw_base_url": "https://www.wlw.de"
+  },
+  "filters": {
+    "ma_min": 0,
+    "ma_max": 100000,
+    "nace_exclude": [],
+    "name_exclude_keywords": []
+  },
+  "scrape": {
+    "extra_paths": [
+      "/produktion",
+      "/fertigung",
+      "/unternehmen",
+      "/qualitaet",
+      "/partner",
+      "/oem",
+      "/private-label",
+      "/leistungen",
+      "/service",
+      "/produkte",
+      "/ueber-uns"
+    ],
+    "max_chars": 4000,
+    "homepage_max_chars": 1500,
+    "homepage_min_chars": 4000,
+    "path_max_chars": 900,
+    "skip_duplicate_pages": true,
+    "link_keywords": [
+      "produktion",
+      "fertigung",
+      "lieferant",
+      "partner",
+      "qualitaet",
+      "qualitat",
+      "oem",
+      "private-label",
+      "lohnfertigung",
+      "unternehmen",
+      "about",
+      "ueber-uns",
+      "uber-uns",
+      "company",
+      "production",
+      "manufactur"
+    ],
+    "max_link_pages": 4
+  },
+  "classification": {
+    "mode": "oem",
+    "max_text_chars": 4000,
+    "target_description": "German maker that sells medical (or lab) products under its own brand or as private label, with production outsourced or limited to assembly, configuration, labelling and testing (OEM-light). Own development plus own production (OEM-heavy) is not a target.",
+    "class_definitions": {
+      "D1": "OEM-light (target): sells medical products under its own brand or as private label for others; production outsourced or limited to assembly, configuration, labelling, testing; signals: Konfektionierung, Montage, Systemintegration, Lieferanten, Partner, Import, Inverkehrbringer, Eigenmarke, Private Label, OEM for third parties, products built around bought-in components (PCs, displays, power, enclosures, sets).",
+      "D2": "OEM-heavy: own development and own production; signals: Fertigung, Produktion, Werk, CNC, Spritzguss, Reinraum, Made in Germany as a production claim, Werksverkauf, machine park, Tuttlingen instrument forge, more than roughly 100 staff where stated on the site.",
+      "C": "Medtech maker, the text does not show the production model. Treated as D1 for enrichment (bias rule).",
+      "D": "Not a maker or out of market: distributor, service company, dental, pharma, software, non-medtech."
+    },
+    "rule": "Assign D2 only when the text states own production or a plant: eigene Fertigung or Produktion described as the company's own (Werk, Produktionshalle, machine park, CNC, Spritzguss, Reinraum production, 'wir produzieren selbst', all production steps in house, Made in Germany as a production claim). Contract manufacturing (Lohnfertigung) or OEM production for other brands on the company's own machines (Drehen, Fräsen, Schweißen, CNC, laser) is own production: D2, even when the company also sells its own brand. Private label or OEM for third parties counts as D1 only when the production itself is bought in or limited to assembly. A generic word like Fertigung in a quality or mission sentence, CNC or plants at suppliers, and assembly, kitting (Konfektionierung), set packing, labelling or testing (even in own clean rooms) are not D2: they are D1. Everything else that makes or brands a medical product is D1 or C. When in doubt between D1 and D2, choose D1 or C, never D2. Staff and revenue per head are not required; staff stated on the site is one signal only. Use D only for companies that do not make or brand medical or lab products.",
+    "reason_codes": [
+      "Eigenmarke_Zukauf",
+      "Private_Label",
+      "Montage_Konfektion",
+      "Eigene_Fertigung",
+      "Werk_Reinraum",
+      "Produktionsmodell_unklar",
+      "Unpassende_Branche",
+      "Dental",
+      "Apotheke",
+      "Krankenhaus",
+      "Kein_Hersteller",
+      "Pharma",
+      "Software",
+      "Ausland",
+      "Tochtergesellschaft"
+    ],
+    "examples_per_class": {
+      "D1": 2,
+      "D2": 2,
+      "C": 1,
+      "D": 1
+    },
+    "examples": [
+      {
+        "domain": "baaske-medical.de",
+        "full_name": "Baaske Medical GmbH & Co. KG",
+        "klass": "D1",
+        "reason_code": "Eigenmarke_Zukauf",
+        "reasoning": "Own brand e-medic for medical PCs, displays and power strips; listed third-party displays (AG NEOVO, Sony, Barco); no own plant stated.",
+        "scraped_text_excerpt": "Zur Kategorie Bildgebung AG NEOVO Medical Displays nach EN60601-1 Zahnmedizin Displays & Monitore Touch Monitore Sony Chirugie-Monitore Monitor Zubehör Bild- und Videokameras Recorder - Speicherung Drucker & Druckmedien ... Die Baaske Medical und die Marke e-medic™ stehen für innovative und normenkonforme Informationstechnologie im Gesundheitswesen und medizinische Hardware für höchste Ansprüche."
+      },
+      {
+        "domain": "uebe.com",
+        "full_name": "UEBE Medical GmbH",
+        "klass": "D1",
+        "reason_code": "Eigenmarke_Zukauf",
+        "reasoning": "Four own brands sold through pharmacies; Fertigung is named only generically in a quality statement, no plant or machine park stated.",
+        "scraped_text_excerpt": "Vier starke Marken: visomat, visocor, cyclotest und Domotherm – Medizintechnik & häusliche Pflege exklusiv in Apotheke und Sanitätsfachhandel. ... Daran richtet die UEBE Medical GmbH seit 1890 Entwicklung, Fertigung und Service aus."
+      },
+      {
+        "domain": "hellco-gmbh.de",
+        "full_name": "Hell & Co. GmbH Medizinprodukte",
+        "klass": "D1",
+        "reason_code": "Montage_Konfektion",
+        "reasoning": "Assembles customer-specific sterile sets from a component range and sells products of named manufacturers.",
+        "scraped_text_excerpt": "Für die unterschiedlichsten medizinischen Indikationen fertigen wir nach Ihren Wünschen sterile Einmalsets. Für die Auswahl der einzelnen Komponenten steht Ihnen eine umfangreiche Produktpalette zur Verfügung. ... Unser großes Sortiment an hochwertigen Medizinprodukten bieten wir Ihnen von namhaften Herstellern an."
+      },
+      {
+        "domain": "witeg.de",
+        "full_name": "Witeg Labortechnik GmbH",
+        "klass": "D1",
+        "reason_code": "Eigenmarke_Zukauf",
+        "reasoning": "Hersteller und Lieferant under its own brand with worldwide sales partners; no own production site stated.",
+        "scraped_text_excerpt": "witeg Labortechnik GmbH ist einer der führenden Hersteller und Lieferanten im Bereich Glasgeräte, Liquid Handling Artikel und elektrische witeg Laborgeräte."
+      },
+      {
+        "domain": "cim-med.com",
+        "full_name": "CIM med GmbH",
+        "klass": "D1",
+        "reason_code": "Eigenmarke_Zukauf",
+        "reasoning": "Own-brand mounting systems for medical devices of named OEMs; the text names no production site.",
+        "scraped_text_excerpt": "Proven to be the best in the world for advanced hygiene control, CIM med mounts include cable integration, 5 years no-maintenance warranty and medical grade compliancy. ... Patient Monitoring / Medical Devices Generic 5\" Plunge Plate Solutions Dräger Fukuda Denshi GE Healthcare Mindray Nihon Kohden Philips Spacelabs"
+      },
+      {
+        "domain": "stema-medizintechnik.de",
+        "full_name": "STEMA Medizintechnik GmbH",
+        "klass": "D1",
+        "reason_code": "Eigenmarke_Zukauf",
+        "reasoning": "Own catalogue made in more than 40 supplier workshops; the CNC centres belong to the suppliers, not to STEMA.",
+        "scraped_text_excerpt": "In den mehr als 40 Zuliefer-Betrieben wird das handwerkliche Geschick traditionell von Generation zu Generation weitergegeben. Dies garantiert hochwertige Funktions- und Qualitätsstandards. Durch den Einsatz modernster CNC-gesteuerter Fertigungszentren und speziell geschulter Facharbeiter erhalten unsere Kunden ein Produkt, das selbst den höchsten Anforderungen gerecht wird."
+      },
+      {
+        "domain": "activekey.de",
+        "full_name": "Active Key GmbH & Co. KG",
+        "klass": "D1",
+        "reason_code": "Eigenmarke_Zukauf",
+        "reasoning": "Brand supplier (Anbieter) of hygiene keyboards and mice; no own production stated.",
+        "scraped_text_excerpt": "Active Key ist ein führender Anbieter von Hygiene- und Medizin-Tastaturen sowie Industrietastaturen und PC-Mäusen für die professionelle Dateneingabe. Optimale Bedienbarkeit, leichter Tastenanschlag, ein perfektes Tastengefühl und der Anspruch an Vielschreiberanwendungen haben bei uns höchste Priorität."
+      },
+      {
+        "domain": "fuhrmann.de",
+        "full_name": "Fuhrmann GmbH",
+        "klass": "D1",
+        "reason_code": "Montage_Konfektion",
+        "reasoning": "Range of dressings, OP and care sets and disposable instruments; set kitting (Konfektionierung) counts as assembly, not production.",
+        "scraped_text_excerpt": "Mit unserem umfangreichen Sortiment an Verbandstoffen , OP- und Pflege-Sets sowie sterilen Einmalinstrumenten sind wir Ihr kompetenter Partner und Berater für die stationäre und ambulante Versorgung . ... MEINSET – sterile Sets für Klinik, Praxis und die Pflege. Jedes Set enthält alle Einmalprodukte für eine spezielle Anwendung."
+      },
+      {
+        "domain": "dr-mach.de",
+        "full_name": "Dr. Mach GmbH & Co. KG",
+        "klass": "D2",
+        "reason_code": "Eigene_Fertigung",
+        "reasoning": "Own metal production (turning, milling, drilling, welding) on CNC machines, also contract manufacturing.",
+        "scraped_text_excerpt": "Wir fertigen im Auftrag unterschiedliche Werkstücke aus Metall: Drehen, Fräsen, Bohren, Schweißen. Dabei setzen wir zum einen auf modernste CNC Maschinen"
+      },
+      {
+        "domain": "bissinger.com",
+        "full_name": "Günter Bissinger Medizintechnik GmbH",
+        "klass": "D2",
+        "reason_code": "Eigene_Fertigung",
+        "reasoning": "States own development and production of electrosurgical instruments with high production depth.",
+        "scraped_text_excerpt": "Wir sind spezialisiert auf die Entwicklung und Produktion von Instrumenten für die Elektrochirurgie (Hochfrequenzchirurgie). ... Unsere hohe Produktionstiefe erlaubt uns jederzeit flexibel zu agieren und für unsere OEM-Kunden Produkte nach ihren spezifischen Vorgaben zu entwerfen."
+      },
+      {
+        "domain": "geister.com",
+        "full_name": "Geister Medizintechnik GmbH",
+        "klass": "D2",
+        "reason_code": "Werk_Reinraum",
+        "reasoning": "Own factory with more than 30 milling machines and automated production.",
+        "scraped_text_excerpt": "CNC Milling Our factory is equipped with a full-set milling equipment. Over 30 milling machines"
+      },
+      {
+        "domain": "zepf-dental.com",
+        "full_name": "Helmut Zepf Medizintechnik GmbH",
+        "klass": "D2",
+        "reason_code": "Eigene_Fertigung",
+        "reasoning": "Wir sind Hersteller: all production steps from design to finished instrument in house; Werk II Produktion.",
+        "scraped_text_excerpt": "Wir sind Hersteller! – In unserer modern eingerichteten Produktion finden sich alle wichtigen Fertigungsschritte, welche es uns erlauben, von der Konstruktion bis hin zum fertigen Instrument alle komplexen Produktionsschritte im Haus zu halten."
+      },
+      {
+        "domain": "acl.de",
+        "full_name": "ACL GmbH",
+        "klass": "D2",
+        "reason_code": "Werk_Reinraum",
+        "reasoning": "Own development and production in Germany; all production steps run in the own plant.",
+        "scraped_text_excerpt": "Als eigenständiger, spezialisierter Hardwarehersteller mit eigener Entwicklung und Fertigung in Deutschland ... Alle relevanten Produktionsschritte der Fertigung erfolgen im eigenen Werk."
+      },
+      {
+        "domain": "provita.de",
+        "full_name": "provita medical gmbh & co. kg",
+        "klass": "D2",
+        "reason_code": "Eigene_Fertigung",
+        "reasoning": "Own production with internal manufacturing processes and a CNC machine park (tube laser, bending).",
+        "scraped_text_excerpt": "Unter diesem Aspekt werden interne Fertigungsprozesse stetig optimiert und weiterentwickelt. ... Zur Kategorie CNC Rohrlaser Rohrdurchmesser: 10 – 110 mm, Wandstärke: bis 3,0 mm, verschiedene Querschnitte Zur Kategorie CNC Biegen"
+      },
+      {
+        "domain": "schmitz-medical.com",
+        "full_name": "SCHMITZ medical GmbH",
+        "klass": "D2",
+        "reason_code": "Eigene_Fertigung",
+        "reasoning": "Medical furniture maker that brands itself Made in Germany as a production claim; world market leader for examination chairs.",
+        "scraped_text_excerpt": "SCHMITZ | Medizintechnisches Mobiliar | Made in Germany ... Untersuchungs-, Behandlungs- und Eingriffsstühle vom Weltmarktführer bieten innovative Technik, ergonomischen Komfort und ausgezeichnetes Design."
+      },
+      {
+        "domain": "rz-medizintechnik.com",
+        "full_name": "RZ-Medizintechnik GmbH",
+        "klass": "C",
+        "reason_code": "Produktionsmodell_unklar",
+        "reasoning": "Endoscopy and surgical instrument maker under its own name; the text says nothing about where the products are made.",
+        "scraped_text_excerpt": "Medizinische Produkte für die Endoskopie, Instrumente für die offene Chirurgie, Geräte und Optiken, Dienstleistungen und Kooperationen, sowie unser RZ Service bilden seit 1995 die Basis des unabhängigen Familienunternehmens RZ Medizintechnik."
+      },
+      {
+        "domain": "krewi.de",
+        "full_name": "KREWI Medical Produkte GmbH",
+        "klass": "D",
+        "reason_code": "Kein_Hersteller",
+        "reasoning": "Product specialist (range of dressings and immobilisation products) acting as a supplier, not a maker with a production model.",
+        "scraped_text_excerpt": "Die KREWI Medical Produkte GmbH gilt im Markt als Produktspezialist in drei Produktbereichen. Ursprünglich als Spezialist für qualitative „Verbandstoffe“ erweiterte das Unternehmen laufend sein Produktportfolio. Heute ist das Unternehmen auch als Produktspezialist für Patientensicherheit und Ruhigstellende Verbände bekannt."
+      }
+    ]
+  },
+  "ownership": {
+    "hard_disqualify_subsidiary_threshold_pct": 75.0,
+    "hard_disqualify_pe_backed": true
+  },
+  "export": {
+    "format": "serienbriefe",
+    "region_prepositions": {}
+  }
+}

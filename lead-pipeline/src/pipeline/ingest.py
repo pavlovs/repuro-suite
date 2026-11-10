@@ -712,8 +712,14 @@ def ingest_manual(
     col_name: int = 4,
     col_klass: int = 7,
     col_source: int = 1,
+    source_tag: Optional[str] = None,
+    col_note: Optional[int] = None,
 ) -> dict:
     """Ingest pre-classified companies from a manual Excel input file.
+
+    M37: with source_tag set, runs the raw-lead path instead (_ingest_raw_leads): every row
+    with a domain, insert-only, source=source_tag, klass empty, stage 'ingested', manual_note
+    from col_note, no briefaktion. The legacy path below is unchanged.
 
     Default columns: Domain (D/3), Source (B/1), Name (E/4), Klass (H/7).
     BA9 format: Domain (E/4), Source (B/1), Name (F/5), Klass (K/10).
@@ -726,6 +732,18 @@ def ingest_manual(
     Category codes drive klass + prio + category defaults.
     """
     import hashlib as _hashlib
+
+    if source_tag:
+        return _ingest_raw_leads(
+            excel_path,
+            sheet_name,
+            source_tag=source_tag,
+            dry_run=dry_run,
+            col_domain=col_domain,
+            col_name=col_name,
+            col_source=col_source,
+            col_note=col_note,
+        )
 
     from src.pipeline.category_defaults import (
         TARGET_CATEGORIES,
@@ -881,4 +899,116 @@ def ingest_manual(
                 stats["inserted"] += 1
                 logger.info("Inserted new: %s (%s)", rec["domain"], rec["full_name"])
 
+    return stats
+
+
+def _ingest_raw_leads(
+    excel_path: Path,
+    sheet_name: str,
+    source_tag: str,
+    dry_run: bool = False,
+    col_domain: int = 3,
+    col_name: int = 4,
+    col_source: int = 1,
+    col_note: Optional[int] = None,
+    db_path: Optional[Path] = None,
+) -> dict:
+    """M37: insert raw (unclassified) leads from a sheet. Data rows start at row 3.
+
+    Insert-only: a domain already in company_records (normalized) or repeated in the sheet is
+    skipped and counted. New rows: source=source_tag, klass NULL, prio NULL, stage 'ingested',
+    manual_note from col_note (prefixed with the sheet's source column), no briefaktion.
+    """
+    import hashlib as _hashlib
+
+    from src.pipeline.db import ensure_schema, get_connection
+
+    if db_path is None:
+        db_path = settings.PIPELINE_DB_PATH
+    if not dry_run:
+        ensure_schema(db_path)
+
+    wb = openpyxl.load_workbook(excel_path, read_only=True, data_only=True)
+    ws = wb[sheet_name]
+    rows = list(ws.iter_rows(min_row=3, values_only=True))
+    wb.close()
+
+    def _cell(row: tuple, idx: Optional[int]) -> str:
+        if idx is None or len(row) <= idx or row[idx] is None:
+            return ""
+        return str(row[idx]).strip()
+
+    with get_connection(db_path) as conn:
+        existing = {
+            normalize_domain(r[0])
+            for r in conn.execute("SELECT domain FROM company_records").fetchall()
+        }
+
+    stats: dict[str, int] = {
+        "total_rows": len(rows),
+        "accepted": 0,
+        "inserted": 0,
+        "updated": 0,
+        "skipped_no_domain": 0,
+        "skipped_existing": 0,
+        "skipped_duplicate": 0,
+        "would_insert": 0,
+    }
+    ingested_at = datetime.now(timezone.utc).isoformat()
+    seen: set[str] = set()
+    to_insert: list[dict] = []
+    for row in rows:
+        if not any(v is not None and str(v).strip() for v in row):
+            continue
+        stats["accepted"] += 1
+        domain = normalize_domain(_cell(row, col_domain))
+        if not domain:
+            stats["skipped_no_domain"] += 1
+            continue
+        if domain in existing:
+            stats["skipped_existing"] += 1
+            continue
+        if domain in seen:
+            stats["skipped_duplicate"] += 1
+            continue
+        seen.add(domain)
+        src_detail = _cell(row, col_source)
+        note = _cell(row, col_note)
+        manual_note = " | ".join(p for p in (f"{source_tag} {src_detail}".strip(), note) if p)
+        to_insert.append(
+            {
+                "id": _hashlib.md5(domain.encode()).hexdigest()[:12],
+                "domain": domain,
+                "full_name": _cell(row, col_name) or domain,
+                "profile_id": "oem_germany",
+                "source": source_tag,
+                "pipeline_stage": pipeline_db.STAGE_INGESTED,
+                "ingested_at": ingested_at,
+                "manual_note": manual_note or None,
+            }
+        )
+    stats["would_insert"] = len(to_insert)
+
+    if dry_run:
+        logger.info(
+            "DRY RUN — would insert %d %s leads (%d in DB, %d dup in sheet, %d no domain)",
+            len(to_insert),
+            source_tag,
+            stats["skipped_existing"],
+            stats["skipped_duplicate"],
+            stats["skipped_no_domain"],
+        )
+        return stats
+
+    with get_connection(db_path) as conn:
+        for rec in to_insert:
+            conn.execute(
+                """INSERT INTO company_records
+                   (id, domain, full_name, profile_id, source, pipeline_stage, ingested_at, manual_note)
+                   VALUES (:id, :domain, :full_name, :profile_id, :source, :pipeline_stage,
+                           :ingested_at, :manual_note)""",
+                rec,
+            )
+            stats["inserted"] += 1
+    logger.info("Raw-lead ingest: inserted %d %s records", stats["inserted"], source_tag)
     return stats

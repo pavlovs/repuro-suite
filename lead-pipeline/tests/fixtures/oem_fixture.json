@@ -1,0 +1,20 @@
+{
+  "description": "M37 acceptance fixture: 15 hand-labelled OEM makers (handover 04.11.2026). label D1 = OEM-light target, D2 = OEM-heavy. Domains from the 05.11 workbook Source URLs unless domain_source says otherwise.",
+  "companies": [
+    {"name": "Baaske Medical GmbH & Co. KG (CARE)", "city": "Lübbecke", "label": "D1", "domain": "baaske-medical.de", "domain_source": "web lookup 10.11.2026, homepage title 'Medizinische IT-Hardware und Medical IT | Baaske Medical'"},
+    {"name": "UEBE Medical GmbH", "city": "Külsheim", "label": "D1", "domain": "uebe.com", "domain_source": "05.11 workbook Source URL"},
+    {"name": "Hell & Co. GmbH Medizinprodukte", "city": "Diespeck", "label": "D1", "domain": "hellco-gmbh.de", "domain_source": "05.11 workbook Source URL"},
+    {"name": "Witeg Labortechnik GmbH", "city": "Wertheim", "label": "D1", "domain": "witeg.de", "domain_source": "05.11 workbook Source URL"},
+    {"name": "CIM med GmbH", "city": "München", "label": "D1", "domain": "cim-med.com", "domain_source": "05.11 workbook Source URL"},
+    {"name": "STEMA Medizintechnik GmbH", "city": "Neuhausen ob Eck", "label": "D1", "domain": "stema-medizintechnik.de", "domain_source": "05.11 workbook Source URL"},
+    {"name": "Active Key GmbH & Co. KG", "city": "Pegnitz", "label": "D1", "domain": "activekey.de", "domain_source": "05.11 workbook Source URL"},
+    {"name": "Fuhrmann GmbH", "city": "Much", "label": "D1", "domain": "fuhrmann.de", "domain_source": "05.11 workbook Source URL"},
+    {"name": "Dr. Mach GmbH & Co. KG", "city": "Grafing", "label": "D2", "domain": "dr-mach.de", "domain_source": "05.11 workbook Source URL"},
+    {"name": "Günter Bissinger Medizintechnik GmbH", "city": "Teningen", "label": "D2", "domain": "bissinger.com", "domain_source": "05.11 workbook Source URL"},
+    {"name": "Geister Medizintechnik GmbH", "city": "Tuttlingen", "label": "D2", "domain": "geister.com", "domain_source": "05.11 workbook Source URL"},
+    {"name": "Helmut Zepf Medizintechnik GmbH", "city": "Seitingen-Oberflacht", "label": "D2", "domain": "zepf-dental.com", "domain_source": "web lookup 10.11.2026, homepage title 'HELMUT ZEPF Medizintechnik GmbH'"},
+    {"name": "ACL GmbH", "city": "Markkleeberg", "label": "D2", "domain": "acl.de", "domain_source": "05.11 workbook Source URL"},
+    {"name": "provita medical gmbh & co. kg", "city": "Wermelskirchen", "label": "D2", "domain": "provita.de", "domain_source": "05.11 workbook Source URL (not gruppe-provita.de, which is provita arndt)"},
+    {"name": "SCHMITZ medical GmbH", "city": "Wickede", "label": "D2", "domain": "schmitz-medical.com", "domain_source": "05.11 workbook Source URL (not schmitz-soehne.com)"}
+  ]
+}

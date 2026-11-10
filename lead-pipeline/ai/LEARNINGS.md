@@ -61,3 +61,11 @@ Don't count path variants (10 impressum variants = 1 approach). After 3 methods 
 
 **Handelsregister company name matching requires exact-name validation.**
 LIKE-based lookups return nearest text match regardless of relevance — can return hotels for medtech domains. Always cross-check: extracted company name root should appear in domain name or industry must match. Reject mismatches rather than writing wrong data.
+
+**A second classification profile must never share selection queries with the ambulatory path.**
+M37: extending `get_records_for_enrich` to OEM D1/C silently put them in front of `run-all` / `ensure-enrich` (OpenRegister credits before review). New-profile records enter default selections only behind an explicit opt-in flag (`enrich --include-oem`), and default `filter` / `classify` selections exclude `source='BA11_src'`.
+
+**Nested `claude -p` classifier calls: neutral cwd + `--setting-sources "" --strict-mcp-config --tools "" --no-session-persistence` cut per-call time from 23-40 s to 16-19 s (haiku).**
+`--bare` is not usable (needs ANTHROPIC_API_KEY). Used in OEM mode only; the ambulatory argv is unchanged.
+
+**Haiku OEM classes vary run to run on borderline sites** (Witeg C in one call, D1 in another). One fixture pass is not proof of stability; Roman's hand review is the gate.

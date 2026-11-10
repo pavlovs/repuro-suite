@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Optional
 
 
 @dataclass
@@ -37,13 +38,28 @@ class ClassificationExample:
     domain: str
     full_name: str
     klass: str
-    services_score: int
-    service_flag: bool
-    distributor_flag: bool
-    ssb_flag: bool
-    leistung_text: str
-    reasoning: str
+    services_score: int = 0
+    service_flag: bool = False
+    distributor_flag: bool = False
+    ssb_flag: bool = False
+    leistung_text: str = ""
+    reasoning: str = ""
     scraped_text_excerpt: str = ""
+    reason_code: str = ""  # M37: OEM profile examples carry their reason code
+
+
+@dataclass
+class ScrapeConfig:
+    """M37: per-profile website scrape settings. Defaults = ambulatory behaviour (4 paths, 2,500 chars)."""
+
+    extra_paths: Optional[list[str]] = None  # None = web.extract_page_text defaults
+    max_chars: int = 2500
+    homepage_max_chars: Optional[int] = None  # None = homepage may fill max_chars
+    homepage_min_chars: int = 800  # homepage at least this long = skip extra paths
+    path_max_chars: Optional[int] = None  # None = one path may fill the rest
+    skip_duplicate_pages: bool = False  # drop soft-404 pages that repeat the homepage
+    link_keywords: Optional[list[str]] = None  # homepage links whose path holds a keyword go first
+    max_link_pages: int = 4
 
 
 @dataclass
@@ -51,6 +67,12 @@ class ClassificationConfig:
     target_description: str
     class_definitions: dict[str, str]
     examples: list[ClassificationExample] = field(default_factory=list)
+    # M37: optional fields, absent in medtech_germany.json (defaults keep the ambulatory path unchanged)
+    mode: str = "ambulatory"  # "ambulatory" | "oem"
+    max_text_chars: int = 2000
+    rule: str = ""
+    reason_codes: list[str] = field(default_factory=list)
+    examples_per_class: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -77,6 +99,25 @@ class IndustryProfile:
     ownership: OwnershipConfig
     export: ExportConfig
     supplementary_sources: list[SupplementarySource] = field(default_factory=list)
+    scrape: ScrapeConfig = field(default_factory=ScrapeConfig)
+
+
+# M37: short names for --profile. The path form keeps working.
+_PROFILE_ALIASES: dict[str, str] = {
+    "oem": "profiles/oem_germany.json",
+    "oem_germany": "profiles/oem_germany.json",
+    "medtech": "profiles/medtech_germany.json",
+    "medtech_germany": "profiles/medtech_germany.json",
+}
+
+
+def resolve_profile_path(value: "str | Path") -> Path:
+    """Map a --profile value (alias or path) to a profile JSON path."""
+    key = str(value).strip()
+    alias = _PROFILE_ALIASES.get(key.lower())
+    if alias:
+        return Path(__file__).resolve().parents[2] / alias
+    return Path(key)
 
 
 def load_profile(path: Path) -> IndustryProfile:
@@ -103,6 +144,23 @@ def load_profile(path: Path) -> IndustryProfile:
         target_description=cls_data["target_description"],
         class_definitions=cls_data["class_definitions"],
         examples=examples,
+        mode=cls_data.get("mode", "ambulatory"),
+        max_text_chars=cls_data.get("max_text_chars", 2000),
+        rule=cls_data.get("rule", ""),
+        reason_codes=cls_data.get("reason_codes", []),
+        examples_per_class=cls_data.get("examples_per_class", {}),
+    )
+
+    scrape_data = data.get("scrape", {})
+    scrape = ScrapeConfig(
+        extra_paths=scrape_data.get("extra_paths"),
+        max_chars=scrape_data.get("max_chars", 2500),
+        homepage_max_chars=scrape_data.get("homepage_max_chars"),
+        homepage_min_chars=scrape_data.get("homepage_min_chars", 800),
+        path_max_chars=scrape_data.get("path_max_chars"),
+        skip_duplicate_pages=scrape_data.get("skip_duplicate_pages", False),
+        link_keywords=scrape_data.get("link_keywords"),
+        max_link_pages=scrape_data.get("max_link_pages", 4),
     )
 
     ownership_data = data.get("ownership", {})
@@ -141,4 +199,5 @@ def load_profile(path: Path) -> IndustryProfile:
         ownership=ownership,
         export=export,
         supplementary_sources=supplementary_sources,
+        scrape=scrape,
     )

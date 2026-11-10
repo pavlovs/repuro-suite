@@ -229,6 +229,40 @@ For each call: 2×A, 1×B, 1×D (random from pool). Skip C unless target has ver
 
 ---
 
+## OEM Profile (M37, `profiles/oem_germany.json`)
+
+Second profile for the OEM-light thesis. It writes only `klass_oem` and `klass_oem_reason`; the ambulatory `klass`, `prio`, `leistung_*`, `mehrwerte`, `services_score`, flags, `classified_at` and `pipeline_stage` are never written by the OEM classify path. The ambulatory profile and prompt are unchanged.
+
+### Classes (`klass_oem`)
+- **D1 OEM-light (target):** own brand or private label for others; production outsourced or limited to assembly, configuration, labelling, testing.
+- **D2 OEM-heavy:** own development and own production (Fertigung, Werk, CNC, Spritzguss, Reinraum production, Made in Germany as a production claim, machine park).
+- **C:** maker, production model not shown in the text. Treated as D1 for enrichment.
+- **D:** not a maker or out of market (distributor, service, dental, pharma, software, non-medtech).
+
+Bias rule in the prompt: D2 only when the text states own production or a plant. Clarified on 10.11.2026 after the first fixture run (Dr. Mach came back D1): contract manufacturing (Lohnfertigung) or OEM production for other brands on own machines is D2; a generic "Fertigung" in a quality sentence, CNC at suppliers, and kitting / set assembly (even in own clean rooms) are D1. Roman downgrades D1 to D2 by hand in the Lead-Liste, never the reverse.
+
+### Reason codes
+`Eigenmarke_Zukauf`, `Private_Label`, `Montage_Konfektion`, `Eigene_Fertigung`, `Werk_Reinraum`, `Produktionsmodell_unklar`, plus `Unpassende_Branche`, `Dental`, `Apotheke`, `Krankenhaus`, `Kein_Hersteller`, `Pharma`, `Software`, `Ausland`, `Tochtergesellschaft`. Stored as `klass_oem_reason = '<reason_code>: <one sentence>'`. Unknown or missing class from the model maps to C, unknown reason code to `Produktionsmodell_unklar`.
+
+### Prompt and few-shot
+- Text cap 4,000 chars (`classification.max_text_chars`); ambulatory stays at 2,000.
+- 17 examples: the 15 fixture names (8 D1, 7 D2), 1 C (RZ-Medizintechnik), 1 D (KREWI). Excerpts are verbatim spans of each site's scraped text, max 400 chars. Per prompt 2 D1, 2 D2, 1 C, 1 D, drawn with a seed per record domain (reproducible).
+- Leave-one-out: a record whose domain equals an example's domain never sees that example.
+- No keyword auto-D and no name-dupe copy in OEM mode (both copy the ambulatory class).
+
+### Selection
+- `classify --profile oem`: `source = 'BA11_src'`, `klass_oem IS NULL`, scraped text > 200 chars, minus exclusions.
+- `classify --profile oem --rescan`: adds records with ambulatory `klass` NULL or D.
+- Exclusions everywhere (scrape, classify, BA11 tag): `pipeline_stage = 'approached'`, `already_approached = 1`, `briefaktion` set. BA11 tagging also excludes the live deal (Baaske Medical) and records whose `manual_note` shows a letter, LOI, decline, reply or "no reply".
+
+### Claude CLI in OEM mode
+`--model <alias>` is passed only when given (bulk runs: `haiku`). OEM calls add `--strict-mcp-config --tools "" --no-session-persistence --setting-sources ""` and run from the temp dir (no CLAUDE.md discovery). Measured 10.11.2026 on one Witeg prompt with haiku, two runs each: 23.4 / 40.4 s without the flags, 35.1 / 25.7 s with the first three, 16.5 / 18.7 s with all of them plus the neutral cwd. `--bare` is not used (it requires an API key). Output schema unchanged.
+
+### Acceptance fixture
+`tests/fixtures/oem_fixture.json` (15 labelled names), checked live by `scripts/m37_fixture_check.py` (haiku, leave-one-out). Hard misses: D2 labelled -> D1, D1 labelled -> D2. C is allowed.
+
+---
+
 ## Serienbriefe Column Mapping
 
 Output: 36-column Excel schema derived from the actual Word mail merge template

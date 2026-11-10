@@ -30,7 +30,7 @@ import sys
 from pathlib import Path
 
 from src.config import settings
-from src.config.profile import load_profile
+from src.config.profile import load_profile, resolve_profile_path
 
 
 def _run_all_stages(profile, args: argparse.Namespace) -> None:
@@ -250,9 +250,9 @@ def main() -> None:
     base_parser = argparse.ArgumentParser(add_help=False)
     base_parser.add_argument(
         "--profile",
-        type=Path,
+        type=resolve_profile_path,
         default=Path("profiles/medtech_germany.json"),
-        help="Path to industry profile JSON (default: profiles/medtech_germany.json)",
+        help="Industry profile JSON path or alias (oem, medtech) (default: profiles/medtech_germany.json)",
     )
     base_parser.add_argument(
         "--dry-run", action="store_true", help="No API calls, no file writes"
@@ -296,13 +296,46 @@ def main() -> None:
         default=None,
         help="Filter by source (e.g. MANUAL) — scrapes records without scraped_text, keeps pipeline_stage unchanged",
     )
-    subparsers.add_parser(
+    scrape_parser.add_argument(
+        "--oem-targets",
+        action="store_true",
+        help="M37: OEM target selection (no usable text, stage ingested/scrape_failed or source BA11_src, minus contacted/batched)",
+    )
+    scrape_parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="M37: parallel HTTP workers for --oem-targets (default 1; DB writes stay on the main thread)",
+    )
+    classify_parser = subparsers.add_parser(
         "classify",
         help="AI classification via Claude CLI (M6)",
         parents=[base_parser],
     )
-    subparsers.add_parser(
+    classify_parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help="M37: Claude CLI model alias (e.g. haiku); omitted = CLI default, no --model in argv",
+    )
+    classify_parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="M37: parallel CLI calls (OEM profile only, default 1)",
+    )
+    classify_parser.add_argument(
+        "--rescan",
+        action="store_true",
+        help="M37 (OEM profile): also classify existing records with klass NULL or D (writes klass_oem only)",
+    )
+    enrich_parser = subparsers.add_parser(
         "enrich", help="Ownership + email enrichment (M7/M9)", parents=[base_parser]
+    )
+    enrich_parser.add_argument(
+        "--include-oem",
+        action="store_true",
+        help="M37: also enrich klass_oem D1/C records (OpenRegister credits; only after Roman's review)",
     )
     export_parser = subparsers.add_parser(
         "export", help="Generate Serienbriefe Excel output (M10)", parents=[base_parser]
@@ -491,6 +524,18 @@ def main() -> None:
         default=1,
         help="0-based column index for source (default: 1 = col B)",
     )
+    ingest_manual_parser.add_argument(
+        "--source-tag",
+        type=str,
+        default=None,
+        help="M37: raw-lead mode: insert new domains only with this source (e.g. BA11_src), klass empty, stage ingested, no briefaktion",
+    )
+    ingest_manual_parser.add_argument(
+        "--col-note",
+        type=int,
+        default=None,
+        help="M37: 0-based column index copied into manual_note (raw-lead mode only)",
+    )
     run_all_parser = subparsers.add_parser(
         "run-all", help="Full pipeline end-to-end", parents=[base_parser]
     )
@@ -631,6 +676,8 @@ def main() -> None:
             col_name=args.col_name,
             col_klass=args.col_klass,
             col_source=args.col_source,
+            source_tag=args.source_tag,
+            col_note=args.col_note,
         )
         dry = "(DRY RUN) " if args.dry_run else ""
         print(f"\nManual ingest {dry}complete")
@@ -640,6 +687,10 @@ def main() -> None:
         print(f"  Inserted (new):       {result['inserted']}")
         print(f"  Updated (existing):   {result['updated']}")
         print(f"  Skipped (no domain):  {result['skipped_no_domain']}")
+        if args.source_tag:
+            print(f"  Skipped (in DB):      {result.get('skipped_existing', 0)}")
+            print(f"  Skipped (dup in sheet): {result.get('skipped_duplicate', 0)}")
+            print(f"  New domains (insert): {result.get('would_insert', 0)}")
         print("-" * 50)
         return
 
@@ -759,6 +810,16 @@ def main() -> None:
     if args.dry_run:
         log.info("DRY RUN — no API calls or file writes")
 
+    # M37 guard: OEM-only flags must not fall through to the ambulatory path
+    is_oem = getattr(profile.classification, "mode", None) == "oem"
+    if not is_oem and (
+        getattr(args, "rescan", False)
+        or getattr(args, "oem_targets", False)
+        or (args.command == "classify" and getattr(args, "workers", 1) > 1)
+    ):
+        log.error("--rescan / --oem-targets / classify --workers need --profile oem")
+        sys.exit(2)
+
     dispatch = {
         "scrape-wlw": lambda: _run_scrape_wlw(profile, args),
         "ingest": lambda: __import__("src.pipeline.ingest", fromlist=["ingest"]).ingest(
@@ -767,13 +828,24 @@ def main() -> None:
         "filter": lambda: __import__(
             "src.pipeline.filter", fromlist=["apply_hard_filters"]
         ).apply_hard_filters(profile=profile, dry_run=args.dry_run),
-        "scrape": lambda: __import__(
-            "src.pipeline.scrape", fromlist=["scrape_batch_cmd"]
-        ).scrape_batch_cmd(
-            profile,
-            dry_run=args.dry_run,
-            limit=args.limit,
-            source=getattr(args, "source", None),
+        "scrape": lambda: (
+            __import__(
+                "src.pipeline.scrape", fromlist=["scrape_oem_targets_cmd"]
+            ).scrape_oem_targets_cmd(
+                profile,
+                dry_run=args.dry_run,
+                limit=args.limit,
+                workers=getattr(args, "workers", 1),
+            )
+            if getattr(args, "oem_targets", False)
+            else __import__(
+                "src.pipeline.scrape", fromlist=["scrape_batch_cmd"]
+            ).scrape_batch_cmd(
+                profile,
+                dry_run=args.dry_run,
+                limit=args.limit,
+                source=getattr(args, "source", None),
+            )
         ),
         "classify": lambda: __import__(
             "src.pipeline.classify", fromlist=["classify_cmd"]
@@ -781,10 +853,17 @@ def main() -> None:
             profile,
             dry_run=args.dry_run,
             limit=args.limit,
+            model=getattr(args, "model", None),
+            workers=getattr(args, "workers", 1),
+            rescan=getattr(args, "rescan", False),
         ),
         "enrich": lambda: __import__(
             "src.pipeline.enrich", fromlist=["enrich_cmd"]
-        ).enrich_cmd(profile, dry_run=args.dry_run),
+        ).enrich_cmd(
+            profile,
+            dry_run=args.dry_run,
+            include_oem=getattr(args, "include_oem", False),
+        ),
         "export": lambda: __import__(
             "src.pipeline.export", fromlist=["export_cmd"]
         ).export_cmd(

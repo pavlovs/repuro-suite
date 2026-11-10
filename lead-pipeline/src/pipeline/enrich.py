@@ -43,7 +43,8 @@ M9: Email — SMTP candidate testing from owner name only. No impressum scraping
   If no candidate passes → leave gf_email NULL, advance to email_enriched.
   Impressum scraping is NOT used — it only finds company emails (info@/gf@), not personal.
 
-CRITICAL: OpenRegister.de is ONLY called for klass A or B companies. Never C/D/E.
+CRITICAL: OpenRegister.de is ONLY called for klass A or B companies (plus klass_oem D1/C
+          when `enrich --include-oem` is passed explicitly, M37). Never C/D/E.
           Never use realtime=true. Always check knowledge_base cache first.
           Credit cost: 11 per company base (1 autocomplete + 10 owners).
           +11 credits if corporate owner detected → UBO lookup on holding company.
@@ -943,8 +944,11 @@ def enrich_ownership_batch(
     limit: int = 0,
     db_path: Optional[Path] = None,
     kb_path: Optional[Path] = None,
+    include_oem: bool = False,
 ) -> int:
     """Enrich A/B records with ownership data. Returns count processed.
+
+    include_oem (M37): also klass_oem D1/C records; explicit opt-in only.
 
     Stage outcomes per record:
       ownership_enriched      — data found, natural person confirmed OR blocklist match
@@ -955,7 +959,7 @@ def enrich_ownership_batch(
     if kb_path is None:
         kb_path = settings.KNOWLEDGE_BASE_PATH
 
-    records = pipeline_db.get_records_for_enrich(db_path)
+    records = pipeline_db.get_records_for_enrich(db_path, include_oem=include_oem)
     if limit > 0:
         records = records[:limit]
 
@@ -2194,9 +2198,20 @@ def enrich_cmd(
     dry_run: bool = False,
     db_path: Optional[Path] = None,
     kb_path: Optional[Path] = None,
+    include_oem: bool = False,
 ) -> None:
-    """Run full enrichment pipeline: ownership (M7) -> gate (M8) -> email (M9)."""
-    enrich_ownership_batch(profile, dry_run=dry_run, db_path=db_path, kb_path=kb_path)
+    """Run full enrichment pipeline: ownership (M7) -> gate (M8) -> email (M9).
+
+    include_oem (M37): also klass_oem D1/C records. Opt-in only via `enrich --include-oem`,
+    never from run-all / ensure-enrich, because it spends OpenRegister credits.
+    """
+    enrich_ownership_batch(
+        profile,
+        dry_run=dry_run,
+        db_path=db_path,
+        kb_path=kb_path,
+        include_oem=include_oem,
+    )
     apply_ownership_gate(profile, dry_run=dry_run, db_path=db_path)
     enrich_email_batch(profile, dry_run=dry_run, db_path=db_path, kb_path=kb_path)
 

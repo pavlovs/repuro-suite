@@ -64,18 +64,21 @@ def test_draft_has_all_slots(client):
     html = client.get("/", headers=_admin()).text
     assert html.count('data-slot="tile-') == 8
     assert html.count('data-slot="dec-') == 6
-    assert html.count(" data-slot-extra>") == 8  # 4 spare tiles + 4 spare rows
+    # number of spare slots is weekly content; the default-hidden ones must be spares
+    assert html.count(" data-slot-extra>") >= 8
     for i in (5, 6, 7, 8):
         assert f'data-edit-id="tile-{i}-title"' in html
-    for i in (3, 4, 5, 6):
+    for i in (4, 5, 6):
         assert f'data-edit-id="dec-{i}-title"' in html
 
 
 def test_spare_slots_hidden_by_default(client):
     html = client.get("/", headers=_admin()).text
     # every spare slot starts with the slot-off class in markup (no-JS safe)
-    assert html.count('class="tile changed-tile slot-off"') == 4
-    assert html.count('<tr class="slot-off"') == 4
+    hidden = html.count('class="tile changed-tile slot-off"') + html.count(
+        '<tr class="slot-off"'
+    )
+    assert hidden == html.count(" data-slot-extra>")
 
 
 # ---------------------------------------------------------------------------

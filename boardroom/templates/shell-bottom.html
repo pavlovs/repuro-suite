@@ -1,7 +1,6 @@
 
   <div class="foot">
-    <span><b>Repuro · Kamu Kapital</b> — investor room for Strada</span>
-    <span>Data: Dealroom · Cockpit · Allex</span>
+    <span><b>Repuro | Kamu Kapital</b> | investor room for Strada</span>
   </div>
 
 </div>
@@ -80,7 +79,7 @@ document.querySelectorAll('.view-tab').forEach(function(tab){
 
 
 // ---- ACT 3 — stage filter pills (verbatim table) ----
-var ACTIVE_STAGES=['loi_signed','indicative_offer','valuation_rfi','meeting_concluded','due_diligence','contract_negotiation','closed'];
+var ACTIVE_STAGES=['loi_signed','loi_negotiation','indicative_offer','valuation_rfi','meeting_concluded','due_diligence','contract_negotiation','closed'];
 function applyStageFilter(f){
   document.querySelectorAll('.portfolio-table tbody tr').forEach(function(tr){
     var st=tr.getAttribute('data-stage');

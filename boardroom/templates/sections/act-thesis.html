@@ -324,7 +324,7 @@
         <article class="th-view" id="th-m3">
           <div class="th-vhead">
             <span class="th-prelim">Preliminary</span>
-            <h3 class="th-title">With medical devices the German MTI market is about 2.7 B€ a year in the mid case, so the device route decides the 2 B€ scale test for a 200 M€ platform</h3>
+            <h3 class="th-title">The German MTI market is about 2.7 B€ a year in the mid case including medical devices</h3>
           </div>
           <div class="th-m3">
             <div class="th-m3-main">
@@ -342,7 +342,7 @@
               <div class="th-cmp" id="th-cmp"></div>
             </div>
           </div>
-          <p class="th-callout" id="th-m3-callout">Without medical devices the market is 955 M€, less than half the 2 B€ a 200 M€ platform needs at ~10% share</p>
+          <p class="th-callout" id="th-m3-callout">Without devices the market is 955 M€, so clearing 2 B€ needs 58% of device spend reachable</p>
           <p class="th-note">Note: annual purchases in Germany, not yet the share Repuro can win (manufacturers sell most devices direct). Only service is cross-checked against a measured figure (Prodcom 0.64 B€), all other layers are Repuro estimates. Mid case = sum of per-cell geometric midpoints. Layer totals rounded. Medical devices without X-ray, CT, MRI and angiography. Source: Repuro analysis, preliminary, mid case, based on Destatis, DKG, DKI/BDO, KBV, Zi, TED</p>
         </article>
 
@@ -535,7 +535,7 @@
   var head=document.getElementById("th-m3-head");
   if(head) head.textContent="MTI market by customer segment and layer, "+m(tot)+" M€ a year (mid case)";
   var co=document.getElementById("th-m3-callout");
-  if(co) co.textContent="Without medical devices the market is "+m(tot-lay["Medical devices"])+" M€, less than half the "+(BAR_NEED/1000)+" B€ a "+REVENUE+" M€ platform needs at ~"+SHARE+"% share";
+  if(co) co.textContent="Without devices the market is "+m(tot-lay["Medical devices"])+" M€, so clearing "+(BAR_NEED/1000)+" B€ needs "+Math.round((BAR_NEED-(tot-lay["Medical devices"]))/lay["Medical devices"]*100)+"% of device spend reachable";
 
   var leg=document.getElementById("th-legend");
   if(leg){
@@ -645,7 +645,7 @@
     mk("th-cmp-v th-cmp-v--brand",c1,b1(tot)+" B€");
     var b1el=mk("th-cmp-bar th-cmp-bar--mkt",c1);
     var t=document.createElement("b"); t.textContent="MTI market"; b1el.appendChild(t);
-    mk("",b1el,"total, not reachable share"); mk("",b1el,"range "+b1(lo)+"-"+b1(hi)+" B€");
+    mk("",b1el,"total annual purchases"); mk("",b1el,"range "+b1(lo)+"-"+b1(hi)+" B€");
     mk("th-cmp-v",c2,(BAR_NEED/1000).toFixed(1)+" B€");
     var b2el=mk("th-cmp-bar th-cmp-bar--need",c2);
     t=document.createElement("b"); t.textContent="Market needed"; b2el.appendChild(t);

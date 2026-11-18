@@ -79,7 +79,7 @@ document.querySelectorAll('.view-tab').forEach(function(tab){
 
 
 // ---- ACT 3 — stage filter pills (verbatim table) ----
-var ACTIVE_STAGES=['loi_signed','loi_negotiation','indicative_offer','valuation_rfi','meeting_concluded','due_diligence','contract_negotiation','closed'];
+var ACTIVE_STAGES=['loi_signed','loi_negotiation','indicative_offer','valuation_rfi','meeting_concluded','due_diligence','contract_negotiation','closed','identified'];
 function applyStageFilter(f){
   document.querySelectorAll('.portfolio-table tbody tr').forEach(function(tr){
     var st=tr.getAttribute('data-stage');
@@ -114,7 +114,7 @@ function recomputeSum(){
   var sm=document.getElementById('sum-emp'); if(sm) sm.textContent=emp;
 }
 // ---- ACT 3 — auto-sort portfolio rows by stage rank (template order preserved within a stage) ----
-var STAGE_RANK=['closed','contract_negotiation','due_diligence','loi_signed','loi_negotiation','indicative_offer','valuation_rfi','meeting_concluded','on_hold','dead'];
+var STAGE_RANK=['closed','contract_negotiation','due_diligence','loi_signed','loi_negotiation','indicative_offer','valuation_rfi','meeting_concluded','identified','on_hold','dead'];
 (function(){
   var tb=document.querySelector('.portfolio-table tbody');
   if(!tb) return;

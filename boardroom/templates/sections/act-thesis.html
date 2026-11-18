@@ -1,4 +1,4 @@
-  <!-- ============ MARKET THESIS: thesis deck v12, pages 1-6 as flip-through ============ -->
+  <!-- ============ MARKET THESIS: thesis deck v12, pages 2-6 as flip-through ============ -->
   <section class="act" id="act-thesis">
     <div class="section-band section-band--accent">
       <span class="band-no">02</span>
@@ -8,25 +8,28 @@
       <div class="sub-heading">CARE is the platform for a 2.7 B€ MTI market, with 13 named add-on candidates and Mouse (lab) as adjacent second seed</div>
       <div class="overview-section" id="thesis-embed">
 <style>
-#act-thesis .th-fl{position:relative;margin-top:14px;border:1px solid var(--ci-line);border-radius:6px;overflow:hidden;background:var(--ci-white)}
+#act-thesis .th-fl{position:relative;margin-top:14px}
+#act-thesis .th-fl-stage{position:relative;border:1px solid var(--ci-line);border-radius:6px;overflow:hidden;background:var(--ci-white)}
 #act-thesis .th-fl-img{display:none;width:100%;height:auto}
 #act-thesis .th-fl-img.th-fl-on{display:block}
-#act-thesis .th-fl-arr{position:absolute;top:50%;transform:translateY(-50%);width:48px;height:48px;border:none;border-radius:50%;background:var(--ci-ink);color:var(--ci-white);font-size:28px;line-height:48px;text-align:center;cursor:pointer;opacity:0;transition:opacity .15s}
-#act-thesis .th-fl:hover .th-fl-arr{opacity:.45}
-#act-thesis .th-fl .th-fl-arr:hover{opacity:.75}
-#act-thesis .th-fl-prev{left:12px}
-#act-thesis .th-fl-next{right:12px}
-@media (hover:none){#act-thesis .th-fl-arr{opacity:.45}}
+#act-thesis .th-fl-arr{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:64px;border:none;border-radius:6px;background:rgba(0,0,0,.35);color:var(--ci-white);font-size:34px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s}
+#act-thesis .th-fl-prev{left:10px}
+#act-thesis .th-fl-next{right:10px}
+#act-thesis .th-fl-stage:hover .th-fl-arr,#act-thesis .th-fl-arr:focus{opacity:1}
+#act-thesis .th-fl-arr:hover{background:rgba(0,0,0,.55)}
+@media (hover:none){#act-thesis .th-fl-arr{opacity:.8}}
 </style>
         <div class="th-fl" id="th-fl">
+          <div class="th-fl-stage">
           <img class="th-fl-img th-fl-on" src="static/img/thesis/deck/v12-p1.webp" alt="Repuro Group, MTI thesis update, November 2026" loading="eager">
           <img class="th-fl-img" src="static/img/thesis/deck/v12-p2.webp" alt="Repuro turns 4 separately bought parts into one documented system" loading="lazy">
           <img class="th-fl-img" src="static/img/thesis/deck/v12-p3.webp" alt="Repuro's target offer covers 5 of the 8 steps of a hospital MTI purchase" loading="lazy">
           <img class="th-fl-img" src="static/img/thesis/deck/v12-p4.webp" alt="MTI's four sectors range from 200 M€ to 1.7 B€ a year" loading="lazy">
           <img class="th-fl-img" src="static/img/thesis/deck/v12-p5.webp" alt="MTI in Germany amounts to an estimated ~2.7 B€ a year" loading="lazy">
           <img class="th-fl-img" src="static/img/thesis/deck/v12-p6.webp" alt="H.I.G. has grown Medisolve from ~130 M€ to over 200 M€ revenue since 2023" loading="lazy">
-          <button class="th-fl-arr th-fl-prev" type="button" id="th-fl-prev" aria-label="Previous page">&#8249;</button>
-          <button class="th-fl-arr th-fl-next" type="button" id="th-fl-next" aria-label="Next page">&#8250;</button>
+            <button class="th-fl-arr th-fl-prev" type="button" id="th-fl-prev" aria-label="Previous page">&#8249;</button>
+            <button class="th-fl-arr th-fl-next" type="button" id="th-fl-next" aria-label="Next page">&#8250;</button>
+          </div>
         </div>
 <script>
 (function(){

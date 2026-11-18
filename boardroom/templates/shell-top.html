@@ -69,7 +69,7 @@ h3, .h3 { font-size: var(--fs-h3); font-weight: 700; line-height: 1.3; color: va
 h4, .h4 { font-size: var(--fs-h4); font-weight: 700; line-height: 1.3; color: var(--ci-ink); margin: 0; }
 p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-normal); color: var(--ci-text); margin: 0; }
 .text-sm { font-size: var(--fs-sm); color: var(--ci-muted); }
-.label { font-size: var(--fs-label); font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--ci-muted); }
+.label { font-size: var(--fs-label); font-weight: 700;   color: var(--ci-muted); }
 .figure { font-size: var(--fs-display); font-weight: 800; line-height: 1.05; color: var(--ci-ink); font-variant-numeric: tabular-nums; }
 .muted { color: var(--ci-muted); }
 .num { font-variant-numeric: tabular-nums; }
@@ -129,7 +129,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .cobrand .x{font-size:18px;font-weight:400;opacity:.7;line-height:1}
 /* Strada logo — black source rendered white to sit on the brand bar */
 .topbar img.strada-logo{height:38px;filter:brightness(0) invert(1)}
-.topbar .room-tag{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;background:rgba(255,255,255,.18);padding:3px 9px;border-radius:20px}
+.topbar .room-tag{font-size:11px;font-weight:600;background:rgba(255,255,255,.18);padding:3px 9px;border-radius:20px}
 .topbar .meta{margin-left:auto;text-align:right;font-size:12.5px;line-height:1.45;opacity:.92}
 .topbar .meta b{display:block;font-size:14.5px;font-weight:700;opacity:1}
 
@@ -166,13 +166,13 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .dec-link{color:inherit;text-decoration:underline;text-decoration-color:var(--ci-brand);text-underline-offset:2px;cursor:pointer}
 .dec-link:hover{color:var(--ci-brand)}
 .dd-cost-table{border-collapse:collapse;font-size:12.5px;font-family:var(--ci-font);margin-top:16px}
-.dd-cost-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 12px;text-align:right}
+.dd-cost-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;padding:7px 12px;text-align:right}
 .dd-cost-table thead th:first-child{text-align:left}
 .dd-cost-table thead th:nth-child(2){text-align:left}
 .dd-cost-table tbody td{padding:6px 12px;border-bottom:1px solid var(--ci-line);text-align:right;font-variant-numeric:tabular-nums}
 .dd-cost-table tbody td:first-child{text-align:left;font-weight:600;color:var(--ci-ink)}
 .dd-cost-table tbody td:nth-child(2){text-align:left;color:var(--ci-muted);font-size:11.5px}
-.dd-cost-table .dd-cat td{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ci-muted);padding:10px 12px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
+.dd-cost-table .dd-cat td{font-size:10.5px;font-weight:700;color:var(--ci-muted);padding:10px 12px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
 .dd-cost-table .dd-tot td{font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);padding:8px 12px;background:var(--ci-canvas)}
 /* ---------- ACT 2: live deals ---------- */
 .deal-toggle{display:flex;gap:10px;margin-bottom:22px;flex-wrap:wrap}
@@ -215,7 +215,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .deal-headline-txt{font-size:14px;font-style:italic;color:var(--ci-ink);margin-bottom:14px}
 .keystrip{display:flex;flex-wrap:wrap;gap:28px;padding:12px 0 16px}
 .keystrip .ks{display:flex;flex-direction:column;gap:4px}
-.keystrip .ks .kl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--ci-muted)}
+.keystrip .ks .kl{font-size:10.5px;font-weight:700;color:var(--ci-muted)}
 .keystrip .ks .kv{font-size:22px;font-weight:800;color:var(--ci-ink);letter-spacing:-.02em;font-variant-numeric:tabular-nums;line-height:1}
 .keystrip .ks .kv.brand{color:var(--ci-brand)}
 .onepager-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:4px}
@@ -252,7 +252,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .fin-row .fl{color:var(--ci-text)}
 .fin-row .fv{font-weight:700;color:var(--ci-ink);font-variant-numeric:tabular-nums}
 .fin-row.hl .fv{color:var(--ci-brand)}
-.col-h{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ci-muted);font-weight:700;margin-bottom:7px}
+.col-h{font-size:10.5px;color:var(--ci-muted);font-weight:700;margin-bottom:7px}
 .bridge{margin-top:8px}
 .bridge-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:7px 0 5px}
 .bridge-bar span{height:100%}
@@ -279,12 +279,12 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .fn-bar{width:70%;height:var(--h);min-height:6px;background:var(--ci-brand);border-radius:6px 6px 0 0}
 .fn-bar--stage{background:var(--stage-loi_signed)}
 .fn-v{font-size:24px;font-weight:800;color:var(--ci-ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em;line-height:1}
-.fn-l{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ci-muted);text-align:center;line-height:1.25}
+.fn-l{font-size:12px;font-weight:700;color:var(--ci-muted);text-align:center;line-height:1.25}
 .fn-sub{font-size:12px;color:var(--ci-muted);text-align:center;line-height:1.2;min-height:1.2em}
 .fn-sub b{color:var(--ci-ink);font-weight:800;font-size:16px;font-variant-numeric:tabular-nums}
 /* under-LOI aggregate card — reuses funnel type classes (.fn-v/.fn-l), CI label token for the header */
 .fn-agg{align-self:stretch;display:flex;flex-direction:column;min-width:186px;border-radius:var(--radius-sm);overflow:hidden;border:1px solid color-mix(in srgb,var(--stage-loi_signed) 30%,transparent);background:color-mix(in srgb,var(--stage-loi_signed) 5%,var(--ci-white))}
-.fn-agg-head{background:var(--stage-loi_signed);color:var(--ci-white);font-size:var(--fs-label);font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:8px 16px;line-height:1.25}
+.fn-agg-head{background:var(--stage-loi_signed);color:var(--ci-white);font-size:var(--fs-label);font-weight:700;padding:8px 16px;line-height:1.25}
 .fn-agg-body{flex:1;display:flex;flex-direction:column;justify-content:space-evenly;padding:10px 16px}
 .fn-agg-stat{display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:5px 0}
 .fn-agg-stat .fn-v{white-space:nowrap}
@@ -329,7 +329,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .comment-bullets li{margin-bottom:2px}
 .comment-cell-wrap{min-height:24px;outline:none}
 .stage-filter{display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap}
-.stage-filter label{font-size:11px;font-weight:700;color:var(--ci-muted);text-transform:uppercase;letter-spacing:0.5px}
+.stage-filter label{font-size:11px;font-weight:700;color:var(--ci-muted);}
 .stage-filter .filter-btn{padding:4px 12px;border-radius:12px;font-size:11.5px;font-weight:600;border:1px solid var(--ci-line);background:var(--ci-surface);color:var(--ci-muted);cursor:pointer;transition:all 0.15s;font-family:inherit}
 .stage-filter .filter-btn:hover{border-color:var(--ci-brand);color:var(--ci-brand)}
 .stage-filter .filter-btn.active{background:var(--ci-brand);color:var(--ci-white);border-color:var(--ci-brand)}
@@ -348,16 +348,16 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 /* header coefficient stats: score · multiple · value */
 .cdd2-stats{display:flex;align-items:flex-end;gap:28px}
 .cdd2-stat{display:flex;flex-direction:column;gap:4px;text-align:right}
-.cdd2-stat .st-l{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--ci-muted)}
+.cdd2-stat .st-l{font-size:10px;font-weight:700;color:var(--ci-muted)}
 .cdd2-stat .st-v{font-size:21px;font-weight:700;color:var(--ci-ink);font-variant-numeric:tabular-nums;line-height:1;letter-spacing:-.01em}
 .cdd2-stat .st-v small{font-size:12px;font-weight:600;color:var(--ci-muted)}
 .cdd2-stat.score .st-v{color:var(--ci-brand)}
 /* table — flat, low-chroma */
 .cdd2-table{max-width:920px;border-collapse:collapse;font-family:var(--ci-font);table-layout:fixed}
 .cdd2-table col.cc-crit{width:26%}.cdd2-table col.cc-val{width:104px}.cdd2-table col.cc-sc{width:50px}.cdd2-table col.cc-cmt{width:auto}
-.cdd2-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 14px;text-align:left}
+.cdd2-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:11.5px;font-weight:700;padding:7px 14px;text-align:left}
 .cdd2-table thead th.c{text-align:center}
-.cdd2-cat-row td{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ci-muted);padding:10px 14px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
+.cdd2-cat-row td{font-size:10.5px;font-weight:700;color:var(--ci-muted);padding:10px 14px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
 .cdd2-cat-row .cat-score{font-size:10.5px;color:var(--ci-ink);font-variant-numeric:tabular-nums;letter-spacing:0;margin-left:6px}
 .cdd2-total td{padding:10px 14px;font-size:14px;font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);background:var(--ci-canvas)}
 .cdd2-total td.cat-sub{text-align:center;font-variant-numeric:tabular-nums;font-size:15px}
@@ -380,7 +380,21 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .ms-node.ms-closing::before{border-color:var(--ci-accent5);background:var(--ci-accent5)}
 .ms-node-date{font-size:13px;font-weight:700;color:var(--ci-ink);font-variant-numeric:tabular-nums}
 .ms-node-name{font-size:13.5px;font-weight:600;color:var(--ci-text)}
-.ms-node-owner{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:var(--radius-pill);background:var(--ci-canvas);color:var(--ci-muted);text-transform:uppercase;letter-spacing:.04em}
+.ms-node-owner{font-size:10.5px;font-weight:700;padding:3px 9px;border-radius:var(--radius-pill);background:var(--ci-canvas);color:var(--ci-muted);}
+/* timeline grouped by month */
+.ms-node.ms-node--month{align-items:start}
+.ms-node.ms-node--month::before{top:9px}
+.ms-items{grid-column:2 / 4;display:flex;flex-direction:column;gap:6px}
+.ms-item{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+/* Phase II sourcing pipeline */
+.p2-wrap{overflow-x:auto;margin:10px 0 4px}
+.p2-table{width:100%;min-width:760px;border-collapse:collapse;font-size:12.5px;font-family:var(--ci-font)}
+.p2-table thead th{background:var(--ci-brand);color:var(--ci-white);text-align:left;padding:7px 10px;font-size:12px;font-weight:700}
+.p2-table td{padding:6px 10px;border-bottom:1px solid var(--ci-line);vertical-align:top;color:var(--ci-text)}
+.p2-table tr.p2-seg td{font-weight:700;color:var(--ci-ink);background:rgba(0,0,0,.035);padding-top:8px}
+.p2-table td.p2-co{font-weight:700;color:var(--ci-ink)}
+.p2-table td.p2-num{white-space:nowrap;font-variant-numeric:tabular-nums}
+.p2-c-co{width:19%}.p2-c-what{width:25%}.p2-c-num{width:12%}.p2-c-fit{width:28%}.p2-c-st{width:16%}
 
 /* ---------- ACT 5: DD items ---------- */
 .dd-deal{margin-bottom:24px}
@@ -389,7 +403,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .dd-deal-head .dd-name{font-size:16px;font-weight:700;color:var(--ci-ink)}
 .dd-deal-head .dd-stage{font-size:10px;font-weight:600;color:var(--ci-white);padding:2px 9px;border-radius:10px}
 .dd-table{width:100%;border-collapse:collapse;font-family:var(--ci-font);font-size:12.5px}
-.dd-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 12px;text-align:left}
+.dd-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;padding:7px 12px;text-align:left}
 .dd-table thead th:last-child{text-align:center;width:80px}
 .dd-table tbody td{padding:8px 12px;border-bottom:1px solid var(--ci-line);vertical-align:top;line-height:1.45}
 .dd-table tbody td:first-child{font-weight:600;color:var(--ci-ink);white-space:nowrap}
@@ -401,7 +415,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 
 /* ---------- Earn-out threshold table (valuation view) ---------- */
 .eo-thresh{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--ci-font)}
-.eo-thresh thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 12px;text-align:right}
+.eo-thresh thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;padding:7px 12px;text-align:right}
 .eo-thresh thead th:first-child{text-align:left}
 .eo-thresh tbody td{padding:6px 12px;text-align:right;border-bottom:1px solid var(--ci-line);font-variant-numeric:tabular-nums}
 .eo-thresh tbody td:first-child{text-align:left}
@@ -414,13 +428,13 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 
 /* ---------- S&U table (unified format) ---------- */
 .su-table{border-collapse:collapse;font-size:12.5px;font-family:var(--ci-font)}
-.su-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:7px 12px}
+.su-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;padding:7px 12px}
 .su-table thead th:nth-child(odd){text-align:left}
 .su-table thead th:nth-child(even){text-align:right;width:90px}
 .su-table tbody td{padding:5px 12px;border-bottom:1px solid rgba(0,0,0,.06);vertical-align:middle}
 .su-table tbody td:nth-child(even){text-align:right;font-weight:600;color:var(--ci-ink);font-variant-numeric:tabular-nums;white-space:nowrap}
 .su-table tbody td:nth-child(odd){color:var(--ci-text)}
-.su-table tbody tr.su-sec td{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ci-muted);padding:10px 12px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
+.su-table tbody tr.su-sec td{font-size:10.5px;font-weight:700;color:var(--ci-muted);padding:10px 12px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
 .su-table tbody tr.su-tot td{font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);padding:8px 12px;background:var(--ci-canvas)}
 .su-table tbody tr.su-empty td{color:var(--ci-muted)}
 .op-stage--io{background:var(--stage-indicative_offer)}
@@ -434,11 +448,11 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .su-drawdown .su-table{max-width:500px;margin-top:12px}
 .su-drawdown .note{max-width:500px}
 .comp-table{max-width:780px;border-collapse:collapse;font-size:12.5px;font-family:var(--ci-font)}
-.comp-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:8px 14px;text-align:center}
+.comp-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:10.5px;font-weight:700;padding:8px 14px;text-align:center}
 .comp-table thead th:first-child{text-align:left;min-width:200px}
 .comp-table tbody td{padding:9px 16px;border-bottom:1px solid var(--ci-line);text-align:center;font-variant-numeric:tabular-nums}
 .comp-table tbody td:first-child{text-align:left;font-weight:600;color:var(--ci-ink)}
-.comp-table .comp-cat td{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ci-muted);padding:10px 12px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
+.comp-table .comp-cat td{font-size:10.5px;font-weight:700;color:var(--ci-muted);padding:10px 12px 4px;background:var(--ci-canvas);border-bottom:1px solid var(--ci-line)}
 .comp-table .comp-tot td{font-weight:700;color:var(--ci-ink);border-top:2px solid var(--ci-line);padding:8px 12px;background:var(--ci-canvas)}
 .comp-empty{text-align:center;color:var(--ci-muted);font-size:12px;padding:4px 12px}
 .overview-section{margin-bottom:32px}
@@ -478,6 +492,48 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 .slot-x:hover{background:var(--ci-alert);color:var(--ci-white)}
 .slot-add{display:inline-flex;align-items:center;gap:6px;background:none;border:1px dashed var(--ci-brand);color:var(--ci-brand);border-radius:7px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin:8px 0 2px}
 .slot-add:hover{background:rgba(0,104,176,0.06)}
+/* act-team redesign */
+#act-team .tm-lead{font-size:var(--fs-h3);font-weight:700;color:var(--ci-ink);line-height:1.4;max-width:68ch;margin-bottom:28px}
+#act-team .tm-h{font-size:var(--fs-h4);font-weight:700;color:var(--ci-ink);margin:0 0 10px}
+#act-team .tm-h--fees{margin-top:36px}
+#act-team .tm-table,#act-team .tm-fees{width:100%;border-collapse:collapse;table-layout:fixed;font-family:var(--ci-font)}
+#act-team .tm-c-role{width:20%}
+#act-team .tm-c-stat{width:44%}
+#act-team .tm-c-adv{width:38%}
+#act-team .tm-c-amt{width:110px}
+#act-team .tm-table thead th{background:var(--ci-brand);color:var(--ci-white);font-size:var(--fs-label);font-weight:700;padding:7px 14px;text-align:left}
+#act-team .tm-table tbody td{padding:11px 14px;border-bottom:1px solid var(--ci-line);vertical-align:top;font-size:13.5px;line-height:1.5;color:var(--ci-text)}
+#act-team .tm-table td.tm-role{font-weight:700;color:var(--ci-ink)}
+#act-team .tm-table tr.tm-key td.tm-next{color:var(--ci-ink);font-weight:600}
+#act-team .tm-session{font-size:13.5px;color:var(--ci-text);line-height:1.5;padding:12px 14px 0}
+#act-team .tm-session b{color:var(--ci-ink)}
+#act-team .tm-fees thead th{font-size:var(--fs-label);padding:7px 14px}
+#act-team .tm-fees thead th:nth-child(even){width:auto}
+#act-team .tm-fees tbody td{padding:9px 14px;font-size:13px;line-height:1.5;vertical-align:top;border-bottom:1px solid var(--ci-line)}
+#act-team .tm-fees tbody td:nth-child(even){font-size:13.5px}
+#act-team .tm-fees tbody tr.su-tot td{padding:10px 14px}
+#act-team .note{margin-left:14px}
+@media(max-width:680px){
+  #act-team .tm-lead{font-size:15px;margin-bottom:22px}
+  #act-team .tm-table,#act-team .tm-fees,#act-team .tm-table tbody,#act-team .tm-fees tbody{display:block}
+  #act-team .tm-table colgroup,#act-team .tm-fees colgroup,#act-team .tm-table thead{display:none}
+  #act-team .tm-table tr{display:block;padding:12px 0;border-bottom:1px solid var(--ci-line)}
+  #act-team .tm-table tbody td{display:block;padding:0;border:none}
+  #act-team .tm-table td.tm-role{margin-bottom:3px}
+  #act-team .tm-table td.tm-next{margin-top:6px}
+  #act-team .tm-table td.tm-next::before{content:"Next: ";font-weight:700;color:var(--ci-ink)}
+  #act-team .tm-session{padding:12px 0 0}
+  #act-team .tm-fees thead{display:block}
+  #act-team .tm-fees tr{display:grid;grid-template-columns:1fr auto;column-gap:16px}
+  #act-team .tm-fees thead th:nth-child(3){display:none}
+  #act-team .tm-fees thead tr{column-gap:0}
+  #act-team .tm-fees tbody td{border-bottom:none;padding:9px 12px 2px}
+  #act-team .tm-fees tbody td:nth-child(3){grid-column:1 / -1;padding:0 12px 10px;color:var(--ci-muted);border-bottom:1px solid var(--ci-line)}
+  #act-team .tm-fees tbody tr.su-tot td{border-top:none;padding:9px 12px 2px}
+  #act-team .tm-fees tbody tr.su-tot{border-top:2px solid var(--ci-line);background:var(--ci-canvas)}
+  #act-team .tm-fees tbody tr.su-tot td:nth-child(3){padding:0 12px 10px;color:var(--ci-ink)}
+  #act-team .note{margin-left:2px}
+}
 </style>
 </head>
 <body>
@@ -490,7 +546,7 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
       <span class="x">×</span>
       <img class="logo strada-logo" src="static/img/strada-white.png" alt="Strada">
     </div>
-    <div class="meta"><b>Investor View</b>Weekly call · 03 Sep 2026</div>
+    <div class="meta"><b>Investor View</b>Weekly call, 18 Nov 2026</div>
   </div>
 </div>
 
@@ -498,9 +554,11 @@ p, .body { font-size: var(--fs-body); font-weight: 400; line-height: var(--lh-no
 <div class="callbar">
   <div class="callbar-in">
     <button class="agenda-item active" data-go="act1"><span class="n">1</span> This week</button>
-    <button class="agenda-item" data-go="act2"><span class="n">2</span> Live deals</button>
-    <button class="agenda-item" data-go="act3"><span class="n">3</span> Pipeline</button>
-    <button class="agenda-item" data-go="act4"><span class="n">4</span> Timeline</button>
+    <button class="agenda-item" data-go="act-thesis"><span class="n">2</span> Market thesis</button>
+    <button class="agenda-item" data-go="act2"><span class="n">3</span> Live deals</button>
+    <button class="agenda-item" data-go="act3"><span class="n">4</span> Pipeline</button>
+    <button class="agenda-item" data-go="act-team"><span class="n">5</span> Team &amp; admin</button>
+    <button class="agenda-item" data-go="act4"><span class="n">6</span> Timeline</button>
   </div>
 </div>
 

@@ -505,7 +505,7 @@ def unpublish_publication(pub_id: int, p=Depends(admin_only)):
 
 _TPL = os.path.join(os.path.dirname(__file__), "..", "templates")
 _PAGE_SECTIONS = ("ONEPAGER", "SCORECARD", "SU", "VALUATION")
-_PAGE_DEALS = ("_overview", "fox", "mantis", "mouse")
+_PAGE_DEALS = ("_overview", "care", "mouse")
 _MARKER_RE = re.compile(r"^<!--\s*(ONEPAGER|SCORECARD|SU|VALUATION)\s*-->\s*$")
 
 
@@ -540,8 +540,10 @@ def _assemble_page() -> str:
         [
             _tpl("shell-top.html"),
             _tpl("sections/act1-thisweek.html"),
+            _tpl("sections/act-thesis.html"),
             act2,
             _tpl("sections/act3-pipeline.html"),
+            _tpl("sections/act-team.html"),
             _tpl("sections/act4-timeline.html"),
             _tpl("shell-bottom.html"),
         ]

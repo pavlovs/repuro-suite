@@ -12,41 +12,32 @@
 #act-thesis .th-fl-stage{position:relative;border:1px solid var(--ci-line);border-radius:6px;overflow:hidden;background:var(--ci-white)}
 #act-thesis .th-fl-img{display:none;width:100%;height:auto}
 #act-thesis .th-fl-img.th-fl-on{display:block}
-#act-thesis .th-fl-nav{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:12px;font-family:var(--ci-font)}
-#act-thesis .th-fl-btn{border:1px solid var(--ci-line);background:var(--ci-white);color:var(--ci-ink);font-size:18px;font-weight:700;width:40px;height:34px;border-radius:6px;cursor:pointer}
-#act-thesis .th-fl-btn:hover{border-color:var(--ci-brand);color:var(--ci-brand)}
-#act-thesis .th-fl-dot{width:10px;height:10px;border-radius:50%;border:none;background:var(--ci-line);padding:0;cursor:pointer}
-#act-thesis .th-fl-dot.th-fl-on{background:var(--ci-brand)}
-#act-thesis .th-fl-count{font-size:13px;color:var(--ci-ink);min-width:44px;text-align:center}
+#act-thesis .th-fl-arr{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:64px;border:none;border-radius:6px;background:rgba(0,0,0,.35);color:var(--ci-white);font-size:34px;line-height:1;cursor:pointer;opacity:0;transition:opacity .15s}
+#act-thesis .th-fl-prev{left:10px}
+#act-thesis .th-fl-next{right:10px}
+#act-thesis .th-fl-stage:hover .th-fl-arr,#act-thesis .th-fl-arr:focus{opacity:1}
+#act-thesis .th-fl-arr:hover{background:rgba(0,0,0,.55)}
+@media (hover:none){#act-thesis .th-fl-arr{opacity:.8}}
 </style>
         <div class="th-fl" id="th-fl">
           <div class="th-fl-stage">
-          <img class="th-fl-img th-fl-on" src="static/img/thesis/deck/v12-p2.webp" alt="Repuro turns 4 separately bought parts into one documented system" loading="eager" data-i="0">
-          <img class="th-fl-img" src="static/img/thesis/deck/v12-p3.webp" alt="Repuro's target offer covers 5 of the 8 steps of a hospital MTI purchase" loading="lazy" data-i="1">
-          <img class="th-fl-img" src="static/img/thesis/deck/v12-p4.webp" alt="MTI's four sectors range from 200 M€ to 1.7 B€ a year" loading="lazy" data-i="2">
-          <img class="th-fl-img" src="static/img/thesis/deck/v12-p5.webp" alt="MTI in Germany amounts to an estimated ~2.7 B€ a year" loading="lazy" data-i="3">
-          <img class="th-fl-img" src="static/img/thesis/deck/v12-p6.webp" alt="H.I.G. has grown Medisolve from ~130 M€ to over 200 M€ revenue since 2023" loading="lazy" data-i="4">
-          </div>
-          <div class="th-fl-nav">
-            <button class="th-fl-btn" type="button" id="th-fl-prev" aria-label="Previous page">&#8249;</button>
-            <button class="th-fl-dot th-fl-on" type="button" data-i="0" aria-label="Page 1"></button><button class="th-fl-dot" type="button" data-i="1" aria-label="Page 2"></button><button class="th-fl-dot" type="button" data-i="2" aria-label="Page 3"></button><button class="th-fl-dot" type="button" data-i="3" aria-label="Page 4"></button><button class="th-fl-dot" type="button" data-i="4" aria-label="Page 5"></button>
-            <span class="th-fl-count" id="th-fl-count">1 / 5</span>
-            <button class="th-fl-btn" type="button" id="th-fl-next" aria-label="Next page">&#8250;</button>
+          <img class="th-fl-img th-fl-on" src="static/img/thesis/deck/v12-p1.webp" alt="Repuro Group, MTI thesis update, November 2026" loading="eager">
+          <img class="th-fl-img" src="static/img/thesis/deck/v12-p2.webp" alt="Repuro turns 4 separately bought parts into one documented system" loading="lazy">
+          <img class="th-fl-img" src="static/img/thesis/deck/v12-p3.webp" alt="Repuro's target offer covers 5 of the 8 steps of a hospital MTI purchase" loading="lazy">
+          <img class="th-fl-img" src="static/img/thesis/deck/v12-p4.webp" alt="MTI's four sectors range from 200 M€ to 1.7 B€ a year" loading="lazy">
+          <img class="th-fl-img" src="static/img/thesis/deck/v12-p5.webp" alt="MTI in Germany amounts to an estimated ~2.7 B€ a year" loading="lazy">
+          <img class="th-fl-img" src="static/img/thesis/deck/v12-p6.webp" alt="H.I.G. has grown Medisolve from ~130 M€ to over 200 M€ revenue since 2023" loading="lazy">
+            <button class="th-fl-arr th-fl-prev" type="button" id="th-fl-prev" aria-label="Previous page">&#8249;</button>
+            <button class="th-fl-arr th-fl-next" type="button" id="th-fl-next" aria-label="Next page">&#8250;</button>
           </div>
         </div>
 <script>
 (function(){
   var root=document.getElementById("th-fl"); if(!root) return;
-  var imgs=root.querySelectorAll(".th-fl-img"), dots=root.querySelectorAll(".th-fl-dot"), cnt=document.getElementById("th-fl-count"), cur=0;
-  function go(i){
-    cur=(i+imgs.length)%imgs.length;
-    for(var k=0;k<imgs.length;k++){imgs[k].classList.toggle("th-fl-on",k===cur);dots[k].classList.toggle("th-fl-on",k===cur);}
-    cnt.textContent=(cur+1)+" / "+imgs.length;
-  }
-  document.getElementById("th-fl-prev").addEventListener("click",function(){go(cur-1);});
-  document.getElementById("th-fl-next").addEventListener("click",function(){go(cur+1);});
-  for(var k=0;k<dots.length;k++){dots[k].addEventListener("click",function(){go(parseInt(this.getAttribute("data-i"),10));});}
-  root.querySelector(".th-fl-stage").addEventListener("click",function(){go(cur+1);});
+  var imgs=root.querySelectorAll(".th-fl-img"), cur=0;
+  function go(i){cur=(i+imgs.length)%imgs.length;for(var k=0;k<imgs.length;k++){imgs[k].classList.toggle("th-fl-on",k===cur);}}
+  document.getElementById("th-fl-prev").addEventListener("click",function(e){e.stopPropagation();go(cur-1);});
+  document.getElementById("th-fl-next").addEventListener("click",function(e){e.stopPropagation();go(cur+1);});
 })();
 </script>
       </div>
